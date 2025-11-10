@@ -1,22 +1,25 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import {
-    Brain,
-    Calculator,
-    CheckCircle2,
-    FileDown,
-    FileSpreadsheet,
-    FileText,
-    Loader2,
-    Upload,
-    Zap,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { LiveLogFeed } from "@/components/pipeline/LiveLogFeed";
+import { PipelineTimeline, TimelineStep } from "@/components/pipeline/PipelineTimeline";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { fadeInUp, staggerContainer, scaleIn } from "@/lib/animations";
+import { fadeInUp, scaleIn, staggerContainer } from "@/lib/animations";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Brain,
+  Calculator,
+  CheckCircle2,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  Upload,
+  Zap
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 type EventData = {
   step?: string;
@@ -50,42 +53,69 @@ export default function AutoPipelinePage() {
   const [result, setResult] = useState<EventData["result"] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [timelineSteps, setTimelineSteps] = useState<TimelineStep[]>([
+    { id: "upload", name: "Dosya Yükleme", status: "pending" },
+    { id: "ocr", name: "OCR / Text Extraction", status: "pending" },
+    { id: "deep", name: "Derin Analiz (Claude)", status: "pending" },
+    { id: "cost", name: "Maliyet Hesaplama", status: "pending" },
+    { id: "decision", name: "Karar Motoru", status: "pending" },
+    { id: "report", name: "Rapor Oluşturma", status: "pending" },
+  ]);
   const esRef = useRef<EventSource | null>(null);
 
+  // SSE Listener
   function listen(id: string) {
     esRef.current?.close();
     const es = new EventSource(`/api/orchestrate/jobs/${id}/events`);
+    setJobId(id);
 
     es.onmessage = (e) => {
       try {
         const ev: EventData = JSON.parse(e.data);
 
-        if (typeof ev.progress === "number") {
-          setProgress(ev.progress);
-        }
-
+        if (typeof ev.progress === "number") setProgress(ev.progress);
         if (ev.step) {
           setActiveStep(ev.step);
+          
+          // Update timeline
+          setTimelineSteps((prev) =>
+            prev.map((step) => {
+              const stepKey = step.id;
+              if (stepKey === ev.step) {
+                return { ...step, status: "running" as const, timestamp: new Date().toISOString() };
+              }
+              // Mark previous steps as completed
+              const currentIndex = STEPS.findIndex((s) => s.key === ev.step);
+              const stepIndex = STEPS.findIndex((s) => s.key === stepKey);
+              if (stepIndex < currentIndex && step.status !== "completed") {
+                return { ...step, status: "completed" as const };
+              }
+              return step;
+            })
+          );
 
           if (ev.step === "done") {
             setIsProcessing(false);
+            setTimelineSteps((prev) =>
+              prev.map((step) => ({ ...step, status: "completed" as const }))
+            );
+            toast.success("🎉 Analiz tamamlandı! PDF ve Excel hazır.");
           } else if (ev.step === "error") {
             setIsProcessing(false);
-            setError(ev.error || "Bilinmeyen hata");
+            setTimelineSteps((prev) =>
+              prev.map((step) =>
+                step.status === "running"
+                  ? { ...step, status: "failed" as const, error: ev.error }
+                  : step
+              )
+            );
+            setError(ev.error || "Bilinmeyen hata oluştu");
+            toast.error(ev.error || "Analiz başarısız");
           }
         }
-
-        if (ev.message) {
-          setStatus(ev.message);
-        }
-
-        if (ev.result) {
-          setResult(ev.result);
-        }
-
-        if (ev.error) {
-          setError(ev.error);
-        }
+        if (ev.message) setStatus(ev.message);
+        if (ev.result) setResult(ev.result);
       } catch (err) {
         console.error("SSE parse error:", err);
       }
@@ -94,15 +124,21 @@ export default function AutoPipelinePage() {
     es.onerror = () => {
       es.close();
       setIsProcessing(false);
+      toast.warning("Bağlantı koptu, yeniden bağlanılıyor...");
+      setTimeout(() => listen(id), 2000); // Auto-reconnect
     };
 
     esRef.current = es;
   }
 
+  // Start analysis
   async function start() {
     if (!file) return;
+    if (!file.name.match(/\.(pdf|docx|txt|csv)$/i)) {
+      toast.error("❌ Geçersiz dosya formatı. Sadece PDF, DOCX, TXT veya CSV yükleyin.");
+      return;
+    }
 
-    // Reset state
     setResult(null);
     setError(null);
     setProgress(0);
@@ -114,30 +150,36 @@ export default function AutoPipelinePage() {
     fd.append("file", file);
 
     try {
-      const res = await fetch("/api/orchestrate", {
-        method: "POST",
-        body: fd,
-      });
-
+      const res = await fetch("/api/orchestrate", { method: "POST", body: fd });
       const data = await res.json();
 
       if (!data?.jobId) {
         setStatus("Hata: jobId alınamadı");
         setIsProcessing(false);
+        toast.error("Job ID alınamadı, işlem başlatılamadı.");
         return;
       }
 
+      localStorage.setItem("lastJobId", data.jobId);
       listen(data.jobId);
     } catch (err) {
-      setStatus("Hata: " + (err instanceof Error ? err.message : String(err)));
+      const msg = err instanceof Error ? err.message : String(err);
+      setStatus("Hata: " + msg);
       setIsProcessing(false);
+      toast.error("İşlem başlatılırken hata oluştu: " + msg);
     }
   }
 
+  // Auto-resume
   useEffect(() => {
-    return () => {
-      esRef.current?.close();
-    };
+    const lastJob = localStorage.getItem("lastJobId");
+    if (lastJob && !isProcessing) {
+      toast.info("Önceki analiz devam ediyor, bağlantı yeniden kuruluyor...");
+      listen(lastJob);
+      setIsProcessing(true);
+    }
+    return () => esRef.current?.close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -152,7 +194,7 @@ export default function AutoPipelinePage() {
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
             <motion.div
-              className="p-4 rounded-2xl bg-gradient-to-br from-[var(--color-accent-blue)] to-[var(--color-accent-purple)] shadow-glow-blue"
+              className="p-4 rounded-2xl bg-linear-to-br from-[var(--color-accent-blue)] to-(--color-accent-purple) shadow-glow-blue"
               whileHover={{ scale: 1.05, rotate: 5 }}
               transition={{ type: 'spring', stiffness: 300 }}
             >
@@ -189,8 +231,8 @@ export default function AutoPipelinePage() {
                       disabled={isProcessing}
                     />
                     <div className="flex items-center gap-3">
-                      <Upload className="w-6 h-6 text-[var(--color-accent-blue)]" />
-                      <span className="body text-[var(--color-text-primary)]">
+                      <Upload className="w-6 h-6 text-(--color-accent-blue)" />
+                      <span className="body text-(--color-text-primary)">
                         {file ? file.name : "Dosya seç (PDF, DOCX, TXT, CSV)"}
                       </span>
                     </div>
@@ -479,6 +521,40 @@ export default function AutoPipelinePage() {
                   </div>
                 </CardContent>
               </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Timeline & Log Feed Section */}
+        <AnimatePresence>
+          {isProcessing && jobId && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6"
+            >
+              {/* Pipeline Timeline */}
+              <motion.div variants={fadeInUp}>
+                <Card variant="elevated">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Zap className="w-5 h-5 text-indigo-400" />
+                      Pipeline Timeline
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="max-h-[500px] overflow-y-auto">
+                    <PipelineTimeline steps={timelineSteps} currentStep={activeStep} />
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Live Log Feed */}
+              <motion.div variants={fadeInUp}>
+                <Card variant="elevated" className="h-[500px]">
+                  <LiveLogFeed jobId={jobId} maxLogs={15} />
+                </Card>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

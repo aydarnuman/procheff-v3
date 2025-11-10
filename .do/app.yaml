@@ -1,0 +1,160 @@
+# DigitalOcean App Platform Configuration
+# This file defines the infrastructure and deployment settings for your app
+
+name: procheff-v3
+region: fra # Frankfurt region (change to your preferred region: nyc, sfo, ams, sgp, blr)
+
+# Main web service
+services:
+  - name: web
+    # Docker configuration
+    dockerfile_path: Dockerfile
+    source_dir: /
+    github:
+      repo: your-github-username/procheff-v3
+      branch: main
+      deploy_on_push: true
+
+    # Instance configuration
+    instance_count: 1
+    instance_size_slug: professional-xs # 1 vCPU, 1 GB RAM (upgrade as needed)
+
+    # HTTP configuration
+    http_port: 8080
+
+    # Health check
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 40
+      period_seconds: 30
+      timeout_seconds: 10
+      success_threshold: 1
+      failure_threshold: 3
+
+    # Environment variables
+    envs:
+      # Core
+      - key: NODE_ENV
+        value: "production"
+      - key: PORT
+        value: "8080"
+      - key: HOSTNAME
+        value: "0.0.0.0"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+
+      # Database (using persistent volume)
+      - key: DATABASE_PATH
+        value: "/app/data/procheff.db"
+
+      # NextAuth (set as secrets)
+      - key: NEXTAUTH_URL
+        value: "${APP_URL}"
+      - key: NEXTAUTH_SECRET
+        scope: RUN_TIME
+        type: SECRET
+
+      # AI APIs (set as secrets)
+      - key: ANTHROPIC_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: ANTHROPIC_MODEL
+        value: "claude-sonnet-4-20250514"
+      - key: DEFAULT_AI_MODEL
+        value: "claude-sonnet-4-20250514"
+
+      - key: GOOGLE_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: GEMINI_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: GEMINI_MODEL
+        value: "gemini-2.0-flash-exp"
+
+      # AI Configuration
+      - key: AI_MODEL_TEMPERATURE
+        value: "0.7"
+      - key: AI_MAX_TOKENS
+        value: "16000"
+      - key: AI_DEBUG
+        value: "false"
+
+      # Application
+      - key: APP_NAME
+        value: "procheff-v3"
+      - key: APP_VERSION
+        value: "3.0.0"
+      - key: TIER
+        value: "professional"
+
+      # Features
+      - key: ENABLE_IHALE_ANALYSIS
+        value: "true"
+      - key: ENABLE_SMART_ANALYZE
+        value: "true"
+      - key: ENABLE_MENU_MANAGEMENT
+        value: "true"
+      - key: ENABLE_COST_CALCULATOR
+        value: "true"
+      - key: ENABLE_OFFER_ENGINE
+        value: "true"
+      - key: ENABLE_ANALYTICS
+        value: "true"
+
+      # File Processing
+      - key: MAX_DOCUMENT_SIZE_MB
+        value: "50"
+      - key: OCR_ENABLED
+        value: "true"
+      - key: PDF_PARSING_TIMEOUT
+        value: "20000"
+
+      # Redis (Upstash - set as secrets)
+      - key: UPSTASH_REDIS_REST_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: UPSTASH_REDIS_REST_TOKEN
+        scope: RUN_TIME
+        type: SECRET
+
+      # Feature Flags
+      - key: ENABLE_RATE_LIMITING
+        value: "true"
+      - key: ENABLE_CACHING
+        value: "true"
+      - key: ENABLE_BATCH
+        value: "true"
+
+      # Scraper (optional - set as secrets if using)
+      - key: SCRAPER_ENABLED
+        value: "false"
+      # - key: SCRAPER_CRON_SECRET
+      #   scope: RUN_TIME
+      #   type: SECRET
+      # - key: IHALEBUL_USERNAME
+      #   scope: RUN_TIME
+      #   type: SECRET
+      # - key: IHALEBUL_PASSWORD
+      #   scope: RUN_TIME
+      #   type: SECRET
+
+    # Persistent storage for SQLite database
+    volumes:
+      - name: data
+        path: /app/data
+        size_gb: 1 # 1GB storage (upgrade as needed)
+
+# Optional: Redis service (if not using Upstash)
+# databases:
+#   - name: redis
+#     engine: REDIS
+#     version: "7"
+#     production: false
+
+# Auto-scaling rules (optional)
+# alerts:
+#   - rule: CPU_UTILIZATION
+#     value: 80
+#     window: FIVE_MINUTES
+#     operator: GREATER_THAN

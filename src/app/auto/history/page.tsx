@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  Download,
-  FileText,
-  FileSpreadsheet,
-  RefreshCw,
+    AlertTriangle,
+    CheckCircle,
+    Clock,
+    FileSpreadsheet,
+    FileText,
+    RefreshCw,
+    XCircle
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface OrchestrationRecord {
   id: string;
@@ -39,15 +38,38 @@ export default function PipelineHistoryPage() {
   async function fetchHistory() {
     setLoading(true);
     try {
-      const res = await fetch("/api/orchestrate/history");
+      const params = new URLSearchParams();
+      if (filter !== "all") params.append("status", filter);
+
+      const res = await fetch(`/api/orchestrate/jobs?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
-        setJobs(data.data);
+        setJobs(data.jobs || data.data || []);
       }
     } catch (error) {
       console.error("Failed to fetch history:", error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function deleteJob(id: string) {
+    if (!confirm("Bu job'ı silmek istediğinizden emin misiniz?")) return;
+
+    try {
+      const res = await fetch(`/api/orchestrate/jobs/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        fetchHistory(); // Refresh list
+      } else {
+        alert("Silme hatası: " + data.error);
+      }
+    } catch (error) {
+      console.error("Delete failed:", error);
+      alert("Silme başarısız");
     }
   }
 

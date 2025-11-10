@@ -1,13 +1,13 @@
 import { AILogger } from "@/lib/ai/logger";
 import {
-    createOrchestration,
-    updateOrchestration,
+  createOrchestration,
+  updateOrchestration,
 } from "@/lib/db/init-auth";
 import {
-    createJob,
-    emitJob,
-    postFormDataWithRetry,
-    postWithRetry,
+  createJob,
+  emitJob,
+  postFormDataWithRetry,
+  postWithRetry,
 } from "@/lib/jobs";
 import { nanoid } from "nanoid";
 import { NextRequest, NextResponse } from "next/server";
@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
   // Start async pipeline in background
   (async () => {
     let fileName = "unknown";
+    const startTime = Date.now();
 
     try {
       emitJob(jobId, {
@@ -57,7 +58,12 @@ export async function POST(req: NextRequest) {
       AILogger.info("Orchestrator init", { jobId });
 
       // Create DB record
-      createOrchestration(jobId, fileName);
+      createOrchestration(jobId, { fileName });
+      updateOrchestration(jobId, {
+        started_at: new Date().toISOString(),
+        status: "running",
+        current_step: "init",
+      });
 
       let analysis: unknown = null;
       let cost: unknown = null;
@@ -72,7 +78,11 @@ export async function POST(req: NextRequest) {
           progress: 8,
           message: "Doküman yükleniyor",
         });
-        updateOrchestration(jobId, { progress: 8, status: "upload" });
+        updateOrchestration(jobId, { 
+          progress: 8, 
+          status: "running",
+          current_step: "upload" 
+        });
 
         const form = await req.formData();
         const file = form.get("file") as File | null;
@@ -82,7 +92,6 @@ export async function POST(req: NextRequest) {
         }
 
         fileName = file.name;
-        updateOrchestration(jobId, { progress: 8, status: "upload" });
 
         // Upload → OCR → quick analysis
         emitJob(jobId, {
@@ -90,7 +99,11 @@ export async function POST(req: NextRequest) {
           progress: 18,
           message: "OCR / Extract çalışıyor",
         });
-        updateOrchestration(jobId, { progress: 18, status: "ocr" });
+        updateOrchestration(jobId, { 
+          progress: 18, 
+          status: "running",
+          current_step: "ocr" 
+        });
 
         const uploadForm = new FormData();
         uploadForm.append("file", file);
@@ -112,7 +125,11 @@ export async function POST(req: NextRequest) {
           message: "Derin analiz (Claude) tamamlandı",
           analysis,
         });
-        updateOrchestration(jobId, { progress: 30, status: "analyze" });
+        updateOrchestration(jobId, { 
+          progress: 30, 
+          status: "running",
+          current_step: "deep" 
+        });
       } else {
         // JSON body (prepared analysis)
         const body = await req.json().catch(() => ({}));
@@ -128,7 +145,11 @@ export async function POST(req: NextRequest) {
           message: "Hazır analiz verisi alındı",
           analysis,
         });
-        updateOrchestration(jobId, { progress: 30, status: "analyze" });
+        updateOrchestration(jobId, { 
+          progress: 30, 
+          status: "running",
+          current_step: "deep" 
+        });
       }
 
       /** STEP 2: COST ANALYSIS */
@@ -137,7 +158,11 @@ export async function POST(req: NextRequest) {
         progress: 46,
         message: "Maliyet hesaplanıyor",
       });
-      updateOrchestration(jobId, { progress: 46, status: "cost" });
+      updateOrchestration(jobId, { 
+        progress: 46, 
+        status: "running",
+        current_step: "cost" 
+      });
 
       // Try different payload formats for compatibility
       try {
@@ -231,6 +256,8 @@ export async function POST(req: NextRequest) {
 
       /** STEP 5: DONE */
       const finalResult = { analysis, cost, decision, pdfPath, xlsxPath };
+      const endTime = Date.now();
+      const duration = endTime - startTime;
 
       emitJob(jobId, {
         step: "done",
@@ -242,7 +269,10 @@ export async function POST(req: NextRequest) {
       updateOrchestration(jobId, {
         progress: 100,
         status: "completed",
+        current_step: "done",
         result: finalResult,
+        completed_at: new Date().toISOString(),
+        duration_ms: duration,
       });
 
       AILogger.success("Orchestrator done", {
@@ -250,6 +280,7 @@ export async function POST(req: NextRequest) {
         fileName,
         pdfPath,
         xlsxPath,
+        duration_ms: duration,
       });
     } catch (err: unknown) {
       const errorMessage =
@@ -263,8 +294,11 @@ export async function POST(req: NextRequest) {
       });
 
       updateOrchestration(jobId, {
-        status: "error",
+        status: "failed",
+        current_step: "error",
         error: errorMessage,
+        completed_at: new Date().toISOString(),
+        duration_ms: Date.now() - startTime,
       });
 
       AILogger.error("Orchestrator error", {

@@ -60,13 +60,16 @@ export function initAuthSchema() {
       id TEXT PRIMARY KEY,
       file_name TEXT,
       file_size INTEGER,
+      mime_type TEXT,
       progress INTEGER DEFAULT 0,
       status TEXT DEFAULT 'pending',
       current_step TEXT,
+      steps_json TEXT,
       result TEXT,
       error TEXT,
       warnings TEXT,
       duration_ms INTEGER,
+      user_id TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       started_at TEXT,
@@ -74,10 +77,20 @@ export function initAuthSchema() {
     );
   `).run();
 
-  // Index for recent orchestrations query
+  // Indexes for performance
   db.prepare(`
     CREATE INDEX IF NOT EXISTS idx_orchestrations_created_at 
     ON orchestrations(created_at DESC);
+  `).run();
+
+  db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_orchestrations_status 
+    ON orchestrations(status, created_at DESC);
+  `).run();
+
+  db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_orchestrations_user 
+    ON orchestrations(user_id, created_at DESC);
   `).run();
 }
 
@@ -120,20 +133,43 @@ export function getUserOrgs(userId: string) {
 export interface OrchestrationRecord {
   id: string;
   file_name: string | null;
+  file_size: number | null;
+  mime_type: string | null;
   progress: number;
   status: string;
+  current_step: string | null;
+  steps_json: string | null;
   result: string | null;
   error: string | null;
+  warnings: string | null;
+  duration_ms: number | null;
+  user_id: string | null;
   created_at: string;
   updated_at: string;
+  started_at: string | null;
+  completed_at: string | null;
 }
 
-export function createOrchestration(id: string, fileName?: string) {
+export function createOrchestration(
+  id: string,
+  data?: {
+    fileName?: string;
+    fileSize?: number;
+    mimeType?: string;
+    userId?: string;
+  }
+) {
   const db = getDB();
   db.prepare(`
-    INSERT INTO orchestrations (id, file_name, progress, status)
-    VALUES (?, ?, 0, 'pending')
-  `).run(id, fileName || null);
+    INSERT INTO orchestrations (id, file_name, file_size, mime_type, user_id, progress, status)
+    VALUES (?, ?, ?, ?, ?, 0, 'pending')
+  `).run(
+    id,
+    data?.fileName || null,
+    data?.fileSize || null,
+    data?.mimeType || null,
+    data?.userId || null
+  );
 }
 
 export function updateOrchestration(
@@ -141,8 +177,13 @@ export function updateOrchestration(
   updates: {
     progress?: number;
     status?: string;
+    current_step?: string;
+    steps_json?: string;
     result?: unknown;
     error?: string;
+    started_at?: string;
+    completed_at?: string;
+    duration_ms?: number;
   }
 ) {
   const db = getDB();
@@ -157,6 +198,14 @@ export function updateOrchestration(
     fields.push("status = ?");
     values.push(updates.status);
   }
+  if (updates.current_step) {
+    fields.push("current_step = ?");
+    values.push(updates.current_step);
+  }
+  if (updates.steps_json) {
+    fields.push("steps_json = ?");
+    values.push(updates.steps_json);
+  }
   if (updates.result !== undefined) {
     fields.push("result = ?");
     values.push(JSON.stringify(updates.result));
@@ -164,6 +213,18 @@ export function updateOrchestration(
   if (updates.error) {
     fields.push("error = ?");
     values.push(updates.error);
+  }
+  if (updates.started_at) {
+    fields.push("started_at = ?");
+    values.push(updates.started_at);
+  }
+  if (updates.completed_at) {
+    fields.push("completed_at = ?");
+    values.push(updates.completed_at);
+  }
+  if (updates.duration_ms !== undefined) {
+    fields.push("duration_ms = ?");
+    values.push(updates.duration_ms);
   }
 
   if (fields.length === 0) return;
@@ -194,6 +255,52 @@ export function getRecentOrchestrations(limit = 50): OrchestrationRecord[] {
       LIMIT ?
     `)
     .all(limit) as OrchestrationRecord[];
+}
+
+export function getOrchestrationsByStatus(
+  status: string,
+  limit = 50
+): OrchestrationRecord[] {
+  const db = getDB();
+  return db
+    .prepare(`
+      SELECT * FROM orchestrations
+      WHERE status = ?
+      ORDER BY created_at DESC
+      LIMIT ?
+    `)
+    .all(status, limit) as OrchestrationRecord[];
+}
+
+export function searchOrchestrations(
+  query: string,
+  limit = 50
+): OrchestrationRecord[] {
+  const db = getDB();
+  return db
+    .prepare(`
+      SELECT * FROM orchestrations
+      WHERE file_name LIKE ? OR id LIKE ?
+      ORDER BY created_at DESC
+      LIMIT ?
+    `)
+    .all(`%${query}%`, `%${query}%`, limit) as OrchestrationRecord[];
+}
+
+export function deleteOrchestration(id: string): void {
+  const db = getDB();
+  db.prepare("DELETE FROM orchestrations WHERE id = ?").run(id);
+}
+
+export function cancelOrchestration(id: string): void {
+  const db = getDB();
+  db.prepare(`
+    UPDATE orchestrations 
+    SET status = 'cancelled', 
+        completed_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND status = 'running'
+  `).run(id);
 }
 
 /**

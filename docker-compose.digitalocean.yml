@@ -1,0 +1,109 @@
+# Docker Compose for DigitalOcean VPS Deployment
+# Procheff v3 - Production Configuration
+# Server: 161.35.217.113
+
+services:
+  # Main Application (Procheff v3)
+  procheff-v3:
+    image: aydarnuman/procheff-v3:latest
+    container_name: procheff-v3
+    restart: unless-stopped
+    ports:
+      - "3001:8080"  # Different port from v2 (assuming v2 uses 3000)
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      HOSTNAME: "0.0.0.0"
+      DATABASE_PATH: "/app/data/procheff.db"
+
+      # API Keys (set via .env file)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GEMINI_API_KEY: ${GOOGLE_API_KEY}
+
+      # NextAuth
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://procheff-v3.example.com}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+
+      # Upstash Redis (optional)
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL:-}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-}
+
+      # Application Settings
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://procheff-v3.example.com}
+      APP_NAME: procheff-v3
+      APP_VERSION: 3.0.0
+      TIER: professional
+
+      # AI Configuration
+      ANTHROPIC_MODEL: claude-sonnet-4-20250514
+      GEMINI_MODEL: gemini-2.0-flash-exp
+      AI_MODEL_TEMPERATURE: 0.7
+      AI_MAX_TOKENS: 16000
+
+      # Features
+      ENABLE_IHALE_ANALYSIS: true
+      ENABLE_SMART_ANALYZE: true
+      ENABLE_MENU_MANAGEMENT: true
+      ENABLE_COST_CALCULATOR: true
+      ENABLE_OFFER_ENGINE: true
+      ENABLE_ANALYTICS: true
+
+      # File Processing
+      MAX_DOCUMENT_SIZE_MB: 50
+      OCR_ENABLED: true
+      PDF_PARSING_TIMEOUT: 20000
+
+      # Scraper (if needed)
+      SCRAPER_ENABLED: ${SCRAPER_ENABLED:-false}
+      SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
+
+    volumes:
+      - procheff-v3-data:/app/data
+    networks:
+      - procheff-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"  # Auto-update with Watchtower
+
+  # Optional: Redis for caching (if not using Upstash)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: procheff-v3-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6380:6379"  # Different port from default
+  #   volumes:
+  #     - procheff-v3-redis:/data
+  #   networks:
+  #     - procheff-network
+  #   command: redis-server --appendonly yes
+
+volumes:
+  procheff-v3-data:
+    driver: local
+  # procheff-v3-redis:
+  #   driver: local
+
+networks:
+  procheff-network:
+    driver: bridge
+
+# Optional: Watchtower for auto-updates
+  # watchtower:
+  #   image: containrrr/watchtower
+  #   container_name: watchtower-procheff-v3
+  #   restart: unless-stopped
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   environment:
+  #     - WATCHTOWER_CLEANUP=true
+  #     - WATCHTOWER_POLL_INTERVAL=3600  # Check every hour
+  #     - WATCHTOWER_LABEL_ENABLE=true
+  #   networks:
+  #     - procheff-network

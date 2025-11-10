@@ -1,0 +1,114 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main
+      - production
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  deploy:
+    name: Deploy to DigitalOcean App Platform
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Get App ID
+        id: get-app
+        run: |
+          APP_NAME="procheff-v3"
+          APP_ID=$(doctl apps list --format ID,Name --no-header | grep "${APP_NAME}" | awk '{print $1}')
+
+          if [ -z "$APP_ID" ]; then
+            echo "App not found, will create new app"
+            echo "app_exists=false" >> $GITHUB_OUTPUT
+          else
+            echo "Found app ID: $APP_ID"
+            echo "app_exists=true" >> $GITHUB_OUTPUT
+            echo "app_id=$APP_ID" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create App (if not exists)
+        if: steps.get-app.outputs.app_exists == 'false'
+        run: |
+          echo "Creating new app..."
+          doctl apps create --spec .do/app.yaml
+
+          # Wait for app to be created
+          sleep 10
+
+          # Get the new app ID
+          APP_NAME="procheff-v3"
+          APP_ID=$(doctl apps list --format ID,Name --no-header | grep "${APP_NAME}" | awk '{print $1}')
+          echo "New app ID: $APP_ID"
+          echo "app_id=$APP_ID" >> $GITHUB_OUTPUT
+
+      - name: Update App Spec
+        if: steps.get-app.outputs.app_exists == 'true'
+        run: |
+          APP_ID="${{ steps.get-app.outputs.app_id }}"
+          echo "Updating app spec for app ID: $APP_ID"
+          doctl apps update "$APP_ID" --spec .do/app.yaml
+
+      - name: Trigger Deployment
+        run: |
+          APP_ID="${{ steps.get-app.outputs.app_id }}"
+          echo "Triggering deployment for app ID: $APP_ID"
+          doctl apps create-deployment "$APP_ID" --wait
+
+      - name: Get App URL
+        id: get-url
+        run: |
+          APP_ID="${{ steps.get-app.outputs.app_id }}"
+          APP_URL=$(doctl apps get "$APP_ID" --format DefaultIngress --no-header)
+          echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+          echo "App URL: $APP_URL"
+
+      - name: Verify Deployment
+        run: |
+          APP_URL="${{ steps.get-url.outputs.app_url }}"
+          echo "Verifying deployment at: $APP_URL/api/health"
+
+          # Wait a bit for the app to be fully ready
+          sleep 30
+
+          # Check health endpoint
+          for i in {1..5}; do
+            if curl -f -s "$APP_URL/api/health" > /dev/null; then
+              echo "✓ Health check passed!"
+              exit 0
+            fi
+            echo "Health check attempt $i failed, retrying..."
+            sleep 10
+          done
+
+          echo "⚠️ Health check failed after 5 attempts"
+          exit 1
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo "## Deployment Summary 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **App ID:** ${{ steps.get-app.outputs.app_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **App URL:** ${{ steps.get-url.outputs.app_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Useful Commands" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "# View logs" >> $GITHUB_STEP_SUMMARY
+          echo "doctl apps logs ${{ steps.get-app.outputs.app_id }} --follow" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# View deployments" >> $GITHUB_STEP_SUMMARY
+          echo "doctl apps list-deployments ${{ steps.get-app.outputs.app_id }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
