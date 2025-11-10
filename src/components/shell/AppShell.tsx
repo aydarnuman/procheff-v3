@@ -1,6 +1,7 @@
 "use client";
 
 import { CommandPalette } from "@/components/ui/CommandPalette";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { usePathname } from "next/navigation";
 import { Sidecar } from "./Sidecar";
 import { TopBar } from "./TopBar";
@@ -26,11 +27,12 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <>
+      <Sidecar />
       <div className="flex h-screen overflow-hidden">
-        <Sidecar />
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 flex flex-col overflow-hidden md:pl-52">
           <TopBar />
-          <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-transparent via-black/5 to-transparent">
+          <Breadcrumb />
+          <div className="flex-1 overflow-y-auto p-3 md:p-6 bg-linear-to-br from-transparent via-black/5 to-transparent">
             <div className="max-w-[1600px] mx-auto">
               {children}
             </div>
