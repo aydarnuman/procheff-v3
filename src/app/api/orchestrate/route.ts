@@ -6,9 +6,9 @@ import {
 import {
   createJob,
   emitJob,
-  postFormDataWithRetry,
   postWithRetry,
 } from "@/lib/jobs";
+import { categorizeAIError, retryFormUpload } from "@/lib/utils/retry";
 import { nanoid } from "nanoid";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -108,12 +108,27 @@ export async function POST(req: NextRequest) {
         const uploadForm = new FormData();
         uploadForm.append("file", file);
 
-        const uploadResult = (await postFormDataWithRetry(
+        const uploadResult = await retryFormUpload<{ data?: unknown; analysis?: unknown }>(
           new URL(API.upload, base).toString(),
-          uploadForm
-        )) as { data?: unknown; analysis?: unknown };
+          uploadForm,
+          {
+            maxAttempts: 3,
+            onRetry: (attempt) => {
+              emitJob(jobId, {
+                step: "ocr",
+                progress: 18 + attempt * 2,
+                message: `OCR hatası, tekrar deneniyor (${attempt}/3)...`,
+              });
+            },
+          }
+        );
 
-        analysis = uploadResult?.data || uploadResult?.analysis || null;
+        if (!uploadResult.success || !uploadResult.data) {
+          const errorInfo = categorizeAIError(uploadResult.error || "Upload başarısız");
+          throw new Error(errorInfo.message);
+        }
+
+        analysis = uploadResult.data?.data || uploadResult.data?.analysis || null;
 
         if (!analysis) {
           throw new Error("Upload sonrası analiz verisi alınamadı");
@@ -164,19 +179,27 @@ export async function POST(req: NextRequest) {
         current_step: "cost" 
       });
 
-      // Try different payload formats for compatibility
+      // Try with enhanced retry logic
       try {
         const costResult = (await postWithRetry(
           new URL(API.cost, base).toString(),
-          { analysis }
+          { analysis },
+          3
         )) as { data?: unknown; cost?: unknown };
         cost = costResult?.data || costResult?.cost || costResult;
-      } catch {
-        const costResult = (await postWithRetry(
-          new URL(API.cost, base).toString(),
-          { extracted_data: analysis }
-        )) as { data?: unknown; cost?: unknown };
-        cost = costResult?.data || costResult?.cost || costResult;
+      } catch (firstErr) {
+        AILogger.warn("Cost analysis failed with 'analysis' payload, trying 'extracted_data'", { error: String(firstErr) });
+        try {
+          const costResult = (await postWithRetry(
+            new URL(API.cost, base).toString(),
+            { extracted_data: analysis },
+            3
+          )) as { data?: unknown; cost?: unknown };
+          cost = costResult?.data || costResult?.cost || costResult;
+        } catch (secondErr) {
+          const errorInfo = categorizeAIError(secondErr);
+          throw new Error(`Maliyet analizi başarısız: ${errorInfo.message}`);
+        }
       }
 
       if (!cost) {
@@ -197,17 +220,27 @@ export async function POST(req: NextRequest) {
         progress: 72,
         message: "Karar motoru çalışıyor",
       });
-      updateOrchestration(jobId, { progress: 72, status: "decision" });
+      updateOrchestration(jobId, { 
+        progress: 72, 
+        status: "running",
+        current_step: "decision" 
+      });
 
-      const decisionResult = (await postWithRetry(
-        new URL(API.decision, base).toString(),
-        { analysis, cost }
-      )) as { data?: unknown; decision?: unknown };
+      try {
+        const decisionResult = (await postWithRetry(
+          new URL(API.decision, base).toString(),
+          { analysis, cost },
+          3
+        )) as { data?: unknown; decision?: unknown };
 
-      decision = decisionResult?.data || decisionResult?.decision || decisionResult;
+        decision = decisionResult?.data || decisionResult?.decision || decisionResult;
 
-      if (!decision) {
-        throw new Error("Karar verisi alınamadı");
+        if (!decision) {
+          throw new Error("Karar verisi alınamadı");
+        }
+      } catch (err) {
+        const errorInfo = categorizeAIError(err);
+        throw new Error(`Karar motoru başarısız: ${errorInfo.message}`);
       }
 
       emitJob(jobId, {
@@ -283,20 +316,24 @@ export async function POST(req: NextRequest) {
         duration_ms: duration,
       });
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Bilinmeyen hata";
+      const errorInfo = categorizeAIError(err);
+      const errorMessage = errorInfo.message;
+      const errorType = errorInfo.type;
+      const recoverable = errorInfo.recoverable;
 
       emitJob(jobId, {
         step: "error",
         progress: 100,
         message: errorMessage,
         error: errorMessage,
+        errorType,
+        recoverable,
       });
 
       updateOrchestration(jobId, {
         status: "failed",
         current_step: "error",
-        error: errorMessage,
+        error: `[${errorType}] ${errorMessage}`,
         completed_at: new Date().toISOString(),
         duration_ms: Date.now() - startTime,
       });
@@ -304,7 +341,10 @@ export async function POST(req: NextRequest) {
       AILogger.error("Orchestrator error", {
         jobId,
         fileName,
-        error: err instanceof Error ? err.stack : String(err),
+        errorType,
+        recoverable,
+        message: errorMessage,
+        stack: err instanceof Error ? err.stack : String(err),
       });
     }
   })();

@@ -16,14 +16,17 @@ Procheff-v3 is an **AI-powered public procurement analysis platform** built with
 - **AI Model**: Claude Sonnet 4.5 (claude-sonnet-4-20250514)
 - **OCR Model**: Gemini 2.0 Vision (Google Generative AI)
 - **Database**: SQLite (better-sqlite3 ^11.10.0)
+- **Cache/Queue**: Upstash Redis (rate limiting, caching)
 - **Authentication**: NextAuth v5 (beta) - JWT strategy, multi-org support, RBAC
 - **Notifications**: Real-time SSE notification system with SQLite storage
-- **Styling**: Tailwind CSS 4
+- **Styling**: Tailwind CSS 4 (Glassmorphism theme)
+- **Animation**: Framer Motion 12
 - **State Management**: Zustand ^5.0.8
 - **Validation**: Zod ^4.1.12
 - **Charts**: Recharts ^3.4.0
 - **Export**: pdfkit ^0.17.2, exceljs ^4.4.0
 - **File Processing**: formidable ^3.5.4, pdf-parse, mammoth, file-type
+- **Deployment**: DigitalOcean (App Platform / Droplets), Docker
 
 ## 🧩 Architecture Summary
 
@@ -1046,5 +1049,34 @@ export async function analyzeData(input: AnalysisInput) {
 
 **Remember**: This is an enterprise-grade application. Code quality, type safety, and proper logging are not optional—they are requirements.
 
-**AI Model**: Claude Sonnet 4.5 (claude-sonnet-4-20250514)  
+## 🚀 Deployment
+
+### DigitalOcean App Platform (Recommended)
+```bash
+# Deploy via CLI
+doctl apps create --spec .do/app.yaml
+
+# Or via GitHub (auto-deploy on push to main)
+git push origin main
+```
+
+### Docker Droplet (VPS)
+```bash
+# Build and run
+docker build -t procheff-v3:latest .
+docker-compose up -d
+
+# Update
+git pull && docker-compose up -d --build
+```
+
+### Documentation
+- **Quick Start**: README-DEPLOYMENT.md
+- **Full Guide**: docs/DIGITALOCEAN-DEPLOYMENT.md
+- **Summary**: DIGITALOCEAN-SETUP.md
+
+---
+
+**AI Model**: Claude Sonnet 4.5 (claude-sonnet-4-20250514)
+**Deployment**: DigitalOcean App Platform / Docker
 **Last Updated**: November 10, 2025

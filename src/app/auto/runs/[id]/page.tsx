@@ -177,15 +177,15 @@ export default function OrchestrationRunPage() {
   };
 
   return (
-    <main className="min-h-screen p-6 md:p-8">
+    <main className="min-h-screen p-3 sm:p-6 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" onClick={onBack} icon={<ArrowLeft className="w-5 h-5" />}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-6">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <Button variant="ghost" onClick={onBack} icon={<ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />} size="sm">
               Geri
             </Button>
-            <h1 className="h1">Pipeline Çalışması</h1>
+            <h1 className="h1 text-lg sm:text-2xl">Pipeline Çalışması</h1>
             {detail?.status && (
               <Badge className={statusColor}>
                 <History className="w-3 h-3 mr-1" />
@@ -193,14 +193,14 @@ export default function OrchestrationRunPage() {
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={fetchDetail} icon={<RefreshCcw className="w-4 h-4" />}>
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+            <Button variant="secondary" onClick={fetchDetail} icon={<RefreshCcw className="w-3 h-3 sm:w-4 sm:h-4" />} size="sm" className="flex-1 sm:flex-initial">
               Yenile
             </Button>
-            <Button variant="secondary" onClick={onRetry} icon={<CheckCircle2 className="w-4 h-4" />}>
-              Yeniden Çalıştır
+            <Button variant="secondary" onClick={onRetry} icon={<CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />} size="sm" className="flex-1 sm:flex-initial">
+              Yeniden
             </Button>
-            <Button variant="ghost" onClick={onDelete} icon={<Trash2 className="w-4 h-4" />} className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
+            <Button variant="ghost" onClick={onDelete} icon={<Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />} size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 flex-1 sm:flex-initial">
               Sil
             </Button>
           </div>
@@ -224,13 +224,13 @@ export default function OrchestrationRunPage() {
         {detail && !loading && (
           <>
             {/* Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
               <Card variant="elevated">
                 <CardHeader className="pb-2">
-                  <CardTitle>Dosya</CardTitle>
+                  <CardTitle className="text-sm sm:text-base">Dosya</CardTitle>
                 </CardHeader>
-                <CardContent className="p-6 pt-2">
-                  <p className="body-sm text-(--color-text-secondary) truncate">
+                <CardContent className="p-3 sm:p-6 pt-2">
+                  <p className="body-sm text-(--color-text-secondary) truncate text-xs sm:text-sm">
                     {detail.file_name || "-"}
                   </p>
                   <p className="body-xs text-(--color-text-tertiary)">{detail.mime_type || "-"}</p>
@@ -238,10 +238,10 @@ export default function OrchestrationRunPage() {
               </Card>
               <Card variant="elevated">
                 <CardHeader className="pb-2">
-                  <CardTitle>Süre</CardTitle>
+                  <CardTitle className="text-sm sm:text-base">Süre</CardTitle>
                 </CardHeader>
-                <CardContent className="p-6 pt-2">
-                  <p className="body-sm text-(--color-text-secondary)">
+                <CardContent className="p-3 sm:p-6 pt-2">
+                  <p className="body-sm text-(--color-text-secondary) text-xs sm:text-sm">
                     {((detail.duration_ms ?? 0) / 1000).toFixed(1)}s
                   </p>
                   <p className="body-xs text-(--color-text-tertiary)">
@@ -253,34 +253,36 @@ export default function OrchestrationRunPage() {
               </Card>
               <Card variant="elevated">
                 <CardHeader className="pb-2">
-                  <CardTitle>Raporlar</CardTitle>
+                  <CardTitle className="text-sm sm:text-base">Raporlar</CardTitle>
                 </CardHeader>
-                <CardContent className="p-6 pt-2 flex gap-3">
+                <CardContent className="p-3 sm:p-6 pt-2 flex gap-2 flex-wrap">
                   {parsedResult?.pdfPath ? (
                     <a href={parsedResult.pdfPath} download>
                       <Button
                         variant="primary"
                         size="sm"
-                        icon={<FileDown className="w-4 h-4" />}
+                        icon={<FileDown className="w-3 h-3 sm:w-4 sm:h-4" />}
+                        className="text-xs sm:text-sm"
                       >
                         PDF
                       </Button>
                     </a>
                   ) : (
-                    <Badge variant="neutral">PDF yok</Badge>
+                    <Badge variant="neutral" className="text-xs">PDF yok</Badge>
                   )}
                   {parsedResult?.xlsxPath ? (
                     <a href={parsedResult.xlsxPath} download>
                       <Button
                         variant="primary"
                         size="sm"
-                        icon={<FileSpreadsheet className="w-4 h-4" />}
+                        icon={<FileSpreadsheet className="w-3 h-3 sm:w-4 sm:h-4" />}
+                        className="text-xs sm:text-sm"
                       >
                         Excel
                       </Button>
                     </a>
                   ) : (
-                    <Badge variant="neutral">Excel yok</Badge>
+                    <Badge variant="neutral" className="text-xs">Excel yok</Badge>
                   )}
                 </CardContent>
               </Card>
@@ -288,16 +290,16 @@ export default function OrchestrationRunPage() {
 
             {/* Timeline + Logs */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <Card variant="elevated">
+              <Card variant="elevated" className="order-1">
                 <CardHeader className="pb-2">
-                  <CardTitle>Pipeline Timeline</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Pipeline Timeline</CardTitle>
                 </CardHeader>
-                <CardContent className="p-6 pt-4 max-h-[520px] overflow-y-auto">
+                <CardContent className="p-3 sm:p-6 pt-4 max-h-[400px] sm:max-h-[520px] overflow-y-auto">
                   <PipelineTimeline steps={parsedSteps} currentStep={detail.current_step || null} />
                 </CardContent>
               </Card>
 
-              <Card variant="elevated" className="h-[520px]">
+              <Card variant="elevated" className="h-[400px] sm:h-[520px] order-2">
                 <LiveLogFeed jobId={detail.id} maxLogs={30} />
               </Card>
             </div>
@@ -305,25 +307,25 @@ export default function OrchestrationRunPage() {
             {/* Result JSONs */}
             <Card variant="elevated">
               <CardHeader className="pb-2">
-                <CardTitle>Analiz Sonuçları</CardTitle>
+                <CardTitle className="text-base sm:text-lg">Analiz Sonuçları</CardTitle>
               </CardHeader>
-              <CardContent className="p-6 pt-4">
-                <div className="grid md:grid-cols-3 gap-4">
+              <CardContent className="p-3 sm:p-6 pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <h3 className="h4 mb-2">Analiz</h3>
-                    <pre className="text-xs bg-(--color-surface) border border-(--color-border) rounded-lg p-3 max-h-72 overflow-auto whitespace-pre-wrap">
+                    <h3 className="h4 mb-2 text-sm sm:text-base">Analiz</h3>
+                    <pre className="text-xs bg-(--color-surface) border border-(--color-border) rounded-lg p-2 sm:p-3 max-h-60 sm:max-h-72 overflow-auto whitespace-pre-wrap">
                       {pretty(parsedResult?.analysis)}
                     </pre>
                   </div>
                   <div>
-                    <h3 className="h4 mb-2">Maliyet</h3>
-                    <pre className="text-xs bg-(--color-surface) border border-(--color-border) rounded-lg p-3 max-h-72 overflow-auto whitespace-pre-wrap">
+                    <h3 className="h4 mb-2 text-sm sm:text-base">Maliyet</h3>
+                    <pre className="text-xs bg-(--color-surface) border border-(--color-border) rounded-lg p-2 sm:p-3 max-h-60 sm:max-h-72 overflow-auto whitespace-pre-wrap">
                       {pretty(parsedResult?.cost)}
                     </pre>
                   </div>
                   <div>
-                    <h3 className="h4 mb-2">Karar</h3>
-                    <pre className="text-xs bg-(--color-surface) border border-(--color-border) rounded-lg p-3 max-h-72 overflow-auto whitespace-pre-wrap">
+                    <h3 className="h4 mb-2 text-sm sm:text-base">Karar</h3>
+                    <pre className="text-xs bg-(--color-surface) border border-(--color-border) rounded-lg p-2 sm:p-3 max-h-60 sm:max-h-72 overflow-auto whitespace-pre-wrap">
                       {pretty(parsedResult?.decision)}
                     </pre>
                   </div>
