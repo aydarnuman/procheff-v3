@@ -1,0 +1,46 @@
+{
+  "folders": [
+    {
+      "path": ".."
+    }
+  ],
+  "settings": {
+    "docker.dockerPath": "docker",
+    "docker.dockerComposePath": "docker-compose"
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-azuretools.vscode-docker"
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "docker-compose up",
+        "type": "docker-compose",
+        "dockerCompose": {
+          "up": {
+            "detached": true,
+            "build": true
+          },
+          "files": [
+            "${workspaceFolder}/docker-compose.yml"
+          ]
+        }
+      },
+      {
+        "label": "docker-compose down",
+        "type": "docker-compose",
+        "dockerCompose": {
+          "down": {
+            "removeVolumes": false
+          },
+          "files": [
+            "${workspaceFolder}/docker-compose.yml"
+          ]
+        }
+      }
+    ]
+  }
+}
