@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   BarChart4,
   Bell,
+  Bot,
   Briefcase,
   ChevronDown,
   ClipboardList,
@@ -44,6 +45,7 @@ const NAV: NavItem[] = [
     children: [
       { label: "Menü Parser", href: "/menu-parser", icon: Utensils },
       { label: "Maliyet Analizi", href: "/cost-analysis", icon: DollarSign },
+      { label: "Piyasa Robotu", href: "/piyasa-robotu", icon: Bot },
     ]
   },
   { label: "İhale", href: "/ihale", icon: ClipboardList },

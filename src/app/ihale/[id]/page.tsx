@@ -4,6 +4,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Download, Loader2, FileText, Calendar, DollarSign, Upload, ExternalLink } from 'lucide-react';
 import { usePipelineStore, PIPELINE_STEPS } from '@/store/usePipelineStore';
+import { parseTenderHTML, formatParsedData } from '@/lib/utils/html-parser';
+import { TenderDetailDisplay } from '@/components/tender/TenderDetailDisplay';
 
 export default function IhaleDetailPage() {
   const params = useParams();
@@ -73,9 +75,17 @@ export default function IhaleDetailPage() {
           }
         } else {
           // Successfully fetched from ihalebul.com
+          // Parse the HTML if it exists
+          let processedHtml = data.html;
+          if (data.html) {
+            const parsed = parseTenderHTML(data.html);
+            processedHtml = formatParsedData(parsed);
+          }
+
           setDetail((prev: any) => ({
             ...prev,
             ...data,
+            html: processedHtml,
             // Keep the existing fields if API doesn't return them
             organization: data.organization || prev?.organization,
             city: data.city || prev?.city,
@@ -312,19 +322,7 @@ export default function IhaleDetailPage() {
               <h2 className="text-lg font-semibold text-white mb-4 pb-3 border-b border-slate-700/50">
                 İhale Detayları
               </h2>
-              {detail.html ? (
-                <div
-                  className="tender-html-content text-sm text-slate-300 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: detail.html }}
-                />
-              ) : (
-                <div className="p-6 bg-slate-800/30 rounded-lg border border-slate-700/50">
-                  <p className="text-slate-400 text-sm">Detaylı bilgi yükleniyor...</p>
-                  <p className="text-xs text-slate-500 mt-2">
-                    İhalebul.com&apos;dan veri çekiliyor
-                  </p>
-                </div>
-              )}
+              <TenderDetailDisplay html={detail.html} />
             </div>
           </div>
 
