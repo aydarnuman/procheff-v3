@@ -1,0 +1,30 @@
+import { getDB } from "@/lib/db/sqlite-client";
+import { NextResponse } from "next/server";
+
+export async function POST() {
+  try {
+    const db = getDB();
+    
+    // Insert sample notifications
+    const notifications = [
+      { level: "success", message: "✅ Sistem başarıyla başlatıldı" },
+      { level: "info", message: "📊 Yeni ihale analizi tamamlandı" },
+      { level: "error", message: "⚠️ API bağlantı hatası tespit edildi" },
+    ];
+
+    for (const n of notifications) {
+      db.prepare(
+        "INSERT INTO notifications (level, message, is_read) VALUES (?, ?, 0)"
+      ).run(n.level, n.message);
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "Test notifications created",
+      count: notifications.length 
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

@@ -1,0 +1,91 @@
+# Procheff v3 - Docker Compose Configuration
+# For local development and testing
+
+version: '3.9'
+
+services:
+  # Main Next.js Application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: procheff-web
+    ports:
+      - "3001:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - DATABASE_PATH=/app/data/procheff.db
+      - NEXTAUTH_URL=http://localhost:3001
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}
+      - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}
+    volumes:
+      - procheff-data:/app/data
+      - procheff-uploads:/app/public/uploads
+    restart: unless-stopped
+    networks:
+      - procheff-network
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis Cache (Local Development)
+  redis:
+    image: redis:7-alpine
+    container_name: procheff-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - procheff-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Background Worker (Optional)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: procheff-worker
+    environment:
+      - NODE_ENV=production
+      - WORKER_MODE=true
+      - DATABASE_PATH=/app/data/procheff.db
+      - REDIS_URL=redis://redis:6379
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    volumes:
+      - procheff-data:/app/data
+      - procheff-uploads:/app/public/uploads
+    restart: unless-stopped
+    networks:
+      - procheff-network
+    depends_on:
+      - redis
+    command: ["node", "worker.js"]
+
+volumes:
+  procheff-data:
+    driver: local
+  procheff-uploads:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  procheff-network:
+    driver: bridge

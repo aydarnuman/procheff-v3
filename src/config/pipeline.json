@@ -1,0 +1,95 @@
+{
+  "version": "2.0",
+  "name": "Auto-Pipeline v2",
+  "description": "Fully automated tender analysis pipeline with retry logic",
+  "steps": [
+    {
+      "id": "upload",
+      "name": "Upload & OCR",
+      "path": "/api/ihale/upload",
+      "method": "POST",
+      "required": true,
+      "timeout": 60000,
+      "retryable": true,
+      "maxRetries": 2,
+      "icon": "UploadCloud",
+      "progressWeight": 20
+    },
+    {
+      "id": "analysis",
+      "name": "Deep Analysis",
+      "path": "/api/ai/deep-analysis",
+      "method": "POST",
+      "required": true,
+      "timeout": 90000,
+      "retryable": true,
+      "maxRetries": 2,
+      "fallbackModel": "claude-haiku-1",
+      "icon": "Brain",
+      "progressWeight": 25
+    },
+    {
+      "id": "cost",
+      "name": "Cost Analysis",
+      "path": "/api/ai/cost-analysis",
+      "method": "POST",
+      "required": true,
+      "timeout": 60000,
+      "retryable": true,
+      "maxRetries": 2,
+      "fallbackModel": "claude-haiku-1",
+      "icon": "Calculator",
+      "progressWeight": 20
+    },
+    {
+      "id": "decision",
+      "name": "Decision Engine",
+      "path": "/api/ai/decision",
+      "method": "POST",
+      "required": true,
+      "timeout": 60000,
+      "retryable": true,
+      "maxRetries": 2,
+      "fallbackModel": "claude-haiku-1",
+      "icon": "Target",
+      "progressWeight": 15
+    },
+    {
+      "id": "report_pdf",
+      "name": "PDF Report",
+      "path": "/api/export/pdf",
+      "method": "POST",
+      "required": false,
+      "timeout": 30000,
+      "retryable": true,
+      "maxRetries": 1,
+      "icon": "FileText",
+      "progressWeight": 10
+    },
+    {
+      "id": "report_excel",
+      "name": "Excel Report",
+      "path": "/api/export/excel",
+      "method": "POST",
+      "required": false,
+      "timeout": 30000,
+      "retryable": true,
+      "maxRetries": 1,
+      "icon": "FileSpreadsheet",
+      "progressWeight": 10
+    }
+  ],
+  "notifications": {
+    "onStart": true,
+    "onStepComplete": false,
+    "onComplete": true,
+    "onError": true,
+    "onWarning": true
+  },
+  "settings": {
+    "parallelSteps": false,
+    "stopOnError": false,
+    "saveSnapshots": true,
+    "enableAutoResume": true
+  }
+}

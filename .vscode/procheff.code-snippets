@@ -1,0 +1,81 @@
+{
+  "API Route Template": {
+    "prefix": "api-route",
+    "body": [
+      "import { NextRequest, NextResponse } from \"next/server\";",
+      "import { z } from \"zod\";",
+      "",
+      "const schema = z.object({",
+      "  $1",
+      "});",
+      "",
+      "export async function POST(req: NextRequest) {",
+      "  try {",
+      "    const body = schema.parse(await req.json());",
+      "    ",
+      "    $2",
+      "    ",
+      "    return NextResponse.json({ success: true, data: {} });",
+      "  } catch (err: any) {",
+      "    return NextResponse.json(",
+      "      { success: false, error: err.message },",
+      "      { status: 500 }",
+      "    );",
+      "  }",
+      "}"
+    ],
+    "description": "Procheff API route şablonu"
+  },
+  "Claude AI Call": {
+    "prefix": "claude-call",
+    "body": [
+      "const client = AIProviderFactory.getClaude();",
+      "",
+      "const result = await client.messages.create({",
+      "  model: process.env.ANTHROPIC_MODEL || \"claude-sonnet-4.5\",",
+      "  temperature: ${1:0.4},",
+      "  max_tokens: ${2:8000},",
+      "  messages: [{ role: \"user\", content: `${3:prompt}` }],",
+      "});",
+      "",
+      "const text = result.content?.[0]?.text?.trim() || \"\";"
+    ],
+    "description": "Claude Sonnet 4.5 çağrısı"
+  },
+  "Zustand Store": {
+    "prefix": "zustand-store",
+    "body": [
+      "import { create } from 'zustand';",
+      "",
+      "interface ${1:StoreName}State {",
+      "  $2",
+      "}",
+      "",
+      "export const use${1:StoreName} = create<${1:StoreName}State>((set) => ({",
+      "  $3",
+      "}));"
+    ],
+    "description": "Zustand state store şablonu"
+  },
+  "Component with Client": {
+    "prefix": "client-component",
+    "body": [
+      "\"use client\";",
+      "",
+      "import { FC } from \"react\";",
+      "",
+      "interface ${1:ComponentName}Props {",
+      "  $2",
+      "}",
+      "",
+      "export const ${1:ComponentName}: FC<${1:ComponentName}Props> = ({ $3 }) => {",
+      "  return (",
+      "    <div>",
+      "      $4",
+      "    </div>",
+      "  );",
+      "};"
+    ],
+    "description": "Client-side React component"
+  }
+}

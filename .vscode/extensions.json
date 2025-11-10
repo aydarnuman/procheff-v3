@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "anthropic.claude-vscode",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "bradlc.vscode-tailwindcss",
+    "usernamehw.errorlens",
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense",
+    "ms-vscode.vscode-typescript-next"
+  ]
+}
