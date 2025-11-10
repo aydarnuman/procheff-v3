@@ -2,13 +2,13 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
-    AlertCircle,
-    Brain,
-    CheckCircle2,
-    FileText,
-    Loader2,
-    Sparkles,
-    Upload,
+  AlertCircle,
+  Brain,
+  CheckCircle2,
+  FileText,
+  Loader2,
+  Sparkles,
+  Upload,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -153,19 +153,7 @@ export default function WorkspacePage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-linear-to-br from-slate-950 via-slate-900 to-indigo-950 text-gray-100 p-10">
-      {/* 🌌 Arka plan partikül efekti */}
-      <motion.div
-        className="absolute inset-0 opacity-30 pointer-events-none"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 20% 30%, rgba(99,102,241,0.3), transparent 50%), radial-gradient(circle at 80% 70%, rgba(236,72,153,0.2), transparent 50%)",
-          backgroundSize: "cover",
-        }}
-        animate={{ opacity: [0.2, 0.35, 0.2] }}
-        transition={{ duration: 6, repeat: Infinity, repeatType: "mirror" }}
-      />
-
+    <main className="relative min-h-screen p-6 md:p-10">
       {/* 🎉 Kutlama efekti - analiz tamamlandığında */}
       <AnimatePresence>
         {celebrate && (
@@ -186,21 +174,32 @@ export default function WorkspacePage() {
         )}
       </AnimatePresence>
 
-      <div className="relative z-10 max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <motion.h1
-          className="text-4xl font-bold mb-8 flex items-center gap-3"
+        <motion.div
+          className="mb-8 flex items-center gap-4"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Sparkles className="text-indigo-400 w-10 h-10" />
-          İhale Analiz Workspace
-        </motion.h1>
+          <motion.div
+            className="p-4 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 shadow-lg"
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            transition={{ type: 'spring', stiffness: 300 }}
+          >
+            <Sparkles className="w-8 h-8 text-white" />
+          </motion.div>
+          <div>
+            <h1 className="text-2xl font-bold bg-linear-to-r from-white to-gray-400 bg-clip-text text-transparent">
+              İhale Analiz Workspace
+            </h1>
+            <p className="text-sm text-gray-400 mt-1">Gemini Vision OCR + Claude Sonnet 4.5</p>
+          </div>
+        </motion.div>
 
-        {/* Main Card - Glassmorphism efekti */}
+        {/* Main Card */}
         <motion.div
-          className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-8 shadow-2xl hover:shadow-indigo-500/10 transition-shadow duration-500"
+          className="glass-card"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -208,33 +207,35 @@ export default function WorkspacePage() {
           {/* File Input */}
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <div className="flex-1">
-              <label className="block text-sm text-slate-400 mb-2">
+              <label className="block text-sm text-gray-400 mb-2">
                 İhale Dokümanı Seçin (PDF, DOCX, TXT)
               </label>
               <input
                 type="file"
                 accept=".pdf,.docx,.txt"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
-                className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-900 file:text-indigo-100 hover:file:bg-indigo-800 cursor-pointer"
+                className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-500/20 file:text-indigo-300 hover:file:bg-indigo-500/30 cursor-pointer border border-white/10 rounded-lg bg-slate-900/50 px-3 py-2"
               />
               {file && (
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm text-gray-500">
                   Seçili: {file.name} ({(file.size / 1024).toFixed(2)} KB)
                 </p>
               )}
             </div>
 
-            <button
+            <motion.button
               onClick={handleUpload}
               disabled={!file || (jobId !== null && progress > 0 && progress < 100)}
-                            className="bg-linear-to-r from-indigo-500 to-purple-600 hover:from-purple-500 hover:to-pink-500 text-white font-medium px-6 py-3 rounded-lg transition-all duration-300 disabled:opacity-50"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="btn-gradient px-6 py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {file ? "Yükle ve Analiz Et" : "Dosya Seç"}
-            </button>
+            </motion.button>
           </div>
 
           {/* Progress Bar */}
-          <div className="relative w-full h-4 bg-slate-800 rounded-full overflow-hidden mb-4 shadow-inner">
+          <div className="relative w-full h-4 bg-slate-900/50 rounded-full overflow-hidden mb-4 border border-white/10">
             <motion.div
               className={`h-4 bg-linear-to-r ${getColor()} shadow-lg`}
               initial={{ width: 0 }}
@@ -254,19 +255,23 @@ export default function WorkspacePage() {
               {icons[getStatusKey(status, progress)]}
               <p className="text-sm text-gray-300 font-medium">{status}</p>
             </motion.div>
-            <p className="text-sm text-gray-400 font-semibold">{progress}%</p>
+            <span className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-sm font-semibold">
+              {progress}%
+            </span>
           </div>
 
           {/* Error Message */}
           {error && (
             <motion.div
-              className="bg-red-900/30 border border-red-700 rounded-lg p-4 mb-6"
+              className="glass-card border border-red-500/30 bg-red-500/5 mb-6"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <div className="flex items-center gap-2 text-red-300">
-                <AlertCircle className="w-5 h-5" />
-                <p className="font-medium">Hata: {error}</p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-red-500/20">
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                </div>
+                <p className="text-sm text-red-300 font-medium">Hata: {error}</p>
               </div>
             </motion.div>
           )}
@@ -279,53 +284,69 @@ export default function WorkspacePage() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 30, scale: 0.95 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
-                className="bg-slate-800/70 backdrop-blur-sm p-6 rounded-xl border border-emerald-500/30 shadow-2xl shadow-emerald-500/10"
+                className="glass-card border border-emerald-500/30 bg-emerald-500/5"
               >
-                <h2 className="text-xl mb-3 font-semibold text-indigo-300 flex items-center gap-2">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-400" />
-                  🧾 Analiz Sonucu
-                </h2>
-                <pre className="text-sm text-gray-200 whitespace-pre-wrap overflow-x-auto bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                <div className="flex items-center gap-3 mb-4">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1, rotate: 360 }}
+                    transition={{ type: 'spring', stiffness: 200 }}
+                    className="p-3 rounded-xl bg-emerald-500/20"
+                  >
+                    <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                  </motion.div>
+                  <h2 className="h2">Analiz Sonucu</h2>
+                </div>
+                <pre className="text-sm text-gray-300 whitespace-pre-wrap overflow-x-auto bg-slate-900/50 p-4 rounded-lg border border-white/10 mb-4">
                   {typeof result === 'object' && result !== null 
                     ? JSON.stringify(result, null, 2) 
                     : String(result)}
                 </pre>
-                <div className="mt-4 flex gap-3 flex-wrap">
-                  <a
+                <div className="flex gap-3 flex-wrap">
+                  <motion.a
                     href="/cost-analysis"
-                    className="bg-linear-to-r from-emerald-500 to-green-400 hover:from-green-400 hover:to-emerald-500 text-slate-900 font-semibold rounded-lg px-4 py-2 transition-all duration-300 shadow-lg hover:shadow-emerald-500/50"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-linear-to-r from-emerald-500 to-green-400 text-white font-semibold rounded-xl px-5 py-2.5 hover:shadow-lg transition-all inline-flex items-center gap-2"
                   >
                     💰 Maliyet Analizi
-                  </a>
-                  <a
+                  </motion.a>
+                  <motion.a
                     href="/decision"
-                    className="bg-linear-to-r from-purple-500 to-pink-500 hover:from-pink-500 hover:to-purple-600 text-slate-100 font-semibold rounded-lg px-4 py-2 transition-all duration-300 shadow-lg hover:shadow-purple-500/50"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-linear-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl px-5 py-2.5 hover:shadow-lg transition-all inline-flex items-center gap-2"
                   >
                     🎯 Karar Motoru
-                  </a>
-                  <a
+                  </motion.a>
+                  <motion.a
                     href="/reports"
-                    className="bg-linear-to-r from-cyan-500 to-blue-500 hover:from-blue-500 hover:to-cyan-600 text-slate-100 font-semibold rounded-lg px-4 py-2 transition-all duration-300 shadow-lg hover:shadow-cyan-500/50"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-linear-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-xl px-5 py-2.5 hover:shadow-lg transition-all inline-flex items-center gap-2"
                   >
                     📊 Rapor Oluştur
-                  </a>
+                  </motion.a>
                 </div>
               </motion.div>
             ) : null}
           </AnimatePresence>
         </motion.div>
 
-        {/* Info Card - Glassmorphism */}
+        {/* Info Card */}
         <motion.div
-          className="mt-6 bg-indigo-900/20 backdrop-blur-sm border border-indigo-700/50 rounded-lg p-4 hover:bg-indigo-900/30 transition-colors duration-300"
+          className="mt-6 glass-card bg-indigo-500/5 border-indigo-500/20"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.4 }}
         >
-          <p className="text-sm text-indigo-200">
-            <strong>💡 İpucu:</strong> Sistem otomatik olarak doküman tipini
-            algılar, gerekirse OCR ile metin çıkarır ve Claude Sonnet 4.5 ile
-            analiz eder. Tüm işlemler gerçek zamanlı izlenir.
+          <p className="text-sm text-indigo-200 flex items-start gap-2">
+            <span className="text-lg">💡</span>
+            <span>
+              <strong>İpucu:</strong> Sistem otomatik olarak doküman tipini
+              algılar, gerekirse OCR ile metin çıkarır ve Claude Sonnet 4.5 ile
+              analiz eder. Tüm işlemler gerçek zamanlı izlenir.
+            </span>
           </p>
         </motion.div>
       </div>
