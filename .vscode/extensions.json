@@ -7,6 +7,7 @@
     "usernamehw.errorlens",
     "formulahendry.auto-rename-tag",
     "christian-kohler.path-intellisense",
-    "ms-vscode.vscode-typescript-next"
+    "ms-vscode.vscode-typescript-next",
+    "andrepimenta.claude-code-chat"
   ]
 }

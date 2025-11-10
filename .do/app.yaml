@@ -11,7 +11,7 @@ services:
     dockerfile_path: Dockerfile
     source_dir: /
     github:
-      repo: your-github-username/procheff-v3
+      repo: aydarnuman/procheff-v3-enterprise
       branch: main
       deploy_on_push: true
 

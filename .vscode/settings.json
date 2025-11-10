@@ -29,5 +29,15 @@
     "*.clinerules": "markdown"
   },
   "css.lint.unknownAtRules": "ignore",
-  "scss.lint.unknownAtRules": "ignore"
+  "scss.lint.unknownAtRules": "ignore",
+  "claudeCode.useTerminal": true,
+  "claudeCodeChat.permissions.yoloMode": false,
+  "claude-code.command": "/opt/homebrew/bin/claude",
+  "claude-code.args": ["mcp"],
+  "mcpServers": {
+    "claude-code": {
+      "command": "/opt/homebrew/bin/claude",
+      "args": ["mcp"]
+    }
+  }
 }
