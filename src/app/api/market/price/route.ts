@@ -4,6 +4,7 @@ import { normalizeProductName } from '@/lib/market/normalize';
 import { tuikQuote } from '@/lib/market/provider/tuik';
 import { webQuote } from '@/lib/market/provider/web';
 import { dbQuote, last12Months } from '@/lib/market/provider/db';
+import { aiQuote, shouldUseAI } from '@/lib/market/provider/ai';
 import { fuse } from '@/lib/market/fuse';
 import { forecastNextMonth } from '@/lib/market/forecast';
 import { cacheGet, cacheSet } from '@/lib/market/cache';
@@ -67,7 +68,16 @@ export async function POST(req: NextRequest) {
     ]);
 
     // Fuse quotes
-    const quotes = [qTuik, qWeb, qDb].filter(Boolean);
+    let quotes = [qTuik, qWeb, qDb].filter(Boolean);
+
+    // Try AI fallback if needed
+    if (shouldUseAI(quotes)) {
+      console.log('[Market API] Using AI fallback for', product_key);
+      const qAi = await aiQuote(product_key, quotes[0]?.unit || 'kg');
+      if (qAi) {
+        quotes.push(qAi);
+      }
+    }
 
     if (quotes.length === 0) {
       return NextResponse.json(
