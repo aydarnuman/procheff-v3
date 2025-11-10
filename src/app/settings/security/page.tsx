@@ -107,7 +107,7 @@ export default function SecuritySettingsPage() {
           Ayarlara Dön
         </Link>
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-red-500 to-orange-600 grid place-items-center shadow-lg shadow-red-500/30">
+          <div className="h-12 w-12 rounded-xl bg-linear-to-br from-red-500 to-orange-600 grid place-items-center shadow-lg shadow-red-500/30">
             <Shield className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -199,8 +199,10 @@ export default function SecuritySettingsPage() {
             />
             <select
               value={newKeyService}
-              onChange={(e) => setNewKeyService(e.target.value as any)}
+              onChange={(e) => setNewKeyService(e.target.value as "claude" | "gemini" | "openai")}
               className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              title="AI Servis Seçimi"
+              aria-label="API key için AI servisini seçin"
             >
               <option value="claude">Claude</option>
               <option value="gemini">Gemini</option>
@@ -242,6 +244,8 @@ export default function SecuritySettingsPage() {
               value={sessionTimeout}
               onChange={(e) => setSessionTimeout(parseInt(e.target.value))}
               className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              title="Oturum zaman aşımı süresi (dakika)"
+              aria-label="Oturum zaman aşımı süresi dakika olarak"
             />
             <p className="text-xs text-gray-500 mt-1">
               Kullanıcı {sessionTimeout} dakika hareketsiz kalırsa oturumu kapat
@@ -275,7 +279,7 @@ export default function SecuritySettingsPage() {
               className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Boş bırakılırsa tüm IP'ler erişebilir
+              Boş bırakılırsa tüm IP&apos;ler erişebilir
             </p>
           </div>
 
@@ -303,7 +307,7 @@ export default function SecuritySettingsPage() {
             <RefreshCw className="w-5 h-5 text-orange-400" />
             <div className="text-left">
               <p className="text-sm font-medium text-gray-200">Tüm Anahtarları Yenile</p>
-              <p className="text-xs text-gray-500">Yeni API key'ler oluştur</p>
+              <p className="text-xs text-gray-500">Yeni API key&apos;ler oluştur</p>
             </div>
           </button>
           <button className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-lg hover:border-red-500/30 hover:bg-red-500/5 transition-all">
@@ -319,7 +323,7 @@ export default function SecuritySettingsPage() {
       {/* Save Button */}
       <button
         onClick={handleSave}
-        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all"
+        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-linear-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all"
       >
         <Save className="w-5 h-5" />
         Güvenlik Ayarlarını Kaydet

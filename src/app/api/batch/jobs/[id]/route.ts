@@ -1,17 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { getBatchJob, getBatchFiles } from "@/features/batch-processing/init-batch-schema";
 import { FEATURE_FLAGS } from "@/features/config";
-import {
-  getBatchJob,
-  getBatchFiles,
-} from "@/features/batch-processing/init-batch-schema";
+import { NextRequest, NextResponse } from "next/server";
 
 /**
  * GET /api/batch/jobs/[id]
- * Get detailed status of a specific batch job
+ * Get a specific batch job with its files
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   if (!FEATURE_FLAGS.BATCH_PROCESSING_ENABLED) {
     return NextResponse.json(
@@ -24,10 +21,11 @@ export async function GET(
   }
 
   try {
-    const batchId = params.id;
+    const { id } = await context.params;
 
-    const batch = getBatchJob(batchId);
-    if (!batch) {
+    // Get batch job
+    const job = getBatchJob(id);
+    if (!job) {
       return NextResponse.json(
         {
           success: false,
@@ -37,29 +35,14 @@ export async function GET(
       );
     }
 
-    const files = getBatchFiles(batchId);
-
-    // Calculate progress percentage
-    const progressPercent =
-      batch.total_files > 0
-        ? Math.round((batch.processed_files / batch.total_files) * 100)
-        : 0;
+    // Get associated files
+    const files = getBatchFiles(id);
 
     return NextResponse.json({
       success: true,
       data: {
-        batch: {
-          ...batch,
-          progressPercent,
-        },
+        job,
         files,
-        summary: {
-          total: batch.total_files,
-          completed: files.filter((f) => f.status === "completed").length,
-          processing: files.filter((f) => f.status === "processing").length,
-          pending: files.filter((f) => f.status === "pending").length,
-          failed: batch.failed_files,
-        },
       },
     });
   } catch (error) {

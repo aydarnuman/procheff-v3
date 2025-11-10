@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { FEATURE_FLAGS } from "@/features/config";
 import { getAllBatchJobs } from "@/features/batch-processing/init-batch-schema";
+import { FEATURE_FLAGS } from "@/features/config";
+import { NextRequest, NextResponse } from "next/server";
 
 /**
  * GET /api/batch/jobs
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
-    const status = searchParams.get("status") as any;
+        const status = (searchParams.get("status") as "pending" | "processing" | "completed" | "failed" | "cancelled") || undefined;
     const userId = searchParams.get("user_id") || undefined;
 
     const jobs = getAllBatchJobs({

@@ -13,34 +13,37 @@ export function useAutoResume() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [isResuming, setIsResuming] = useState(false);
 
+  const resumeJob = async (savedJobId: string) => {
+    setIsResuming(true);
+    setJobId(savedJobId);
+
+    try {
+      // Verify job is still active
+      const res = await fetch(`/api/orchestrate/status?jobId=${savedJobId}`);
+      const data = await res.json();
+
+      if (data.success && data.data.status === "running") {
+        // Job is still active, resume
+        console.log(`📦 Resuming job: ${savedJobId}`);
+      } else {
+        // Job completed or failed, clear storage
+        localStorage.removeItem(STORAGE_KEY);
+        setJobId(null);
+      }
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+      setJobId(null);
+    } finally {
+      setIsResuming(false);
+    }
+  };
+
   useEffect(() => {
     // Try to resume from localStorage
     if (typeof window !== "undefined") {
       const savedJobId = localStorage.getItem(STORAGE_KEY);
       if (savedJobId) {
-        setIsResuming(true);
-        setJobId(savedJobId);
-
-        // Verify job is still active
-        fetch(`/api/orchestrate/status?jobId=${savedJobId}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.success && data.data.status === "running") {
-              // Job is still active, resume
-              console.log(`📦 Resuming job: ${savedJobId}`);
-            } else {
-              // Job completed or failed, clear storage
-              localStorage.removeItem(STORAGE_KEY);
-              setJobId(null);
-            }
-          })
-          .catch(() => {
-            localStorage.removeItem(STORAGE_KEY);
-            setJobId(null);
-          })
-          .finally(() => {
-            setIsResuming(false);
-          });
+        resumeJob(savedJobId);
       }
     }
   }, []);

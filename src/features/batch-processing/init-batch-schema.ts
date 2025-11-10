@@ -170,7 +170,7 @@ export function updateBatchJobStatus(
   const db = getDB();
 
   const updates: string[] = ["status = ?"];
-  const values: any[] = [status];
+  const values: (string | number)[] = [status];
 
   if (status === "processing" && !getBatchJob(id)?.started_at) {
     updates.push("started_at = CURRENT_TIMESTAMP");
@@ -271,7 +271,7 @@ export function updateBatchFileStatus(
   const db = getDB();
 
   const updates: string[] = ["status = ?", "progress = ?"];
-  const values: any[] = [status, progress];
+  const values: (string | number)[] = [status, progress];
 
   if (status === "processing" && !getBatchFile(id)?.started_at) {
     updates.push("started_at = CURRENT_TIMESTAMP");
@@ -353,7 +353,7 @@ export function getAllBatchJobs(options: {
   const { limit = 50, offset = 0, userId, status } = options;
 
   let sql = "SELECT * FROM batch_jobs WHERE 1=1";
-  const params: any[] = [];
+  const params: (string | number)[] = [];
 
   if (userId) {
     sql += " AND user_id = ?";

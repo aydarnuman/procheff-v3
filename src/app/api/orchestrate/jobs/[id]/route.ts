@@ -7,10 +7,11 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const job = getOrchestration(params.id);
+    const { id } = await params;
+    const job = getOrchestration(id);
 
     if (!job) {
       return NextResponse.json(
@@ -46,10 +47,11 @@ export async function GET(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const job = getOrchestration(params.id);
+    const { id } = await params;
+    const job = getOrchestration(id);
 
     if (!job) {
       return NextResponse.json(
@@ -60,7 +62,7 @@ export async function DELETE(
 
     // If job is running, cancel it first
     if (job.status === "running") {
-      cancelOrchestration(params.id);
+      cancelOrchestration(id);
       return NextResponse.json({
         success: true,
         message: "Job cancelled successfully",
@@ -68,7 +70,7 @@ export async function DELETE(
     }
 
     // Delete completed/failed/cancelled jobs
-    deleteOrchestration(params.id);
+    deleteOrchestration(id);
 
     return NextResponse.json({
       success: true,
@@ -89,9 +91,10 @@ export async function DELETE(
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { action } = await req.json();
 
     if (action !== "cancel") {
@@ -101,7 +104,7 @@ export async function PATCH(
       );
     }
 
-    const job = getOrchestration(params.id);
+    const job = getOrchestration(id);
 
     if (!job) {
       return NextResponse.json(
@@ -117,7 +120,7 @@ export async function PATCH(
       );
     }
 
-    cancelOrchestration(params.id);
+    cancelOrchestration(id);
 
     return NextResponse.json({
       success: true,

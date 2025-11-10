@@ -1,17 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import formidable from "formidable";
-import fs from "fs/promises";
-import crypto from "crypto";
-import { FEATURE_FLAGS, BATCH_CONFIG } from "@/features/config";
 import {
-  createBatchJob,
   createBatchFile,
+  createBatchJob,
 } from "@/features/batch-processing/init-batch-schema";
+import { BATCH_CONFIG, FEATURE_FLAGS } from "@/features/config";
 import {
-  checkRateLimit,
   addRateLimitHeaders,
+  checkRateLimit,
 } from "@/features/rate-limiting/middleware";
 import { AILogger } from "@/lib/ai/logger";
+import crypto from "crypto";
+import formidable from "formidable";
+import fs from "fs/promises";
+import { IncomingMessage } from "http";
+import { NextRequest, NextResponse } from "next/server";
 
 export const config = {
   api: {
@@ -181,39 +182,29 @@ async function parseFormData(req: NextRequest): Promise<{
       },
     });
 
-    // Convert Request to Node.js IncomingMessage
-    const headers: any = {};
-    req.headers.forEach((value, key) => {
-      headers[key] = value;
-    });
-
-    form.parse(
-      {
-        headers,
-        method: req.method || "POST",
-        url: req.url,
-      } as any,
-      (err, fields, files) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        // Normalize files to array
-        const fileArray: formidable.File[] = [];
-        Object.values(files).forEach((file) => {
-          if (Array.isArray(file)) {
-            fileArray.push(...file);
-          } else if (file) {
-            fileArray.push(file);
-          }
-        });
-
-        resolve({
-          fields,
-          files: fileArray,
-        });
+    // Use the Request body directly for formidable
+    // Note: We need to suppress type checking here as formidable expects IncomingMessage
+    // but Next.js provides a different Request interface that is compatible
+    form.parse(req as unknown as IncomingMessage, (err, fields, files) => {
+      if (err) {
+        reject(err);
+        return;
       }
-    );
+
+      // Normalize files to array
+      const fileArray: formidable.File[] = [];
+      Object.values(files).forEach((file) => {
+        if (Array.isArray(file)) {
+          fileArray.push(...file);
+        } else if (file) {
+          fileArray.push(file);
+        }
+      });
+
+      resolve({
+        fields,
+        files: fileArray,
+      });
+    });
   });
 }

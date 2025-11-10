@@ -181,6 +181,7 @@ export function updateOrchestration(
     steps_json?: string;
     result?: unknown;
     error?: string;
+    warnings?: string | null;
     started_at?: string;
     completed_at?: string;
     duration_ms?: number;
@@ -213,6 +214,10 @@ export function updateOrchestration(
   if (updates.error) {
     fields.push("error = ?");
     values.push(updates.error);
+  }
+  if (updates.warnings !== undefined) {
+    fields.push("warnings = ?");
+    values.push(updates.warnings);
   }
   if (updates.started_at) {
     fields.push("started_at = ?");

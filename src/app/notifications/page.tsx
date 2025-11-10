@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Bell,
-  CheckCircle,
   AlertTriangle,
-  Info,
-  XCircle,
+  Bell,
   Check,
   CheckCheck,
-  RefreshCw
+  Info,
+  RefreshCw,
+  XCircle
 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 type Notification = {
   id: number;
@@ -27,15 +26,7 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    fetchNotifications();
-
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [filter]);
-
-  async function fetchNotifications() {
+  const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
       const url =
@@ -48,14 +39,25 @@ export default function NotificationsPage() {
 
       if (data.success) {
         setNotifications(data.notifications || []);
-        setUnreadCount(data.unreadCount || 0);
+        
+        // Count unread notifications
+        const unread = (data.notifications || []).filter((n: Notification) => !n.is_read).length;
+        setUnreadCount(unread);
       }
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
     } finally {
       setLoading(false);
     }
-  }
+  }, [filter]);
+
+  useEffect(() => {
+    fetchNotifications();
+
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   async function markAsRead(id: number) {
     try {
@@ -225,7 +227,7 @@ function NotificationCard({
       } hover:scale-[1.01] transition-all`}
     >
       <div className="flex items-start gap-4">
-        <div className="flex-shrink-0">{icons[notification.level]}</div>
+        <div className="shrink-0">{icons[notification.level]}</div>
 
         <div className="flex-1 min-w-0">
           <p className="text-gray-100 leading-relaxed">
@@ -246,7 +248,7 @@ function NotificationCard({
         {!notification.is_read && (
           <button
             onClick={() => onMarkRead(notification.id)}
-            className="flex-shrink-0 p-2 rounded-lg hover:bg-slate-700/50 text-indigo-400 hover:text-indigo-300 transition-colors"
+            className="shrink-0 p-2 rounded-lg hover:bg-slate-700/50 text-indigo-400 hover:text-indigo-300 transition-colors"
             title="Okundu işaretle"
           >
             <Check className="w-5 h-5" />

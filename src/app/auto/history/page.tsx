@@ -2,16 +2,16 @@
 
 import { motion } from "framer-motion";
 import {
-    AlertTriangle,
-    CheckCircle,
-    Clock,
-    FileSpreadsheet,
-    FileText,
-    RefreshCw,
-    XCircle
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  FileSpreadsheet,
+  FileText,
+  RefreshCw,
+  XCircle
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface OrchestrationRecord {
   id: string;
@@ -31,11 +31,7 @@ export default function PipelineHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
-
-  async function fetchHistory() {
+  const fetchHistory = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -51,27 +47,11 @@ export default function PipelineHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [filter]);
 
-  async function deleteJob(id: string) {
-    if (!confirm("Bu job'ı silmek istediğinizden emin misiniz?")) return;
-
-    try {
-      const res = await fetch(`/api/orchestrate/jobs/${id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        fetchHistory(); // Refresh list
-      } else {
-        alert("Silme hatası: " + data.error);
-      }
-    } catch (error) {
-      console.error("Delete failed:", error);
-      alert("Silme başarısız");
-    }
-  }
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   const filteredJobs = jobs.filter((job) => {
     if (filter === "all") return true;
@@ -95,11 +75,11 @@ export default function PipelineHistoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          <h1 className="mb-2 text-3xl font-bold bg-linear-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
             Pipeline History
           </h1>
           <p className="text-gray-400">
@@ -256,8 +236,9 @@ export default function PipelineHistoryPage() {
                         <div className="flex items-center gap-2">
                           <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-700">
                             <div
-                              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
-                              style={{ width: `${job.progress}%` }}
+                              className="h-full bg-linear-to-r from-indigo-500 to-purple-500 progress-bar"
+                              // CSS variable for dynamic width - ESLint exception needed
+                              style={{ '--progress': `${job.progress}%` } as React.CSSProperties}
                             />
                           </div>
                           <span className="text-xs text-gray-400">
@@ -275,10 +256,18 @@ export default function PipelineHistoryPage() {
                           </Link>
                           {job.status === "completed" && (
                             <>
-                              <button className="rounded-lg bg-slate-700 p-1.5 text-gray-300 hover:bg-slate-600">
+                              <button 
+                                className="rounded-lg bg-slate-700 p-1.5 text-gray-300 hover:bg-slate-600"
+                                title="PDF Raporu İndir"
+                                aria-label="PDF raporu indir"
+                              >
                                 <FileText className="h-4 w-4" />
                               </button>
-                              <button className="rounded-lg bg-slate-700 p-1.5 text-gray-300 hover:bg-slate-600">
+                              <button 
+                                className="rounded-lg bg-slate-700 p-1.5 text-gray-300 hover:bg-slate-600"
+                                title="Excel Raporu İndir"
+                                aria-label="Excel raporu indir"
+                              >
                                 <FileSpreadsheet className="h-4 w-4" />
                               </button>
                             </>

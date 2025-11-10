@@ -1,14 +1,14 @@
-import {
-  getPendingBatchFiles,
-  updateBatchFileStatus,
-  incrementRetryCount,
-  getBatchJob,
-  updateBatchJobStatus,
-  incrementProcessedFiles,
-  type BatchFile,
-} from "./init-batch-schema";
-import { BATCH_CONFIG } from "../config";
 import { AILogger } from "@/lib/ai/logger";
+import { BATCH_CONFIG } from "../config";
+import {
+    getBatchJob,
+    getPendingBatchFiles,
+    incrementProcessedFiles,
+    incrementRetryCount,
+    updateBatchFileStatus,
+    updateBatchJobStatus,
+    type BatchFile,
+} from "./init-batch-schema";
 
 /**
  * Queue Manager
@@ -165,7 +165,7 @@ class QueueManager {
    * Execute actual file processing
    * This is where the file analysis happens
    */
-  private async executeFileProcessing(file: BatchFile): Promise<any> {
+  private async executeFileProcessing(file: BatchFile): Promise<unknown> {
     // TODO: Implement actual file processing
     // For now, simulate processing with delay
 

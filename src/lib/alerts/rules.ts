@@ -159,7 +159,12 @@ export function getAlertMetrics(): AlertMetrics {
       SUM(COALESCE(json_extract(data, '$.tokens'), 0)) as dailyTokens
     FROM logs
     WHERE created_at >= datetime('now', '-24 hours')
-  `).get() as any;
+  `).get() as {
+    totalCalls: number;
+    errorCount: number;
+    avgDuration: number;
+    dailyTokens: number;
+  };
 
   // Get recent errors (last hour)
   const recentErrors = db.prepare(`
@@ -176,7 +181,7 @@ export function getAlertMetrics(): AlertMetrics {
     SELECT COUNT(*) as count
     FROM logs
     WHERE created_at >= datetime('now', '-24 hours')
-  `).get() as any;
+  `).get() as { count: number };
 
   return {
     totalCalls: metrics.totalCalls || 0,

@@ -10,18 +10,16 @@
  * - Duration tracking
  */
 
+import {
+    createOrchestration,
+    getOrchestration,
+    updateOrchestration,
+} from "@/lib/db/init-auth";
 import { EventEmitter } from "events";
 import {
-  createOrchestration,
-  updateOrchestration,
-  getOrchestration,
-  OrchestrationRecord,
-} from "@/lib/db/init-auth";
-import {
-  PIPELINE_CONFIG,
-  PipelineStep,
-  calculateProgress,
-  getPipelineStep,
+    PIPELINE_CONFIG,
+    calculateProgress,
+    getPipelineStep,
 } from "./pipeline-config";
 
 export interface JobState {
@@ -67,7 +65,7 @@ class EnhancedJobManager extends EventEmitter {
     this.jobs.set(id, job);
 
     // Create DB record
-    createOrchestration(id, fileName);
+    createOrchestration(id, { fileName });
     updateOrchestration(id, {
       status: "pending",
       progress: 0,

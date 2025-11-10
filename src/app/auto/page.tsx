@@ -2,9 +2,6 @@
 
 import { LiveLogFeed } from "@/components/pipeline/LiveLogFeed";
 import { PipelineTimeline, TimelineStep } from "@/components/pipeline/PipelineTimeline";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fadeInUp, scaleIn, staggerContainer } from "@/lib/animations";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -194,19 +191,18 @@ export default function AutoPipelinePage() {
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
             <motion.div
-              className="p-4 rounded-2xl bg-linear-to-br from-[var(--color-accent-blue)] to-(--color-accent-purple) shadow-glow-blue"
+              className="p-4 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 shadow-lg"
               whileHover={{ scale: 1.05, rotate: 5 }}
               transition={{ type: 'spring', stiffness: 300 }}
             >
               <Zap className="w-8 h-8 text-white" />
             </motion.div>
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="h1">Tek Tıkla Otomatik Analiz</h1>
-                <Badge variant="warning" pulse>NEW</Badge>
-              </div>
-              <p className="body text-[var(--color-text-secondary)]">
-                Upload → OCR → Deep → Cost → Decision → Report
+              <h1 className="text-2xl font-bold bg-linear-to-r from-white to-gray-400 bg-clip-text text-transparent mb-2">
+                İhale Dökümanı Analizi
+              </h1>
+              <p className="text-sm text-gray-400">
+                Dosyanızı yükleyin, AI otomatik analiz edip rapor üretsin
               </p>
             </div>
           </div>
@@ -214,45 +210,51 @@ export default function AutoPipelinePage() {
 
         <motion.div variants={fadeInUp}>
           {/* File Input */}
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row items-center gap-4">
-                <label className="flex-1 w-full">
-                  <motion.div
-                    className="glass-subtle p-5 rounded-xl hover:glass transition-all cursor-pointer border border-[var(--color-border)] hover:border-[var(--color-accent-blue)]"
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                  >
-                    <input
-                      type="file"
-                      accept=".pdf,.docx,.txt,.csv"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
-                      className="hidden"
-                      disabled={isProcessing}
-                    />
-                    <div className="flex items-center gap-3">
-                      <Upload className="w-6 h-6 text-(--color-accent-blue)" />
-                      <span className="body text-(--color-text-primary)">
-                        {file ? file.name : "Dosya seç (PDF, DOCX, TXT, CSV)"}
-                      </span>
-                    </div>
-                  </motion.div>
-                </label>
-
-                <Button
-                  onClick={start}
-                  disabled={!file || isProcessing}
-                  variant="primary"
-                  size="lg"
-                  loading={isProcessing}
-                  icon={isProcessing ? <Loader2 className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
-                  className="whitespace-nowrap"
+          <div className="glass-card mb-6">
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <label className="flex-1 w-full">
+                <motion.div
+                  className="glass-subtle p-5 rounded-xl hover:bg-white/10 transition-all cursor-pointer border border-white/10 hover:border-indigo-500/50"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
                 >
-                  {isProcessing ? "İşleniyor..." : "Başlat"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.txt,.csv"
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                    disabled={isProcessing}
+                  />
+                  <div className="flex items-center gap-3">
+                    <Upload className="w-6 h-6 text-indigo-400" />
+                    <span className="text-sm text-white">
+                      {file ? file.name : "Dosya seç (PDF, DOCX, TXT, CSV)"}
+                    </span>
+                  </div>
+                </motion.div>
+              </label>
+
+              <motion.button
+                onClick={start}
+                disabled={!file || isProcessing}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="btn-gradient px-6 py-3 rounded-xl font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>İşleniyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-5 h-5" />
+                    <span>Başlat</span>
+                  </>
+                )}
+              </motion.button>
+            </div>
+          </div>
         </motion.div>
 
         {/* Progress Bar */}
@@ -264,22 +266,22 @@ export default function AutoPipelinePage() {
               exit={{ opacity: 0, y: -10 }}
               className="mb-6"
             >
-              <Card variant="elevated">
-                <CardContent className="p-6">
-                  <div className="relative h-4 bg-[var(--color-surface)] rounded-full overflow-hidden mb-3 border border-[var(--color-border)]">
-                    <motion.div
-                      className="absolute left-0 top-0 h-4 bg-gradient-to-r from-[var(--color-accent-blue)] via-[var(--color-accent-purple)] to-[var(--color-accent-mint)] shadow-glow-blue"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progress}%` }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="body text-[var(--color-text-secondary)]">{status}</span>
-                    <Badge variant="info">{progress}%</Badge>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="glass-card">
+                <div className="relative h-4 bg-slate-900/50 rounded-full overflow-hidden mb-3 border border-white/10">
+                  <motion.div
+                    className="absolute left-0 top-0 h-4 bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-lg"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress}%` }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-400">{status}</span>
+                  <span className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-sm font-semibold">
+                    {progress}%
+                  </span>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -293,19 +295,17 @@ export default function AutoPipelinePage() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="mb-6"
             >
-              <Card className="border border-[var(--color-accent-red)]/30 bg-[var(--color-accent-red)]/5">
-                <CardContent className="p-5">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-[var(--color-accent-red)]/20">
-                      <span className="text-xl">❌</span>
-                    </div>
-                    <div>
-                      <h3 className="h4 text-[var(--color-accent-red)] mb-1">Hata Oluştu</h3>
-                      <p className="body-sm text-[var(--color-text-secondary)]">{error}</p>
-                    </div>
+              <div className="glass-card border border-red-500/30 bg-red-500/5">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-red-500/20">
+                    <span className="text-xl">❌</span>
                   </div>
-                </CardContent>
-              </Card>
+                  <div>
+                    <h3 className="text-base font-semibold text-red-400 mb-1">Hata Oluştu</h3>
+                    <p className="text-sm text-gray-400">{error}</p>
+                  </div>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -339,13 +339,13 @@ export default function AutoPipelinePage() {
                       custom={index}
                       whileHover={{ scale: 1.05 }}
                       className={`
-                        flex flex-col items-center gap-3 rounded-xl p-4 border transition-all
+                        flex flex-col items-center gap-3 rounded-xl p-4 border transition-all relative
                         ${
                           active
-                            ? "border-[var(--color-accent-blue)] bg-[var(--color-accent-blue)]/10 shadow-glow-blue"
+                            ? "border-indigo-500 bg-indigo-500/10 shadow-lg"
                             : done
-                            ? "border-[var(--color-accent-mint)]/30 bg-[var(--color-accent-mint)]/5"
-                            : "border-[var(--color-border)] glass-subtle"
+                            ? "border-emerald-500/30 bg-emerald-500/5"
+                            : "border-white/10 glass-subtle"
                         }
                       `}
                     >
@@ -356,31 +356,31 @@ export default function AutoPipelinePage() {
                           p-2 rounded-lg
                           ${
                             active
-                              ? "bg-[var(--color-accent-blue)]/20"
+                              ? "bg-indigo-500/20"
                               : done
-                              ? "bg-[var(--color-accent-mint)]/20"
-                              : "bg-[var(--color-surface)]"
+                              ? "bg-emerald-500/20"
+                              : "bg-slate-800/50"
                           }
                         `}
                       >
                         <Icon
                           className={`w-6 h-6 ${
                             active
-                              ? "text-[var(--color-accent-blue)]"
+                              ? "text-indigo-400"
                               : done
-                              ? "text-[var(--color-accent-mint)]"
-                              : "text-[var(--color-text-tertiary)]"
+                              ? "text-emerald-400"
+                              : "text-gray-500"
                           }`}
                         />
                       </motion.div>
-                      <span className="body-sm text-center font-medium">{s.label}</span>
+                      <span className="text-xs text-center font-medium text-white">{s.label}</span>
                       {done && (
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                           className="absolute -top-1 -right-1"
                         >
-                          <CheckCircle2 className="w-5 h-5 text-[var(--color-accent-mint)]" />
+                          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                         </motion.div>
                       )}
                     </motion.div>
@@ -400,30 +400,27 @@ export default function AutoPipelinePage() {
               exit={{ opacity: 0, y: 30 }}
               transition={{ duration: 0.4, type: 'spring' }}
             >
-              <Card
-                variant="elevated"
-                className="border border-[var(--color-accent-mint)]/40 shadow-glow-mint"
-              >
-                <CardHeader className="border-b border-[var(--color-border)]">
+              <div className="glass-card border border-emerald-500/40 shadow-lg">
+                <div className="border-b border-white/10 pb-6 mb-6">
                   <div className="flex items-center gap-3">
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1, rotate: 360 }}
                       transition={{ type: 'spring', stiffness: 200 }}
-                      className="p-3 rounded-xl bg-[var(--color-accent-mint)]/20"
+                      className="p-3 rounded-xl bg-emerald-500/20"
                     >
-                      <CheckCircle2 className="w-7 h-7 text-[var(--color-accent-mint)]" />
+                      <CheckCircle2 className="w-7 h-7 text-emerald-400" />
                     </motion.div>
                     <div>
-                      <CardTitle>Analiz Tamamlandı</CardTitle>
-                      <p className="body-sm text-[var(--color-text-secondary)] mt-1">
+                      <h2 className="h2">Analiz Tamamlandı</h2>
+                      <p className="text-sm text-gray-400 mt-1">
                         Tüm sonuçlar başarıyla oluşturuldu
                       </p>
                     </div>
                   </div>
-                </CardHeader>
+                </div>
 
-                <CardContent className="p-6">
+                <div>
                   <motion.div
                     className="grid md:grid-cols-3 gap-5 mb-6"
                     variants={staggerContainer}
@@ -432,73 +429,64 @@ export default function AutoPipelinePage() {
                   >
                     {/* Analysis */}
                     <motion.div variants={scaleIn}>
-                      <Card hoverable className="h-full">
-                        <CardContent className="p-5">
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="p-2 rounded-lg bg-[var(--color-accent-blue)]/20">
-                              <span className="text-xl">📊</span>
-                            </div>
-                            <h3 className="h4 text-[var(--color-accent-blue)]">Analiz</h3>
+                      <div className="glass-card h-full hover:bg-white/10 transition-all">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="p-2 rounded-lg bg-indigo-500/20">
+                            <span className="text-xl">📊</span>
                           </div>
-                          <pre className="body-sm text-[var(--color-text-secondary)] max-h-64 overflow-auto whitespace-pre-wrap font-mono bg-[var(--color-surface)] p-3 rounded-lg border border-[var(--color-border)]">
-                            {JSON.stringify(result.analysis, null, 2)}
-                          </pre>
-                        </CardContent>
-                      </Card>
+                          <h3 className="text-sm font-semibold text-indigo-400">Analiz</h3>
+                        </div>
+                        <pre className="text-xs text-gray-400 max-h-64 overflow-auto whitespace-pre-wrap font-mono bg-slate-900/50 p-3 rounded-lg border border-white/10">
+                          {JSON.stringify(result.analysis, null, 2)}
+                        </pre>
+                      </div>
                     </motion.div>
 
                     {/* Cost */}
                     <motion.div variants={scaleIn}>
-                      <Card hoverable className="h-full">
-                        <CardContent className="p-5">
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="p-2 rounded-lg bg-[var(--color-accent-purple)]/20">
-                              <span className="text-xl">💰</span>
-                            </div>
-                            <h3 className="h4 text-[var(--color-accent-purple)]">Maliyet</h3>
+                      <div className="glass-card h-full hover:bg-white/10 transition-all">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="p-2 rounded-lg bg-purple-500/20">
+                            <span className="text-xl">💰</span>
                           </div>
-                          <pre className="body-sm text-[var(--color-text-secondary)] max-h-64 overflow-auto whitespace-pre-wrap font-mono bg-[var(--color-surface)] p-3 rounded-lg border border-[var(--color-border)]">
-                            {JSON.stringify(result.cost, null, 2)}
-                          </pre>
-                        </CardContent>
-                      </Card>
+                          <h3 className="text-sm font-semibold text-purple-400">Maliyet</h3>
+                        </div>
+                        <pre className="text-xs text-gray-400 max-h-64 overflow-auto whitespace-pre-wrap font-mono bg-slate-900/50 p-3 rounded-lg border border-white/10">
+                          {JSON.stringify(result.cost, null, 2)}
+                        </pre>
+                      </div>
                     </motion.div>
 
                     {/* Decision */}
                     <motion.div variants={scaleIn}>
-                      <Card hoverable className="h-full">
-                        <CardContent className="p-5">
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="p-2 rounded-lg bg-[var(--color-accent-mint)]/20">
-                              <span className="text-xl">🧠</span>
-                            </div>
-                            <h3 className="h4 text-[var(--color-accent-mint)]">Karar</h3>
+                      <div className="glass-card h-full hover:bg-white/10 transition-all">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="p-2 rounded-lg bg-emerald-500/20">
+                            <span className="text-xl">🧠</span>
                           </div>
-                          <pre className="body-sm text-[var(--color-text-secondary)] max-h-64 overflow-auto whitespace-pre-wrap font-mono bg-[var(--color-surface)] p-3 rounded-lg border border-[var(--color-border)]">
-                            {JSON.stringify(result.decision, null, 2)}
-                          </pre>
-                        </CardContent>
-                      </Card>
+                          <h3 className="text-sm font-semibold text-emerald-400">Karar</h3>
+                        </div>
+                        <pre className="text-xs text-gray-400 max-h-64 overflow-auto whitespace-pre-wrap font-mono bg-slate-900/50 p-3 rounded-lg border border-white/10">
+                          {JSON.stringify(result.decision, null, 2)}
+                        </pre>
+                      </div>
                     </motion.div>
                   </motion.div>
 
                   {/* Download Buttons */}
-                  <div className="flex flex-wrap gap-4 pt-4 border-t border-[var(--color-border)]">
+                  <div className="flex flex-wrap gap-4 pt-4 border-t border-white/10">
                     {result.pdfPath && (
                       <motion.a
                         href={result.pdfPath}
                         download
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
+                        className="inline-block"
                       >
-                        <Button
-                          variant="primary"
-                          size="lg"
-                          icon={<FileDown className="w-5 h-5" />}
-                          className="bg-gradient-to-r from-[var(--color-accent-mint)] to-emerald-600"
-                        >
+                        <button className="btn-gradient px-6 py-3 rounded-xl font-semibold flex items-center gap-2">
+                          <FileDown className="w-5 h-5" />
                           PDF İndir
-                        </Button>
+                        </button>
                       </motion.a>
                     )}
                     {result.xlsxPath && (
@@ -507,20 +495,17 @@ export default function AutoPipelinePage() {
                         download
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
+                        className="inline-block"
                       >
-                        <Button
-                          variant="primary"
-                          size="lg"
-                          icon={<FileSpreadsheet className="w-5 h-5" />}
-                          className="bg-gradient-to-r from-[var(--color-accent-blue)] to-[var(--color-accent-purple)]"
-                        >
+                        <button className="bg-linear-to-r from-indigo-500 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 hover:shadow-lg transition-all">
+                          <FileSpreadsheet className="w-5 h-5" />
                           Excel İndir
-                        </Button>
+                        </button>
                       </motion.a>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -536,24 +521,22 @@ export default function AutoPipelinePage() {
             >
               {/* Pipeline Timeline */}
               <motion.div variants={fadeInUp} className="order-1">
-                <Card variant="elevated">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                      <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
-                      Pipeline Timeline
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="max-h-[400px] sm:max-h-[500px] overflow-y-auto px-3 sm:px-6">
+                <div className="glass-card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Zap className="w-5 h-5 text-indigo-400" />
+                    <h3 className="text-base sm:text-lg font-semibold text-white">Pipeline Timeline</h3>
+                  </div>
+                  <div className="max-h-[400px] sm:max-h-[500px] overflow-y-auto">
                     <PipelineTimeline steps={timelineSteps} currentStep={activeStep} />
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </motion.div>
 
               {/* Live Log Feed */}
               <motion.div variants={fadeInUp} className="order-2">
-                <Card variant="elevated" className="h-[400px] sm:h-[500px]">
+                <div className="glass-card h-[400px] sm:h-[500px]">
                   <LiveLogFeed jobId={jobId} maxLogs={15} />
-                </Card>
+                </div>
               </motion.div>
             </motion.div>
           )}

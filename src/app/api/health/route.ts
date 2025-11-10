@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 /**
  * Health Check Endpoint
  * Used by DigitalOcean, Docker, and monitoring services
  */
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // Basic health check
     const health = {
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     try {
       // Simple check - if DATABASE_PATH exists
       checks.database = !!process.env.DATABASE_PATH;
-    } catch (error) {
+    } catch {
       checks.database = false;
     }
 
