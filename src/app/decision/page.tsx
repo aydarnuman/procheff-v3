@@ -5,13 +5,15 @@
 
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Target, Brain, TrendingUp, AlertTriangle, Lightbulb, DollarSign, Users, Calendar, FileText, CheckCircle, XCircle, AlertCircle, Info } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { fadeInUp, staggerContainer, scaleIn } from "@/lib/animations";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { fadeInUp, scaleIn, staggerContainer } from "@/lib/animations";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertCircle, AlertTriangle, Brain, Calendar, CheckCircle, DollarSign, FileText, Info, Lightbulb, Target, TrendingUp, XCircle, ArrowLeft, ArrowRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { usePipelineStore, PIPELINE_STEPS } from "@/store/usePipelineStore";
 
 interface DecisionData {
   karar: "Katıl" | "Katılma" | "Dikkatli Katıl";
@@ -38,9 +40,24 @@ export default function DecisionPage() {
   const [decision, setDecision] = useState<DecisionResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Sample input data - gerçek senaryoda önceki modüllerden gelecek
+  const router = useRouter();
+  const {
+    selectedTender,
+    menuData,
+    costAnalysis,
+    setDecision: saveDecision,
+    setCurrentStep,
+    markStepCompleted,
+    getProgress
+  } = usePipelineStore();
+
+  useEffect(() => {
+    setCurrentStep(PIPELINE_STEPS.DECISION);
+  }, [setCurrentStep]);
+
+  // Store'dan gelen verileri kullan veya default değerleri göster
   const [input] = useState({
-    cost_analysis: {
+    cost_analysis: costAnalysis || {
       gunluk_kisi_maliyeti: "22.45 TL",
       tahmini_toplam_gider: "463000 TL",
       onerilen_karlilik_orani: "%7.5",
@@ -57,7 +74,7 @@ export default function DecisionPage() {
         "Toplu alım indirimi talep edin",
       ],
     },
-    menu_data: [
+    menu_data: menuData || [
       { yemek: "Tavuk Sote", gramaj: 180, kisi: 250, kategori: "ana yemek" },
       { yemek: "Pilav", gramaj: 200, kisi: 250, kategori: "ana yemek" },
       { yemek: "Çorba", gramaj: 250, kisi: 250, kategori: "çorba" },
@@ -65,10 +82,10 @@ export default function DecisionPage() {
       { yemek: "Yoğurt", gramaj: 150, kisi: 250, kategori: "yan ürün" },
     ],
     ihale_bilgileri: {
-      kurum: "Milli Eğitim Müdürlüğü",
-      ihale_turu: "Okul Yemeği",
-      sure: "12 ay",
-      butce: "500000 TL",
+      kurum: selectedTender?.organization || "Milli Eğitim Müdürlüğü",
+      ihale_turu: selectedTender?.tenderType || "Okul Yemeği",
+      sure: selectedTender?.duration || "12 ay",
+      butce: selectedTender?.budget || "500000 TL",
     },
   });
 
@@ -85,6 +102,12 @@ export default function DecisionPage() {
 
       const data: DecisionResponse = await res.json();
       setDecision(data);
+
+      // Store'a kaydet
+      if (data.success && data.data) {
+        saveDecision(data.data);
+        markStepCompleted(PIPELINE_STEPS.DECISION);
+      }
     } catch (err) {
       setDecision({
         success: false,
@@ -98,26 +121,26 @@ export default function DecisionPage() {
   const getKararColor = (karar: string) => {
     switch (karar) {
       case "Katıl":
-        return "text-[var(--color-accent-mint)]";
+        return "text-[(--color-accent-mint)]";
       case "Katılma":
-        return "text-[var(--color-accent-red)]";
+        return "text-[(--color-accent-red)]";
       case "Dikkatli Katıl":
-        return "text-[var(--color-accent-gold)]";
+        return "text-[(--color-accent-gold)]";
       default:
-        return "text-[var(--color-text-secondary)]";
+        return "text-[(--color-text-secondary)]";
     }
   };
 
   const getKararBorderColor = (karar: string) => {
     switch (karar) {
       case "Katıl":
-        return "border-[var(--color-accent-mint)]";
+        return "border-[(--color-accent-mint)]";
       case "Katılma":
-        return "border-[var(--color-accent-red)]";
+        return "border-[(--color-accent-red)]";
       case "Dikkatli Katıl":
-        return "border-[var(--color-accent-gold)]";
+        return "border-[(--color-accent-gold)]";
       default:
-        return "border-[var(--color-border)]";
+        return "border-[(--color-border)]";
     }
   };
 
@@ -142,20 +165,60 @@ export default function DecisionPage() {
       variants={staggerContainer}
     >
       <div className="max-w-7xl mx-auto space-y-8">
+        {/* Progress Bar */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between text-sm text-slate-400 mb-2">
+            <span>Pipeline İlerlemesi</span>
+            <span>{getProgress()}%</span>
+          </div>
+          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+              style={{ width: `${getProgress()}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => router.push('/cost-analysis')}
+            className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span className="font-medium">Maliyet Analizine Dön</span>
+          </button>
+
+          {decision?.success && decision?.data && (
+            <button
+              onClick={() => {
+                setCurrentStep(PIPELINE_STEPS.PROPOSAL);
+                router.push('/reports');
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg font-semibold transition-all group"
+            >
+              <span>Teklif Hazırla</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          )}
+        </div>
+
         {/* Header */}
         <motion.div variants={fadeInUp}>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
             <div className="flex items-center gap-4">
               <motion.div
-                className="p-4 rounded-2xl bg-gradient-to-br from-[var(--color-accent-purple)] to-[var(--color-accent-blue)] shadow-glow-purple"
+                className="p-4 rounded-2xl bg-linear-to-br from-pink-500 to-rose-600 shadow-lg"
                 whileHover={{ scale: 1.05, rotate: 5 }}
                 transition={{ type: 'spring', stiffness: 300 }}
               >
                 <Target className="w-8 h-8 text-white" />
               </motion.div>
               <div>
-                <h1 className="h1">AI Teklif Karar Motoru</h1>
-                <p className="body text-[var(--color-text-secondary)]">
+                <h1 className="text-2xl font-bold bg-linear-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                  AI Teklif Karar Motoru
+                </h1>
+                <p className="text-sm text-gray-400 mt-1">
                   Claude Sonnet 4.5 ile stratejik ihale katılım kararı
                 </p>
               </div>
@@ -184,22 +247,22 @@ export default function DecisionPage() {
             <Card hoverable variant="elevated" className="h-full">
               <CardHeader>
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="w-5 h-5 text-[var(--color-accent-mint)]" />
+                  <DollarSign className="w-5 h-5 text-[(--color-accent-mint)]" />
                   <CardTitle className="h4">Maliyet Analizi</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <p className="body-sm text-[var(--color-text-tertiary)] mb-1">Kişi Maliyeti</p>
-                  <p className="h4 text-[var(--color-text-primary)]">{input.cost_analysis.gunluk_kisi_maliyeti}</p>
+                  <p className="body-sm text-[(--color-text-tertiary)] mb-1">Kişi Maliyeti</p>
+                  <p className="h4 text-[(--color-text-primary)]">{input.cost_analysis.gunluk_kisi_maliyeti}</p>
                 </div>
                 <div>
-                  <p className="body-sm text-[var(--color-text-tertiary)] mb-1">Toplam Gider</p>
-                  <p className="h4 text-[var(--color-text-primary)]">{input.cost_analysis.tahmini_toplam_gider}</p>
+                  <p className="body-sm text-[(--color-text-tertiary)] mb-1">Toplam Gider</p>
+                  <p className="h4 text-[(--color-text-primary)]">{input.cost_analysis.tahmini_toplam_gider}</p>
                 </div>
                 <div>
-                  <p className="body-sm text-[var(--color-text-tertiary)] mb-1">Karlılık</p>
-                  <p className="h4 text-[var(--color-accent-mint)]">
+                  <p className="body-sm text-[(--color-text-tertiary)] mb-1">Karlılık</p>
+                  <p className="h4 text-[(--color-accent-mint)]">
                     {input.cost_analysis.onerilen_karlilik_orani}
                   </p>
                 </div>
@@ -211,24 +274,24 @@ export default function DecisionPage() {
             <Card hoverable variant="elevated" className="h-full">
               <CardHeader>
                 <div className="flex items-center gap-2 mb-2">
-                  <FileText className="w-5 h-5 text-[var(--color-accent-blue)]" />
+                  <FileText className="w-5 h-5 text-[(--color-accent-blue)]" />
                   <CardTitle className="h4">Menü Bilgisi</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <p className="body-sm text-[var(--color-text-tertiary)] mb-1">Toplam Öğe</p>
-                  <p className="h4 text-[var(--color-text-primary)]">{input.menu_data.length} adet</p>
+                  <p className="body-sm text-[(--color-text-tertiary)] mb-1">Toplam Öğe</p>
+                  <p className="h4 text-[(--color-text-primary)]">{input.menu_data.length} adet</p>
                 </div>
                 <div>
-                  <p className="body-sm text-[var(--color-text-tertiary)] mb-1">Toplam Gramaj</p>
-                  <p className="h4 text-[var(--color-text-primary)]">
+                  <p className="body-sm text-[(--color-text-tertiary)] mb-1">Toplam Gramaj</p>
+                  <p className="h4 text-[(--color-text-primary)]">
                     {input.menu_data.reduce((sum, item) => sum + item.gramaj, 0)}g
                   </p>
                 </div>
                 <div>
-                  <p className="body-sm text-[var(--color-text-tertiary)] mb-1">Kişi Sayısı</p>
-                  <p className="h4 text-[var(--color-accent-blue)]">{input.menu_data[0]?.kisi || 0} kişi</p>
+                  <p className="body-sm text-[(--color-text-tertiary)] mb-1">Kişi Sayısı</p>
+                  <p className="h4 text-[(--color-accent-blue)]">{input.menu_data[0]?.kisi || 0} kişi</p>
                 </div>
               </CardContent>
             </Card>
@@ -238,22 +301,22 @@ export default function DecisionPage() {
             <Card hoverable variant="elevated" className="h-full">
               <CardHeader>
                 <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="w-5 h-5 text-[var(--color-accent-purple)]" />
+                  <Calendar className="w-5 h-5 text-[(--color-accent-purple)]" />
                   <CardTitle className="h4">İhale Bilgisi</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <p className="body-sm text-[var(--color-text-tertiary)] mb-1">Kurum</p>
-                  <p className="h4 text-[var(--color-text-primary)]">{input.ihale_bilgileri.kurum}</p>
+                  <p className="body-sm text-[(--color-text-tertiary)] mb-1">Kurum</p>
+                  <p className="h4 text-[(--color-text-primary)]">{input.ihale_bilgileri.kurum}</p>
                 </div>
                 <div>
-                  <p className="body-sm text-[var(--color-text-tertiary)] mb-1">Süre</p>
-                  <p className="h4 text-[var(--color-text-primary)]">{input.ihale_bilgileri.sure}</p>
+                  <p className="body-sm text-[(--color-text-tertiary)] mb-1">Süre</p>
+                  <p className="h4 text-[(--color-text-primary)]">{input.ihale_bilgileri.sure}</p>
                 </div>
                 <div>
-                  <p className="body-sm text-[var(--color-text-tertiary)] mb-1">Bütçe</p>
-                  <p className="h4 text-[var(--color-accent-purple)]">
+                  <p className="body-sm text-[(--color-text-tertiary)] mb-1">Bütçe</p>
+                  <p className="h4 text-[(--color-accent-purple)]">
                     {input.ihale_bilgileri.butce}
                   </p>
                 </div>
@@ -270,7 +333,7 @@ export default function DecisionPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
             >
-              <Card variant="elevated" className="border border-[var(--color-accent-blue)]/30">
+              <Card variant="elevated" className="border border-[(--color-accent-blue)]/30">
                 <CardContent className="py-12">
                   <div className="flex flex-col items-center justify-center space-y-4">
                     <motion.div
@@ -284,11 +347,11 @@ export default function DecisionPage() {
                         ease: "linear",
                       }}
                     >
-                      <Brain className="w-16 h-16 text-[var(--color-accent-blue)]" />
+                      <Brain className="w-16 h-16 text-[(--color-accent-blue)]" />
                     </motion.div>
                     <div className="text-center">
-                      <p className="h4 text-[var(--color-text-primary)] mb-2">Claude Sonnet 4.5 Analiz Yapıyor</p>
-                      <p className="body-sm text-[var(--color-text-tertiary)]">Veriler işleniyor ve karar oluşturuluyor...</p>
+                      <p className="h4 text-[(--color-text-primary)] mb-2">Claude Sonnet 4.5 Analiz Yapıyor</p>
+                      <p className="body-sm text-[(--color-text-tertiary)]">Veriler işleniyor ve karar oluşturuluyor...</p>
                     </div>
                   </div>
                 </CardContent>
@@ -326,7 +389,7 @@ export default function DecisionPage() {
                       <h2 className={`h1 ${getKararColor(decision.data.karar)}`}>
                         {decision.data.karar}
                       </h2>
-                      <p className="body text-[var(--color-text-secondary)] mt-2">
+                      <p className="body text-[(--color-text-secondary)] mt-2">
                         {decision.data.gerekce}
                       </p>
                     </div>
@@ -336,27 +399,27 @@ export default function DecisionPage() {
                     {/* Metrics */}
                     <div className="space-y-4">
                       <motion.div
-                        className="glass-subtle p-6 rounded-xl border border-[var(--color-accent-gold)]/20"
+                        className="glass-subtle p-6 rounded-xl border border-[(--color-accent-gold)]/20"
                         whileHover={{ scale: 1.02 }}
                       >
                         <div className="flex items-center gap-3 mb-3">
-                          <AlertTriangle className="w-6 h-6 text-[var(--color-accent-gold)]" />
-                          <p className="body-sm text-[var(--color-text-tertiary)]">Risk Oranı</p>
+                          <AlertTriangle className="w-6 h-6 text-[(--color-accent-gold)]" />
+                          <p className="body-sm text-[(--color-text-tertiary)]">Risk Oranı</p>
                         </div>
-                        <p className="h2 text-[var(--color-accent-gold)]">
+                        <p className="h2 text-[(--color-accent-gold)]">
                           {decision.data.risk_orani}
                         </p>
                       </motion.div>
 
                       <motion.div
-                        className="glass-subtle p-6 rounded-xl border border-[var(--color-accent-mint)]/20"
+                        className="glass-subtle p-6 rounded-xl border border-[(--color-accent-mint)]/20"
                         whileHover={{ scale: 1.02 }}
                       >
                         <div className="flex items-center gap-3 mb-3">
-                          <TrendingUp className="w-6 h-6 text-[var(--color-accent-mint)]" />
-                          <p className="body-sm text-[var(--color-text-tertiary)]">Tahmini Kâr</p>
+                          <TrendingUp className="w-6 h-6 text-[(--color-accent-mint)]" />
+                          <p className="body-sm text-[(--color-text-tertiary)]">Tahmini Kâr</p>
                         </div>
-                        <p className="h2 text-[var(--color-accent-mint)]">
+                        <p className="h2 text-[(--color-accent-mint)]">
                           {decision.data.tahmini_kar_orani}
                         </p>
                       </motion.div>
@@ -368,8 +431,8 @@ export default function DecisionPage() {
                         decision.data.stratejik_oneriler.length > 0 && (
                           <div>
                             <div className="flex items-center gap-2 mb-3">
-                              <Lightbulb className="w-5 h-5 text-[var(--color-accent-blue)]" />
-                              <h4 className="h5 text-[var(--color-text-primary)]">
+                              <Lightbulb className="w-5 h-5 text-[(--color-accent-blue)]" />
+                              <h4 className="h5 text-[(--color-text-primary)]">
                                 Stratejik Öneriler
                               </h4>
                             </div>
@@ -380,9 +443,9 @@ export default function DecisionPage() {
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: idx * 0.1 }}
-                                  className="flex items-start gap-2 body-sm text-[var(--color-text-secondary)]"
+                                  className="flex items-start gap-2 body-sm text-[(--color-text-secondary)]"
                                 >
-                                  <span className="text-[var(--color-accent-blue)] mt-1">•</span>
+                                  <span className="text-[(--color-accent-blue)] mt-1">•</span>
                                   <span>{oneri}</span>
                                 </motion.li>
                               ))}
@@ -394,8 +457,8 @@ export default function DecisionPage() {
                         decision.data.kritik_noktalar.length > 0 && (
                           <div>
                             <div className="flex items-center gap-2 mb-3">
-                              <AlertTriangle className="w-5 h-5 text-[var(--color-accent-red)]" />
-                              <h4 className="h5 text-[var(--color-text-primary)]">
+                              <AlertTriangle className="w-5 h-5 text-[(--color-accent-red)]" />
+                              <h4 className="h5 text-[(--color-text-primary)]">
                                 Kritik Noktalar
                               </h4>
                             </div>
@@ -406,9 +469,9 @@ export default function DecisionPage() {
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: idx * 0.1 }}
-                                  className="flex items-start gap-2 body-sm text-[var(--color-text-secondary)]"
+                                  className="flex items-start gap-2 body-sm text-[(--color-text-secondary)]"
                                 >
-                                  <span className="text-[var(--color-accent-red)] mt-1">•</span>
+                                  <span className="text-[(--color-accent-red)] mt-1">•</span>
                                   <span>{nokta}</span>
                                 </motion.li>
                               ))}
@@ -425,7 +488,7 @@ export default function DecisionPage() {
                 <Card variant="subtle">
                   <CardHeader>
                     <div className="flex items-center gap-2">
-                      <Info className="w-5 h-5 text-[var(--color-accent-blue)]" />
+                      <Info className="w-5 h-5 text-[(--color-accent-blue)]" />
                       <CardTitle>AI İşlem Bilgisi</CardTitle>
                     </div>
                   </CardHeader>
@@ -433,25 +496,25 @@ export default function DecisionPage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                       <div className="flex items-center gap-3">
                         <Badge variant="success">Model</Badge>
-                        <span className="body font-mono text-[var(--color-accent-mint)]">
+                        <span className="body font-mono text-[(--color-accent-mint)]">
                           {decision.meta.model}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
                         <Badge variant="info">Süre</Badge>
-                        <span className="body font-mono text-[var(--color-accent-blue)]">
+                        <span className="body font-mono text-[(--color-accent-blue)]">
                           {decision.meta.duration_ms} ms
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
                         <Badge variant="neutral">Token</Badge>
-                        <span className="body font-mono text-[var(--color-text-secondary)]">
+                        <span className="body font-mono text-[(--color-text-secondary)]">
                           ~{decision.meta.estimated_tokens}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
                         <Badge variant="neutral">Zaman</Badge>
-                        <span className="body-sm font-mono text-[var(--color-text-tertiary)]">
+                        <span className="body-sm font-mono text-[(--color-text-tertiary)]">
                           {new Date(decision.meta.timestamp).toLocaleTimeString("tr-TR")}
                         </span>
                       </div>
@@ -471,15 +534,15 @@ export default function DecisionPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
             >
-              <Card className="border border-[var(--color-accent-red)]/30 bg-[var(--color-accent-red)]/5">
+              <Card className="border border-[(--color-accent-red)]/30 bg-[(--color-accent-red)]/5">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-xl bg-[var(--color-accent-red)]/20">
-                      <XCircle className="w-8 h-8 text-[var(--color-accent-red)]" />
+                    <div className="p-3 rounded-xl bg-[(--color-accent-red)]/20">
+                      <XCircle className="w-8 h-8 text-[(--color-accent-red)]" />
                     </div>
                     <div>
-                      <h3 className="h3 text-[var(--color-accent-red)] mb-2">Hata Oluştu</h3>
-                      <p className="body text-[var(--color-text-secondary)]">{decision.error}</p>
+                      <h3 className="h3 text-[(--color-accent-red)] mb-2">Hata Oluştu</h3>
+                      <p className="body text-[(--color-text-secondary)]">{decision.error}</p>
                     </div>
                   </div>
                 </CardContent>

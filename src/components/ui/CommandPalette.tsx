@@ -2,17 +2,17 @@
 
 import { Command } from "cmdk";
 import {
-    BarChart4,
-    Brain,
-    Calculator,
-    FileText,
-    Home,
-    ScrollText,
-    Search,
-    Sparkles,
-    UploadCloud,
-    Utensils,
-    Zap
+  BarChart4,
+  Brain,
+  Calculator,
+  FileText,
+  Home,
+  ScrollText,
+  Search,
+  Sparkles,
+  UploadCloud,
+  Utensils,
+  Zap
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -137,7 +137,7 @@ export function CommandPalette() {
               >
                 <Zap className="w-4 h-4 text-yellow-400" />
                 <span>⚡ Oto-Analiz Pipeline</span>
-                <span className="ml-auto px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded">NEW</span>
+                <span className="ml-auto px-1.5 py-0.5 text-[10px] font-bold bg-linear-to-r from-yellow-500 to-orange-500 text-white rounded">NEW</span>
               </Command.Item>
 
               <Command.Item

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Calculator, TrendingUp, AlertTriangle, Lightbulb, Info, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { fadeInUp, staggerContainer, scaleIn } from "@/lib/animations";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { fadeInUp, scaleIn, staggerContainer } from "@/lib/animations";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertTriangle, Calculator, Info, Lightbulb, TrendingUp, ArrowLeft, ArrowRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { usePipelineStore, PIPELINE_STEPS } from "@/store/usePipelineStore";
 
 interface CostAnalysisResult {
   gunluk_kisi_maliyeti?: string;
@@ -39,12 +41,28 @@ interface ApiResponse {
 export default function CostAnalysisPage() {
   const [result, setResult] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
+  const {
+    selectedTender,
+    menuData,
+    setCostAnalysis,
+    setCurrentStep,
+    markStepCompleted,
+    getProgress
+  } = usePipelineStore();
+
+  // Store'dan gelen verileri kullan
   const [input, setInput] = useState({
-    kurum: "Milli Eğitim Bakanlığı",
-    ihale_turu: "Yemek Hizmeti",
-    kisilik: "250",
-    butce: "500000 TL",
+    kurum: selectedTender?.organization || "Milli Eğitim Bakanlığı",
+    ihale_turu: selectedTender?.tenderType || "Yemek Hizmeti",
+    kisilik: menuData?.[0]?.kisi?.toString() || "250",
+    butce: selectedTender?.budget || "500000 TL",
   });
+
+  useEffect(() => {
+    setCurrentStep(PIPELINE_STEPS.COST_ANALYSIS);
+  }, [setCurrentStep]);
 
   async function analyze() {
     setLoading(true);
@@ -58,6 +76,12 @@ export default function CostAnalysisPage() {
       });
       const data = await res.json();
       setResult(data);
+
+      // Store'a kaydet
+      if (data.success && data.data) {
+        setCostAnalysis(data.data);
+        markStepCompleted(PIPELINE_STEPS.COST_ANALYSIS);
+      }
     } catch (err) {
       setResult({
         success: false,
@@ -76,22 +100,84 @@ export default function CostAnalysisPage() {
       variants={staggerContainer}
     >
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div variants={fadeInUp} className="mb-8">
-          <div className="flex items-center gap-4 mb-3">
-            <motion.div
-              className="p-4 rounded-2xl bg-gradient-to-br from-[var(--color-accent-gold)] to-amber-600 shadow-glow-gold"
-              whileHover={{ scale: 1.05, rotate: 5 }}
-              transition={{ type: 'spring', stiffness: 300 }}
+        {/* Progress Bar */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between text-sm text-slate-400 mb-2">
+            <span>Pipeline İlerlemesi</span>
+            <span>{getProgress()}%</span>
+          </div>
+          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+              style={{ width: `${getProgress()}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => router.push('/menu-parser')}
+            className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span className="font-medium">Menü Sayfasına Dön</span>
+          </button>
+
+          {result?.success && result?.data && (
+            <button
+              onClick={() => {
+                setCurrentStep(PIPELINE_STEPS.DECISION);
+                router.push('/decision');
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 rounded-lg border border-indigo-500/30 hover:border-indigo-500/50 transition-all group"
             >
-              <Calculator className="w-8 h-8 text-white" />
-            </motion.div>
-            <div>
-              <h1 className="h1">AI Maliyet Analiz Motoru</h1>
-              <p className="body text-[var(--color-text-secondary)]">
-                Claude Sonnet 4.5 ile akıllı maliyet hesaplama ve optimizasyon
-              </p>
+              <span className="font-medium">Karar Analizine Geç</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          )}
+        </div>
+
+        {/* Selected Tender & Menu Info */}
+        {selectedTender && (
+          <div className="glass-card mb-6 p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Seçili İhale</p>
+                <p className="text-sm font-semibold text-white">{selectedTender.title}</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {selectedTender.organization} • {selectedTender.city}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Menü Bilgisi</p>
+                <p className="text-sm font-semibold text-white">
+                  {menuData?.length || 0} Yemek • {menuData?.[0]?.kisi || 0} Kişi
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Toplam: {menuData?.reduce((sum, item) => sum + item.gramaj, 0) || 0}g
+                </p>
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* Header */}
+        <motion.div variants={fadeInUp} className="mb-8 flex items-center gap-4">
+          <motion.div
+            className="p-4 rounded-2xl bg-linear-to-br from-amber-500 to-orange-600 shadow-lg"
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            transition={{ type: 'spring', stiffness: 300 }}
+          >
+            <Calculator className="w-8 h-8 text-white" />
+          </motion.div>
+          <div>
+            <h1 className="text-2xl font-bold bg-linear-to-r from-white to-gray-400 bg-clip-text text-transparent">
+              AI Maliyet Analiz Motoru
+            </h1>
+            <p className="text-sm text-gray-400 mt-1">
+              Claude Sonnet 4.5 ile akıllı maliyet hesaplama ve optimizasyon
+            </p>
           </div>
         </motion.div>
 
@@ -173,14 +259,14 @@ export default function CostAnalysisPage() {
                   <Card hoverable variant="elevated" className="h-full">
                     <CardContent className="p-6">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 rounded-lg bg-[var(--color-accent-mint)]/20">
-                          <TrendingUp className="w-6 h-6 text-[var(--color-accent-mint)]" />
+                        <div className="p-2 rounded-lg bg-[(--color-accent-mint)]/20">
+                          <TrendingUp className="w-6 h-6 text-[(--color-accent-mint)]" />
                         </div>
-                        <span className="body-sm text-[var(--color-text-secondary)]">
+                        <span className="body-sm text-[(--color-text-secondary)]">
                           Günlük Kişi Başı
                         </span>
                       </div>
-                      <div className="h2 text-[var(--color-accent-mint)]">
+                      <div className="h2 text-[(--color-accent-mint)]">
                         {result.data.gunluk_kisi_maliyeti || "N/A"}
                       </div>
                     </CardContent>
@@ -191,14 +277,14 @@ export default function CostAnalysisPage() {
                   <Card hoverable variant="elevated" className="h-full">
                     <CardContent className="p-6">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 rounded-lg bg-[var(--color-accent-blue)]/20">
-                          <Calculator className="w-6 h-6 text-[var(--color-accent-blue)]" />
+                        <div className="p-2 rounded-lg bg-[(--color-accent-blue)]/20">
+                          <Calculator className="w-6 h-6 text-[(--color-accent-blue)]" />
                         </div>
-                        <span className="body-sm text-[var(--color-text-secondary)]">
+                        <span className="body-sm text-[(--color-text-secondary)]">
                           Toplam Gider
                         </span>
                       </div>
-                      <div className="h2 text-[var(--color-accent-blue)]">
+                      <div className="h2 text-[(--color-accent-blue)]">
                         {result.data.tahmini_toplam_gider || "N/A"}
                       </div>
                     </CardContent>
@@ -209,14 +295,14 @@ export default function CostAnalysisPage() {
                   <Card hoverable variant="elevated" className="h-full">
                     <CardContent className="p-6">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 rounded-lg bg-[var(--color-accent-purple)]/20">
-                          <TrendingUp className="w-6 h-6 text-[var(--color-accent-purple)]" />
+                        <div className="p-2 rounded-lg bg-[(--color-accent-purple)]/20">
+                          <TrendingUp className="w-6 h-6 text-[(--color-accent-purple)]" />
                         </div>
-                        <span className="body-sm text-[var(--color-text-secondary)]">
+                        <span className="body-sm text-[(--color-text-secondary)]">
                           Karlılık Oranı
                         </span>
                       </div>
-                      <div className="h2 text-[var(--color-accent-purple)]">
+                      <div className="h2 text-[(--color-accent-purple)]">
                         {result.data.onerilen_karlilik_orani || "N/A"}
                       </div>
                     </CardContent>
@@ -239,10 +325,10 @@ export default function CostAnalysisPage() {
                             whileHover={{ scale: 1.05 }}
                             className="glass-subtle p-5 rounded-xl text-center"
                           >
-                            <div className="h3 text-[var(--color-accent-blue)] mb-2">
+                            <div className="h3 text-[(--color-accent-blue)] mb-2">
                               {value}
                             </div>
-                            <div className="body-sm text-[var(--color-text-secondary)] capitalize">
+                            <div className="body-sm text-[(--color-text-secondary)] capitalize">
                               {key.replace("_", " ")}
                             </div>
                           </motion.div>
@@ -256,10 +342,10 @@ export default function CostAnalysisPage() {
               {/* Risk Items */}
               {result.data.riskli_kalemler &&
                 result.data.riskli_kalemler.length > 0 && (
-                  <Card variant="elevated" className="border border-[var(--color-accent-red)]/30">
+                  <Card variant="elevated" className="border border-[(--color-accent-red)]/30">
                     <CardHeader>
                       <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-6 h-6 text-[var(--color-accent-red)]" />
+                        <AlertTriangle className="w-6 h-6 text-[(--color-accent-red)]" />
                         <CardTitle>Riskli Kalemler</CardTitle>
                       </div>
                     </CardHeader>
@@ -271,12 +357,12 @@ export default function CostAnalysisPage() {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: idx * 0.1 }}
-                            className="flex items-center gap-3 glass-subtle p-4 rounded-xl border border-[var(--color-accent-red)]/20"
+                            className="flex items-center gap-3 glass-subtle p-4 rounded-xl border border-[(--color-accent-red)]/20"
                           >
-                            <div className="p-2 rounded-lg bg-[var(--color-accent-red)]/20">
-                              <AlertTriangle className="w-5 h-5 text-[var(--color-accent-red)]" />
+                            <div className="p-2 rounded-lg bg-[(--color-accent-red)]/20">
+                              <AlertTriangle className="w-5 h-5 text-[(--color-accent-red)]" />
                             </div>
-                            <span className="body text-[var(--color-text-primary)]">{item}</span>
+                            <span className="body text-[(--color-text-primary)]">{item}</span>
                           </motion.div>
                         ))}
                       </div>
@@ -287,10 +373,10 @@ export default function CostAnalysisPage() {
               {/* Optimization Suggestions */}
               {result.data.optimizasyon_onerileri &&
                 result.data.optimizasyon_onerileri.length > 0 && (
-                  <Card variant="elevated" className="border border-[var(--color-accent-mint)]/30">
+                  <Card variant="elevated" className="border border-[(--color-accent-mint)]/30">
                     <CardHeader>
                       <div className="flex items-center gap-2">
-                        <Lightbulb className="w-6 h-6 text-[var(--color-accent-gold)]" />
+                        <Lightbulb className="w-6 h-6 text-[(--color-accent-gold)]" />
                         <CardTitle>Optimizasyon Önerileri</CardTitle>
                       </div>
                     </CardHeader>
@@ -302,12 +388,12 @@ export default function CostAnalysisPage() {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: idx * 0.1 }}
-                            className="flex items-start gap-3 glass-subtle p-4 rounded-xl border border-[var(--color-accent-mint)]/20"
+                            className="flex items-start gap-3 glass-subtle p-4 rounded-xl border border-[(--color-accent-mint)]/20"
                           >
-                            <div className="p-2 rounded-lg bg-[var(--color-accent-mint)]/20 flex-shrink-0">
-                              <Lightbulb className="w-5 h-5 text-[var(--color-accent-mint)]" />
+                            <div className="p-2 rounded-lg bg-[(--color-accent-mint)]/20 shrink-0">
+                              <Lightbulb className="w-5 h-5 text-[(--color-accent-mint)]" />
                             </div>
-                            <span className="body text-[var(--color-text-primary)] flex-1">{item}</span>
+                            <span className="body text-[(--color-text-primary)] flex-1">{item}</span>
                           </motion.div>
                         ))}
                       </div>
@@ -320,7 +406,7 @@ export default function CostAnalysisPage() {
                 <Card variant="subtle">
                   <CardHeader>
                     <div className="flex items-center gap-2">
-                      <Info className="w-5 h-5 text-[var(--color-accent-blue)]" />
+                      <Info className="w-5 h-5 text-[(--color-accent-blue)]" />
                       <CardTitle>Analiz Bilgileri</CardTitle>
                     </div>
                   </CardHeader>
@@ -328,19 +414,19 @@ export default function CostAnalysisPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="flex items-center gap-3">
                         <Badge variant="info">Süre</Badge>
-                        <span className="body font-mono text-[var(--color-accent-blue)]">
+                        <span className="body font-mono text-[(--color-accent-blue)]">
                           {result.meta.duration_ms} ms
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
                         <Badge variant="success">Model</Badge>
-                        <span className="body text-[var(--color-accent-mint)]">
+                        <span className="body text-[(--color-accent-mint)]">
                           {result.meta.model}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
                         <Badge variant="neutral">Token</Badge>
-                        <span className="body font-mono text-[var(--color-text-secondary)]">
+                        <span className="body font-mono text-[(--color-text-secondary)]">
                           ~{result.meta.estimated_tokens}
                         </span>
                       </div>
@@ -360,15 +446,15 @@ export default function CostAnalysisPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
             >
-              <Card className="border border-[var(--color-accent-red)]/30 bg-[var(--color-accent-red)]/5">
+              <Card className="border border-[(--color-accent-red)]/30 bg-[(--color-accent-red)]/5">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-xl bg-[var(--color-accent-red)]/20">
-                      <AlertTriangle className="w-8 h-8 text-[var(--color-accent-red)]" />
+                    <div className="p-3 rounded-xl bg-[(--color-accent-red)]/20">
+                      <AlertTriangle className="w-8 h-8 text-[(--color-accent-red)]" />
                     </div>
                     <div>
-                      <h3 className="h3 text-[var(--color-accent-red)] mb-2">Hata Oluştu</h3>
-                      <p className="body text-[var(--color-text-secondary)]">{result.error}</p>
+                      <h3 className="h3 text-[(--color-accent-red)] mb-2">Hata Oluştu</h3>
+                      <p className="body text-[(--color-text-secondary)]">{result.error}</p>
                     </div>
                   </div>
                 </CardContent>

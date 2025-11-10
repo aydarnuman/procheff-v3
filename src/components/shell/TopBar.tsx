@@ -33,30 +33,32 @@ export function TopBar() {
   // Get page title from pathname
   const getPageTitle = () => {
     const routes: Record<string, string> = {
-      "/": "Dashboard",
-      "/auto": "Oto-Analiz Pipeline",
-      "/ihale/workspace": "İhale Workspace",
+      "/": "Ana Sayfa",
+      "/ihale-merkezi": "İhale Merkezi",
+      "/auto": "Oto Analiz",
+      "/ihale/workspace": "İhale Yükle",
+      "/decision": "Karar",
+      "/reports": "Raporlar",
       "/menu-parser": "Menü Parser",
       "/cost-analysis": "Maliyet Analizi",
-      "/decision": "Karar Motoru",
-      "/reports": "Raporlar",
       "/monitor": "Monitoring",
-      "/logs": "Log Viewer",
       "/notifications": "Bildirimler",
-      "/auto/history": "Pipeline History",
       "/settings": "Ayarlar",
-      "/settings/pipeline": "Pipeline Ayarları",
+      "/profile": "Profil",
     };
 
-    return routes[pathname] || "Procheff Workspace";
+    return routes[pathname] || "Procheff";
   };
 
   return (
-    <div className="sticky top-0 z-30 flex h-14 items-center justify-between bg-[#12161f]/80 backdrop-blur-xl px-6">
+    <div className="sticky top-0 z-30 flex h-14 items-center justify-between px-6">
       {/* Page Title */}
-      <h1 className="text-lg font-semibold text-white">
-        {getPageTitle()}
-      </h1>
+      <div className="flex items-center gap-3">
+        <div className="h-8 w-1 rounded-full bg-linear-to-b from-indigo-500 via-purple-500 to-pink-500" />
+        <h1 className="text-base font-medium bg-linear-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent">
+          {getPageTitle()}
+        </h1>
+      </div>
 
       {/* Right Section */}
       <div className="flex items-center gap-3">

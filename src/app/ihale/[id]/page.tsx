@@ -1,31 +1,103 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download, Loader2, FileText, Calendar, MapPin, Building2, DollarSign } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, FileText, Calendar, MapPin, Building2, DollarSign, Upload } from 'lucide-react';
+import { usePipelineStore, PIPELINE_STEPS } from '@/store/usePipelineStore';
 
 export default function IhaleDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const router = useRouter();
 
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const {
+    selectedTender,
+    setCurrentStep,
+    markStepCompleted,
+    getProgress
+  } = usePipelineStore();
+
   useEffect(() => {
+    // Set current step
+    setCurrentStep(PIPELINE_STEPS.TENDER_DETAIL);
+    markStepCompleted(PIPELINE_STEPS.TENDER_DETAIL);
+
+    // If we have selectedTender from the store, use that data first
+    if (selectedTender) {
+      // We have basic data from the list, show it immediately
+      setDetail({
+        id: selectedTender.id,
+        title: selectedTender.title,
+        organization: selectedTender.organization,
+        city: selectedTender.city,
+        tenderType: selectedTender.tenderType,
+        partialBidAllowed: selectedTender.partialBidAllowed,
+        publishDate: selectedTender.publishDate,
+        tenderDate: selectedTender.tenderDate,
+        daysRemaining: selectedTender.daysRemaining,
+        tenderNumber: selectedTender.tenderNumber,
+        url: selectedTender.url,
+        documents: [],
+        html: '<p class="text-slate-400">Detaylı bilgiler yükleniyor...</p>'
+      });
+      setLoading(false);
+    }
+
+    // Then try to fetch full details from API (with HTML content and documents)
     (async () => {
       try {
         const res = await fetch(`/api/ihale/detail/${id}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        setDetail(data);
+
+        // If we get 401, it means no session - that's okay, we can still use basic data
+        if (res.status === 401) {
+          if (selectedTender) {
+            // We already have basic data, just update HTML to inform user
+            setDetail((prev: any) => ({
+              ...prev,
+              html: `
+                <div class="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p class="text-yellow-400 font-semibold mb-2">İhalebul.com bağlantısı yok</p>
+                  <p class="text-slate-300">Detaylı bilgiler için önce İhalebul.com'a giriş yapmanız gerekiyor.</p>
+                  <p class="text-slate-400 text-sm mt-2">Temel bilgiler veritabanından yüklendi.</p>
+                </div>
+              `
+            }));
+            setError('');
+          } else {
+            setError('İhale bilgileri bulunamadı. Lütfen ihale listesinden seçim yapın.');
+          }
+        } else {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          // Merge the fetched data with existing data
+          setDetail((prev: any) => ({
+            ...prev,
+            ...data,
+            // Keep the existing fields if API doesn't return them
+            organization: data.organization || prev?.organization,
+            city: data.city || prev?.city,
+            tenderType: data.tenderType || prev?.tenderType,
+            partialBidAllowed: data.partialBidAllowed ?? prev?.partialBidAllowed,
+            publishDate: data.publishDate || prev?.publishDate,
+            tenderDate: data.tenderDate || prev?.tenderDate,
+            daysRemaining: data.daysRemaining ?? prev?.daysRemaining
+          }));
+        }
       } catch (e: any) {
-        setError(e.message);
+        // If we have basic data from selectedTender, don't show error
+        if (!selectedTender) {
+          setError(e.message);
+        }
       } finally {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, setCurrentStep, markStepCompleted, selectedTender]);
 
   if (loading) {
     return (
@@ -62,26 +134,62 @@ export default function IhaleDetailPage() {
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Back Button */}
-        <Link
-          href="/ihale"
-          className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 mb-6 transition-colors group"
-        >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Listeye Dön</span>
-        </Link>
+        {/* Progress Bar */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between text-sm text-slate-400 mb-2">
+            <span>Pipeline İlerlemesi</span>
+            <span>{getProgress()}%</span>
+          </div>
+          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+              style={{ width: `${getProgress()}%` }}
+            />
+          </div>
+        </div>
 
-        {/* Title Card */}
+        {/* Back Button and Selected Tender Info */}
+        <div className="flex items-center justify-between mb-6">
+          <Link
+            href="/ihale"
+            className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span className="font-medium">Listeye Dön</span>
+          </Link>
+
+          {selectedTender && (
+            <div className="text-sm text-slate-400">
+              <span className="text-slate-500">Seçili İhale:</span> {selectedTender.organization} - {selectedTender.city}
+            </div>
+          )}
+        </div>
+
+        {/* Title Card with Action Button */}
         <div className="glass-card rounded-2xl p-6 mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">{detail.title}</h1>
-          <p className="text-sm text-slate-400">İhale ID: {detail.id}</p>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-white mb-2">{detail.title}</h1>
+              <p className="text-sm text-slate-400">İhale ID: {detail.id}</p>
+            </div>
+            <button
+              onClick={() => {
+                setCurrentStep(PIPELINE_STEPS.MENU_UPLOAD);
+                router.push('/menu-parser');
+              }}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-semibold transition-all transform hover:scale-105 shadow-lg"
+            >
+              <Upload className="w-5 h-5" />
+              Menü Yükle
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Documents Section */}
-            {detail.documents?.length > 0 && (
+            {detail.documents && detail.documents.length > 0 && (
               <div className="glass-card rounded-2xl p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <FileText className="w-5 h-5 text-indigo-400" />
@@ -109,13 +217,22 @@ export default function IhaleDetailPage() {
             {/* HTML Content */}
             <div className="glass-card rounded-2xl p-6">
               <h2 className="text-xl font-semibold text-white mb-4">Detay Bilgileri</h2>
-              <div
-                className="prose prose-invert prose-indigo prose-sm max-w-none
-                  prose-headings:text-white prose-p:text-slate-300
-                  prose-strong:text-indigo-400 prose-a:text-indigo-400
-                  prose-li:text-slate-300"
-                dangerouslySetInnerHTML={{ __html: detail.html }}
-              />
+              {detail.html ? (
+                <div
+                  className="prose prose-invert prose-indigo prose-sm max-w-none
+                    prose-headings:text-white prose-p:text-slate-300
+                    prose-strong:text-indigo-400 prose-a:text-indigo-400
+                    prose-li:text-slate-300"
+                  dangerouslySetInnerHTML={{ __html: detail.html }}
+                />
+              ) : (
+                <div className="p-4 bg-slate-800/30 rounded-lg">
+                  <p className="text-slate-400">Detaylı bilgi mevcut değil.</p>
+                  <p className="text-sm text-slate-500 mt-2">
+                    İhalebul.com'dan detaylı bilgi almak için önce ihale listesini yenileyin.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

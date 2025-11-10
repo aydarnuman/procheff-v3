@@ -1,5 +1,5 @@
+import { motion } from 'framer-motion';
 import React, { ButtonHTMLAttributes, forwardRef } from 'react';
-import { motion, HTMLMotionProps } from 'framer-motion';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -125,14 +125,12 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {ripples.map((ripple) => (
           <span
             key={ripple.id}
-            className="absolute rounded-full bg-white/30 animate-ripple pointer-events-none"
+            className="absolute rounded-full bg-white/30 animate-ripple pointer-events-none ripple"
+            // CSS variables for ripple position - ESLint exception needed  
             style={{
-              left: ripple.x,
-              top: ripple.y,
-              width: 0,
-              height: 0,
-              transform: 'translate(-50%, -50%)',
-            }}
+              '--ripple-x': `${ripple.x}px`,
+              '--ripple-y': `${ripple.y}px`,
+            } as React.CSSProperties}
           />
         ))}
 

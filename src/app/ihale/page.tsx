@@ -1,7 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ExternalLink, Loader2, RefreshCw, Database, Cloud, Download, FileText, FileSpreadsheet, FileJson } from 'lucide-react';
+import { usePipelineStore } from '@/store/usePipelineStore';
 
 // Gün farkı hesaplama
 function getDaysRemaining(dateStr: string | null | undefined): number | null {
@@ -80,6 +82,9 @@ export default function IhalePage() {
   const [dataSource, setDataSource] = useState<'worker' | 'database'>('database');
   const [exporting, setExporting] = useState<'csv' | 'json' | 'txt' | null>(null);
 
+  const router = useRouter();
+  const { startNewPipeline, resetPipeline } = usePipelineStore();
+
   const fetchTenders = async (refresh = false) => {
     try {
       if (refresh) {
@@ -151,9 +156,10 @@ export default function IhalePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-white text-lg">Yükleniyor...</div>
+      <div className="min-h-screen p-6 md:p-8 flex items-center justify-center">
+        <div className="glass-card p-8 rounded-2xl text-center">
+          <Loader2 className="w-12 h-12 text-indigo-400 animate-spin mx-auto mb-4" />
+          <p className="text-lg text-slate-300">İhaleler yükleniyor...</p>
         </div>
       </div>
     );
@@ -161,9 +167,16 @@ export default function IhalePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-red-400 text-lg">{error}</div>
+      <div className="min-h-screen p-6 md:p-8 flex items-center justify-center">
+        <div className="glass-card p-8 rounded-2xl text-center border-red-500/30">
+          <div className="text-red-400 text-lg mb-2">Hata Oluştu</div>
+          <div className="text-slate-300">{error}</div>
+          <button
+            onClick={() => fetchTenders(false)}
+            className="mt-6 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 rounded-lg border border-indigo-500/30 transition-all"
+          >
+            Tekrar Dene
+          </button>
         </div>
       </div>
     );
@@ -359,9 +372,25 @@ export default function IhalePage() {
                         </div>
                       </td>
                       <td className="px-2 py-2 text-right">
-                        <Link
-                          href={`/ihale/${item.id}`}
-                          onClick={() => setLoadingItemId(item.id)}
+                        <button
+                          onClick={() => {
+                            setLoadingItemId(item.id);
+                            // Pipeline'ı başlat ve detay sayfasına git
+                            startNewPipeline({
+                              id: item.id,
+                              tenderNumber: item.tenderNumber || item.tender_number || '',
+                              title: item.title || '',
+                              organization: item.organization || item.kurum || item.kurumAdi || '',
+                              city: item.city || item.sehir || item.il || '',
+                              tenderType: item.tenderType || item.tender_type || '',
+                              partialBidAllowed: item.partialBidAllowed || item.partial_bid_allowed || false,
+                              publishDate: item.publishDate || item.publish_date || '',
+                              tenderDate: tenderDate || '',
+                              daysRemaining: daysRemaining,
+                              url: item.url || ''
+                            });
+                            router.push(`/ihale/${item.id}`);
+                          }}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 rounded-lg border border-indigo-500/30 hover:border-indigo-500/50 transition-all duration-200 disabled:opacity-50"
                         >
                           {isLoading ? (
@@ -375,7 +404,7 @@ export default function IhalePage() {
                               <ExternalLink className="w-3.5 h-3.5" />
                             </>
                           )}
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   );
