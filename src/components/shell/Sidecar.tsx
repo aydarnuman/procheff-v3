@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ClipboardList,
   FileText,
+  LayoutDashboard,
   Menu,
   Settings,
   UploadCloud,
@@ -25,6 +26,7 @@ type NavItem = {
 };
 
 const NAV: NavItem[] = [
+  { label: "Merkez Yönetim", href: "/merkez-yonetim", icon: LayoutDashboard },
   {
     label: "Analiz Merkezi",
     href: "/analysis",
