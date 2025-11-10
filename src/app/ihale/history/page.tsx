@@ -44,24 +44,21 @@ interface IhaleHistoryItem {
 
 export default function IhaleHistoryPage() {
   const router = useRouter();
-  const [history, setHistory] = useState<IhaleHistoryItem[]>([]);
   const [loadingItemId, setLoadingItemId] = useState<string | null>(null);
 
-  useEffect(() => {
-    // TODO: Fetch from /api/ihale/history
-    const testDate = new Date();
-    testDate.setDate(testDate.getDate() + 3); // 3 gün sonrası (test için)
+  // TODO: Fetch from /api/ihale/history
+  const testDate = new Date();
+  testDate.setDate(testDate.getDate() + 3); // 3 gün sonrası (test için)
 
-    setHistory([
-      {
-        id: '1',
-        filename: 'ihale-2025-001.pdf',
-        status: 'completed',
-        created_at: new Date().toISOString(),
-        ihale_tarihi: testDate.toISOString(),
-      },
-    ]);
-  }, []);
+  const [history] = useState<IhaleHistoryItem[]>([
+    {
+      id: '1',
+      filename: 'ihale-2025-001.pdf',
+      status: 'completed',
+      created_at: new Date().toISOString(),
+      ihale_tarihi: testDate.toISOString(),
+    },
+  ]);
 
   return (
     <div className="min-h-screen p-4 md:p-6">

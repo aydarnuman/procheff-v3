@@ -25,9 +25,10 @@ export async function ihbLogin() {
 
     console.log('[İHALE] Login successful, session ID:', j.sessionId);
     return j.sessionId;
-  } catch (error: any) {
-    console.error('[İHALE] Worker connection failed:', error.message);
-    throw new Error(`İhale worker bağlantısı başarısız: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[İHALE] Worker connection failed:', message);
+    throw new Error(`İhale worker bağlantısı başarısız: ${message}`);
   }
 }
 
@@ -46,9 +47,10 @@ export async function ihbList(sessionId: string) {
 
     console.log('[İHALE] Tender list received:', j.items?.length || 0, 'items');
     return j.items;
-  } catch (error: any) {
-    console.error('[İHALE] List request failed:', error.message);
-    throw new Error(`İhale listesi alınamadı: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[İHALE] List request failed:', message);
+    throw new Error(`İhale listesi alınamadı: ${message}`);
   }
 }
 
@@ -67,9 +69,10 @@ export async function ihbDetail(sessionId: string, id: string) {
 
     console.log('[İHALE] Tender detail received for ID:', id);
     return j;
-  } catch (error: any) {
-    console.error('[İHALE] Detail request failed:', error.message);
-    throw new Error(`İhale detayı alınamadı: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[İHALE] Detail request failed:', message);
+    throw new Error(`İhale detayı alınamadı: ${message}`);
   }
 }
 

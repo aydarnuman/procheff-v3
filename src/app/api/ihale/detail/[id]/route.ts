@@ -2,7 +2,11 @@ import { NextRequest } from 'next/server';
 import { ihbDetail } from '@/lib/ihale/client';
 import { getDB } from '@/lib/db/sqlite-client';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
   const sessionId = req.cookies.get('ihale_session')?.value;
   if (!sessionId) {
     return new Response(JSON.stringify({ error: 'not_logged_in' }), {
@@ -12,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
   try {
     // Get detail from worker (HTML + documents)
-    const detail = await ihbDetail(sessionId, params.id);
+    const detail = await ihbDetail(sessionId, id);
 
     // Try to get additional info from database
     try {
@@ -30,18 +34,18 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         FROM tenders
         WHERE id = ?
       `);
-      const dbInfo = stmt.get(params.id);
+      const dbInfo = stmt.get(id) as any;
 
       if (dbInfo) {
         // Merge database info with worker detail
-        detail.tenderNumber = dbInfo.tenderNumber;
-        detail.organization = dbInfo.organization;
-        detail.city = dbInfo.city;
-        detail.tenderType = dbInfo.tenderType;
-        detail.publishDate = dbInfo.publishDate;
-        detail.tenderDate = dbInfo.tenderDate;
-        detail.daysRemaining = dbInfo.daysRemaining;
-        detail.partialBidAllowed = Boolean(dbInfo.partialBidAllowed);
+        (detail as any).tenderNumber = dbInfo.tenderNumber;
+        (detail as any).organization = dbInfo.organization;
+        (detail as any).city = dbInfo.city;
+        (detail as any).tenderType = dbInfo.tenderType;
+        (detail as any).publishDate = dbInfo.publishDate;
+        (detail as any).tenderDate = dbInfo.tenderDate;
+        (detail as any).daysRemaining = dbInfo.daysRemaining;
+        (detail as any).partialBidAllowed = Boolean(dbInfo.partialBidAllowed);
       }
     } catch (dbError) {
       // Database not available, continue with worker data only

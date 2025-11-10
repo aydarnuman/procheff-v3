@@ -125,7 +125,7 @@ export function getActiveTenders(filters?: {
     WHERE status = 'active'
   `;
 
-  const params: any[] = [];
+  const params: (string | number)[] = [];
 
   if (filters?.city) {
     query += ` AND city = ?`;
@@ -145,10 +145,10 @@ export function getActiveTenders(filters?: {
   query += ` ORDER BY days_remaining ASC, tender_date ASC`;
 
   const stmt = db.prepare(query);
-  const rows = stmt.all(...params);
+  const rows = stmt.all(...params) as Record<string, unknown>[];
 
   // Convert partialBidAllowed from INTEGER to boolean
-  return rows.map((row: any) => ({
+  return rows.map((row) => ({
     ...row,
     partialBidAllowed: Boolean(row.partialBidAllowed),
   }));
