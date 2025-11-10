@@ -4,7 +4,8 @@
 
 ## ✨ Özellikler
 
-- ⚡ **Auto-Pipeline Orchestrator** - Tek tıkla uçtan uca otomatik analiz (NEW!)
+- ⚡ **Auto-Pipeline Orchestrator** - Tek tıkla uçtan uca otomatik analiz
+- 🔄 **Pipeline State Management** - Zustand ile veri kaybı önleme (NEW!)
 - 🧠 **Claude Sonnet 4.5 Entegrasyonu** - Akıllı ihale analizi
 - 📄 **OCR + Document Processing** - Gemini Vision ile PDF/DOCX analizi
 - 💰 **AI Cost Analysis Engine** - Maliyet hesaplama ve optimizasyon
@@ -21,6 +22,7 @@
 - 🔍 **Log Viewer** - Web-based log görüntüleme arayüzü
 - 📊 **Monitoring Dashboard** - Real-time metrik ve grafik izleme
 - 📄 **Report Export** - PDF & Excel raporlama
+- 📊 **Pipeline Progress Tracking** - Visual step indicators (NEW!)
 
 ## 🚀 Quick Start
 
@@ -113,7 +115,8 @@ src/
 │   └── ui/                    # 🆕 UI components
 │       └── card.tsx
 └── store/
-    └── useAnalysisStore.ts    # Zustand state management
+    ├── useAnalysisStore.ts    # Zustand state management
+    └── usePipelineStore.ts    # Pipeline state with persistence (NEW!)
 ```
 
 ## 🧪 API Usage
@@ -557,6 +560,7 @@ Detaylı bilgi için: [COMMAND-PALETTE.md](./COMMAND-PALETTE.md)
 
 | Document                                             | Description                        |
 | ---------------------------------------------------- | ---------------------------------- |
+| [🔄 Pipeline State Guide](./PIPELINE-GUIDE.md)       | State management & data persistence (NEW!) |
 | [⚡ Auto-Pipeline v2](./AUTO-PIPELINE.md)            | Automated end-to-end analysis      |
 | [⌨️ Command Palette](./COMMAND-PALETTE.md)           | Keyboard shortcuts and AI commands |
 | [💰 Cost Analysis](./COST-ANALYSIS.md)               | AI cost calculation engine         |
@@ -564,6 +568,7 @@ Detaylı bilgi için: [COMMAND-PALETTE.md](./COMMAND-PALETTE.md)
 | [📝 AI Logger](./AI-LOGGER-README.md)                | Logging system and monitoring      |
 | [📊 Monitoring Dashboard](./MONITORING-DASHBOARD.md) | Real-time metrics and graphs       |
 | [📄 Report Export](./REPORT-EXPORT.md)               | PDF & Excel generation             |
+| [📋 Changelog](./CHANGELOG.md)                       | Version history & updates (NEW!)   |
 
 ### Production Features
 

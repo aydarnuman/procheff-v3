@@ -7,6 +7,7 @@ import {
   Briefcase,
   ChevronDown,
   ClipboardList,
+  DollarSign,
   FileText,
   LayoutDashboard,
   Menu,
@@ -36,7 +37,15 @@ const NAV: NavItem[] = [
       { label: "Geçmiş", href: "/analysis/history", icon: FileText },
     ]
   },
-  { label: "Menü Parser", href: "/menu-parser", icon: Utensils },
+  {
+    label: "Maliyet Yönetimi",
+    href: "/cost-analysis",
+    icon: DollarSign,
+    children: [
+      { label: "Menü Parser", href: "/menu-parser", icon: Utensils },
+      { label: "Maliyet Analizi", href: "/cost-analysis", icon: DollarSign },
+    ]
+  },
   { label: "İhale", href: "/ihale", icon: ClipboardList },
   { label: "Raporlar", href: "/reports", icon: FileText },
   { label: "Monitoring", href: "/monitor", icon: BarChart4 },

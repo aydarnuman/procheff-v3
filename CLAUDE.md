@@ -93,7 +93,17 @@ src/lib/utils/logging.py # Python logging utility
 src/app/globals.css     # Glassmorphism theme system
 src/components/
 ├── ui/                 # Base UI components
+│   ├── PipelineProgress.tsx # Pipeline progress indicator
+│   ├── LoadingState.tsx     # Unified loading component
+│   ├── ErrorState.tsx       # Unified error component
+│   └── EmptyState.tsx       # Empty state with actions
 └── shell/              # Navigation, user menu
+```
+
+### State Management ⭐ NEW!
+```
+src/store/
+└── usePipelineStore.ts # Centralized pipeline state (Zustand + persist)
 ```
 
 ## 🎨 Theme System (globals.css)
@@ -315,23 +325,67 @@ DATABASE_URL=./procheff.db
 - **Deployment**: `DIGITALOCEAN-SETUP.md`
 - **AI Logger**: `AI-LOGGER-README.md`
 - **Python Logging**: `PYTHON-LOGGING.md`
-- **İhalebul Integration**: `docs/IHALEBUL-INTEGRATION.md` ⭐ NEW!
-- **İhalebul Quick Start**: `IHALEBUL-QUICKSTART.md` ⭐ NEW!
+- **İhalebul Integration**: `docs/IHALEBUL-INTEGRATION.md`
+- **İhalebul Quick Start**: `IHALEBUL-QUICKSTART.md`
+- **Pipeline State Guide**: `PIPELINE-GUIDE.md` ⭐ NEW!
+- **Changelog**: `CHANGELOG.md` ⭐ NEW!
 
 ## 🎯 Current Status
 
 - ✅ **Core Pipeline**: Upload → Parse → Analyze → Decide → Report
+- ✅ **Pipeline State Management**: Zustand store with localStorage persistence ⭐ NEW!
+- ✅ **Data Loss Prevention**: Automatic data transfer between pipeline steps ⭐ NEW!
+- ✅ **UI Consistency**: Unified loading, error, and empty state components ⭐ NEW!
 - ✅ **Authentication**: NextAuth v5 with RBAC
 - ✅ **Monitoring**: Real-time metrics dashboard
 - ✅ **OCR Integration**: Gemini 2.0 Vision for PDFs
 - ✅ **Export System**: PDF/Excel report generation
 - ✅ **Python Logging**: Cross-language logging utility
 - ✅ **İhalebul Integration**: Automated tender scraping (Playwright + Cheerio)
-- ✅ **Tender Export System**: CSV/JSON/TXT export with beautiful formatting ⭐ NEW!
-- ✅ **SPA Spinner Handling**: Network monitoring + smart content waiting ⭐ NEW!
-- ✅ **Database Caching**: SQLite-backed tender persistence for fast page loads ⭐ NEW!
+- ✅ **Tender Export System**: CSV/JSON/TXT export with beautiful formatting
+- ✅ **SPA Spinner Handling**: Network monitoring + smart content waiting
+- ✅ **Database Caching**: SQLite-backed tender persistence for fast page loads
 
-## 🆕 Latest Features (10 Kasım 2025)
+## 🆕 Latest Features (11 Kasım 2025)
+
+### 🔄 Pipeline State Management ⭐ NEW!
+Centralized state management prevents data loss between pipeline steps:
+
+**Store Structure:**
+```typescript
+interface PipelineState {
+  // Current step tracking
+  currentStep: PipelineStep;
+  completedSteps: PipelineStep[];
+
+  // Pipeline data
+  selectedTender: Tender | null;
+  menuData: MenuItem[] | null;
+  costAnalysis: CostAnalysisResult | null;
+  decision: DecisionResult | null;
+
+  // Actions
+  startNewPipeline: (tender: Tender) => void;
+  updateMenuData: (data: MenuItem[]) => void;
+  updateCostAnalysis: (analysis: CostAnalysisResult) => void;
+  updateDecision: (decision: DecisionResult) => void;
+  resetPipeline: () => void;
+}
+```
+
+**Features:**
+- **Automatic data persistence** with localStorage
+- **Cross-page data sharing** without prop drilling
+- **Progress tracking** with visual indicators
+- **One-click pipeline reset** for new analysis
+
+**Usage:**
+```typescript
+import { usePipelineStore } from "@/store/usePipelineStore";
+
+// In any component
+const { selectedTender, menuData, updateCostAnalysis } = usePipelineStore();
+```
 
 ### 📦 Multi-Format Tender Export
 Export all tenders in three formats:
@@ -377,5 +431,5 @@ await page.waitForFunction(`() => {
 ---
 
 **AI Model**: Claude Sonnet 4.5 (claude-sonnet-4-20250514)
-**Last Updated**: 10 Kasım 2025
-**Status**: ✅ Production Ready
+**Last Updated**: 11 Kasım 2025
+**Status**: ✅ Production Ready with Enhanced Pipeline Management

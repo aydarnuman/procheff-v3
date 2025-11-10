@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server';
-import { ihbDetail } from '@/lib/ihale/client';
+import { NextRequest, NextResponse } from 'next/server';
+import { ihbDetail, ihbLogin } from '@/lib/ihale/client';
 import { getDB } from '@/lib/db/sqlite-client';
 
 export async function GET(
@@ -7,16 +7,29 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const sessionId = req.cookies.get('ihale_session')?.value;
+  let sessionId = req.cookies.get('ihale_session')?.value;
+
+  // If no session, try to login first
   if (!sessionId) {
-    return new Response(JSON.stringify({ error: 'not_logged_in' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    try {
+      console.log('[API] No session found, attempting login...');
+      sessionId = await ihbLogin();
+
+      // Session ID is now guaranteed to be defined after successful login
+    } catch (loginError) {
+      console.error('[API] Login failed:', loginError);
+      return new Response(JSON.stringify({
+        error: 'login_failed',
+        message: 'İhalebul.com\'a giriş yapılamadı. Lütfen tekrar deneyin.'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
   }
   try {
     // Get detail from worker (HTML + documents)
-    const detail = await ihbDetail(sessionId, id);
+    const detail = await ihbDetail(sessionId!, id);
 
     // Try to get additional info from database
     try {
@@ -52,10 +65,53 @@ export async function GET(
       console.warn('Could not fetch from database:', dbError);
     }
 
-    return new Response(JSON.stringify(detail), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    // Create response with detail data
+    const response = NextResponse.json(detail);
+
+    // Update session cookie if we logged in
+    if (!req.cookies.get('ihale_session')?.value && sessionId) {
+      response.cookies.set('ihale_session', sessionId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24, // 24 hours
+      });
+    }
+
+    return response;
   } catch (e: any) {
+    console.error('[API] Error fetching tender detail:', e.message);
+
+    // If session expired, try to login again
+    if (e.message?.includes('session') || e.message?.includes('unauthorized')) {
+      try {
+        console.log('[API] Session expired, attempting re-login...');
+        const newSessionId = await ihbLogin();
+
+        // Retry with new session
+        const detail = await ihbDetail(newSessionId, id);
+
+        const response = NextResponse.json(detail);
+        response.cookies.set('ihale_session', newSessionId, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24,
+        });
+
+        return response;
+      } catch (retryError: any) {
+        console.error('[API] Retry failed:', retryError.message);
+        return new Response(JSON.stringify({
+          error: 'session_expired',
+          message: 'Oturum süresi doldu, lütfen sayfayı yenileyin.'
+        }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     return new Response(JSON.stringify({ error: e.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
