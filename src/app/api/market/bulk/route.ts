@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
         {
           ok: false,
           error: 'validation_error',
-          message: validation.error.errors[0].message,
+          message: validation.error.issues[0].message,
         },
         { status: 400 }
       );

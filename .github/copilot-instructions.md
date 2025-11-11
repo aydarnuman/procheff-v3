@@ -383,6 +383,32 @@ Visual representation:
    ihale.json             menu.json              cost.json             decision.json            Download
 ```
 
+### 📊 3-Tab Analysis System (NEW!)
+
+The analysis results are displayed in a simplified 3-tab structure:
+
+1. **Veri Havuzu Tab** (Data Pool)
+   - Ham Veri sub-tab: Basic info, dates, documents, details with source tracking
+   - Tablolar sub-tab: Auto-categorized tables (menu/green, cost/blue, personnel/purple, technical/orange)
+
+2. **Bağlamsal Analiz Tab** (Contextual Analysis)
+   - Operational risks assessment
+   - Cost deviation probability
+   - Time suitability evaluation
+   - Personnel and equipment requirements
+
+3. **Derin Analiz Tab** (Deep Analysis)
+   - Prerequisites check (requires contextual + market)
+   - AI-powered strategic recommendations
+   - Confidence-scored decision making
+
+**Key Components:**
+- `src/lib/analysis/helpers.ts` - Data extraction and categorization functions
+- `src/components/analysis/RawDataView.tsx` - Raw data organized display
+- `src/components/analysis/TablesView.tsx` - Categorized table viewer
+- `src/components/analysis/TableFullScreenModal.tsx` - Full-screen table modal
+- `src/app/analysis/[id]/page.tsx` - 3-tab analysis page
+
 ### Pipeline Stages
 
 **Stage 0: İhale Upload + OCR** (`/api/ihale/upload`) **[PHASE 6 - NEW!]**

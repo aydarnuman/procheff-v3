@@ -1,2 +1,0 @@
-2025-11-10 19:05:15 | INFO    | api_handler | API request received {"method": "POST", "endpoint": "/api/ai/cost-analysis", "user_id": "user_123", "request_size": 1024}
-2025-11-10 19:05:15 | INFO    | api_handler | API response sent {"status_code": 200, "response_time_ms": 450, "tokens_used": 250}

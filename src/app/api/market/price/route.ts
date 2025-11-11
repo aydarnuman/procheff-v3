@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PriceRequestSchema } from '@/lib/market/schema';
+import type { MarketQuote } from '@/lib/market/schema';
 import { normalizeProductName } from '@/lib/market/normalize';
 import { tuikQuote } from '@/lib/market/provider/tuik';
 import { webQuote } from '@/lib/market/provider/web';
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
         {
           ok: false,
           error: 'validation_error',
-          message: validation.error.errors[0].message,
+          message: validation.error.issues[0].message,
         },
         { status: 400 }
       );
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     // Fuse quotes
-    let quotes = [qTuik, qWeb, qDb].filter(Boolean);
+    const quotes = [qTuik, qWeb, qDb].filter(Boolean) as MarketQuote[];
 
     // Try AI fallback if needed
     if (shouldUseAI(quotes)) {

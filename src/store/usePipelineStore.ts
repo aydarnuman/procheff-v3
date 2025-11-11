@@ -72,6 +72,7 @@ export interface PipelineState {
 
   // Actions
   setSelectedTender: (tender: Tender) => void;
+  updateSelectedTender: (tender: Partial<Tender>) => void;
   setMenuData: (data: MenuItem[]) => void;
   setCostAnalysis: (data: CostAnalysis) => void;
   setDecision: (data: Decision) => void;
@@ -120,6 +121,14 @@ export const usePipelineStore = create<PipelineState>()(
           completedSteps: state.completedSteps.includes(PIPELINE_STEPS.TENDER_SELECT)
             ? state.completedSteps
             : [...state.completedSteps, PIPELINE_STEPS.TENDER_SELECT],
+        })),
+
+      updateSelectedTender: (tenderUpdate) =>
+        set((state) => ({
+          selectedTender: state.selectedTender
+            ? { ...state.selectedTender, ...tenderUpdate }
+            : null,
+          lastUpdated: new Date().toISOString(),
         })),
 
       setMenuData: (data) =>

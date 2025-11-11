@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ExternalLink, Loader2, RefreshCw, Database, Cloud, Download, FileText, FileSpreadsheet, FileJson } from 'lucide-react';
+import { ExternalLink, Loader2, RefreshCw, Database, Cloud, Download, FileText, FileSpreadsheet, FileJson, BarChart3 } from 'lucide-react';
 import { usePipelineStore } from '@/store/usePipelineStore';
 
 // Gün farkı hesaplama
@@ -372,39 +372,54 @@ export default function IhalePage() {
                         </div>
                       </td>
                       <td className="px-2 py-2 text-right">
-                        <button
-                          onClick={() => {
-                            setLoadingItemId(item.id);
-                            // Pipeline'ı başlat ve detay sayfasına git
-                            startNewPipeline({
-                              id: item.id,
-                              tenderNumber: item.tenderNumber || item.tender_number || '',
-                              title: item.title || '',
-                              organization: item.organization || item.kurum || item.kurumAdi || '',
-                              city: item.city || item.sehir || item.il || '',
-                              tenderType: item.tenderType || item.tender_type || '',
-                              partialBidAllowed: item.partialBidAllowed || item.partial_bid_allowed || false,
-                              publishDate: item.publishDate || item.publish_date || '',
-                              tenderDate: tenderDate || '',
-                              daysRemaining: daysRemaining,
-                              url: item.url || ''
-                            });
-                            router.push(`/ihale/${item.id}`);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 rounded-lg border border-indigo-500/30 hover:border-indigo-500/50 transition-all duration-200 disabled:opacity-50"
-                        >
-                          {isLoading ? (
-                            <>
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              <span className="text-xs font-medium">Yükleniyor...</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-xs font-medium">Detay</span>
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </>
-                          )}
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Analysis Button */}
+                          <button
+                            onClick={() => {
+                              router.push(`/analysis/${item.id}`);
+                            }}
+                            title="3-Tab Analizi Görüntüle"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg border border-green-500/30 hover:border-green-500/50 transition-all duration-200"
+                          >
+                            <BarChart3 className="w-3.5 h-3.5" />
+                            <span className="text-xs font-medium">Analiz</span>
+                          </button>
+
+                          {/* Detail Button */}
+                          <button
+                            onClick={() => {
+                              setLoadingItemId(item.id);
+                              // Pipeline'ı başlat ve detay sayfasına git
+                              startNewPipeline({
+                                id: item.id,
+                                tenderNumber: item.tenderNumber || item.tender_number || '',
+                                title: item.title || '',
+                                organization: item.organization || item.kurum || item.kurumAdi || '',
+                                city: item.city || item.sehir || item.il || '',
+                                tenderType: item.tenderType || item.tender_type || '',
+                                partialBidAllowed: item.partialBidAllowed || item.partial_bid_allowed || false,
+                                publishDate: item.publishDate || item.publish_date || '',
+                                tenderDate: tenderDate || '',
+                                daysRemaining: daysRemaining,
+                                url: item.url || ''
+                              });
+                              router.push(`/ihale/${item.id}`);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 rounded-lg border border-indigo-500/30 hover:border-indigo-500/50 transition-all duration-200 disabled:opacity-50"
+                          >
+                            {isLoading ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span className="text-xs font-medium">Yükleniyor...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-xs font-medium">Detay</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

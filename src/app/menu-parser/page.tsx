@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileText, ChevronRight } from "lucide-react";
 import { usePipelineStore, PIPELINE_STEPS } from "@/store/usePipelineStore";
+import { PipelineNavigator } from "@/components/ui/PipelineNavigator";
 
 interface MenuItem {
   yemek: string;
@@ -83,6 +84,21 @@ export default function MenuParserPage() {
   return (
     <div className="min-h-screen p-6 md:p-8">
       <div className="max-w-6xl mx-auto">
+        {/* Selected Tender Info */}
+        {selectedTender && (
+          <div className="glass-card p-4 mb-6 bg-gradient-to-r from-indigo-500/10 to-transparent border-indigo-500/30">
+            <div className="flex items-center gap-3">
+              <FileText className="w-5 h-5 text-indigo-400" />
+              <div className="flex-1">
+                <p className="text-sm text-slate-400">Seçili İhale</p>
+                <p className="font-medium text-white">
+                  {(selectedTender as any).kurum || selectedTender.organization} - {(selectedTender as any).ihale_no || selectedTender.id}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Progress Bar */}
         <div className="mb-6">
           <div className="flex items-center justify-between text-sm text-slate-400 mb-2">
@@ -361,6 +377,36 @@ export default function MenuParserPage() {
             </div>
           </div>
         )}
+
+        {/* Pipeline Navigation */}
+        <div className="mt-8">
+          <PipelineNavigator
+            currentStep="menu"
+            enableNext={result?.success && result?.data && result.data.length > 0}
+            onNext={() => {
+              if (result?.data) {
+                setMenuData(result.data);
+                markStepCompleted(PIPELINE_STEPS.MENU_UPLOAD);
+                router.push('/cost-analysis');
+              }
+            }}
+          />
+
+          {/* Quick Action to Cost Analysis */}
+          {result?.success && result?.data && (
+            <button
+              onClick={() => {
+                setMenuData(result.data!);
+                markStepCompleted(PIPELINE_STEPS.MENU_UPLOAD);
+                router.push('/cost-analysis');
+              }}
+              className="w-full mt-4 px-6 py-3 btn-gradient rounded-lg font-medium flex items-center justify-center gap-2"
+            >
+              <ChevronRight className="w-5 h-5" />
+              Maliyet Analizine Geç
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

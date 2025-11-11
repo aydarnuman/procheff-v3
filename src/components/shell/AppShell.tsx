@@ -1,9 +1,9 @@
 "use client";
 
-import { CommandPalette } from "@/components/ui/CommandPalette";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { CommandPalette } from "@/components/ui/CommandPalette";
 import { usePathname } from "next/navigation";
-import { Sidecar } from "./Sidecar";
+import { ModernSidebar } from "./ModernSidebar";
 import { TopBar } from "./TopBar";
 
 interface AppShellProps {
@@ -26,20 +26,29 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <>
-      <Sidecar />
-      <div className="flex h-screen overflow-hidden">
-        <main className="flex-1 flex flex-col overflow-hidden md:pl-52">
+    <div className="relative min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950">
+      {/* Independent Sidebar - Full Height */}
+      <ModernSidebar />
+      
+      {/* Main Content Area - Responsive to sidebar state */}
+      <main className="transition-all duration-300 ease-out min-h-screen">
+        {/* TopBar - Independent from sidebar */}
+        <div className="relative z-30">
           <TopBar />
           <Breadcrumb />
-          <div className="flex-1 overflow-y-auto p-3 md:p-6 bg-linear-to-br from-transparent via-black/5 to-transparent">
-            <div className="max-w-[1600px] mx-auto">
-              {children}
-            </div>
+        </div>
+        
+        {/* Content Area */}
+        <div className="relative z-10 pt-28 px-4 md:px-8 pb-6 
+                        ml-0 md:ml-20 lg:ml-[280px] 
+                        transition-all duration-300">
+          <div className="max-w-[1600px] mx-auto">
+            {children}
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
+      
       <CommandPalette />
-    </>
+    </div>
   );
 }

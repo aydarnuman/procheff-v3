@@ -10,7 +10,22 @@
     "**/.next": true,
     "**/node_modules": true,
     "**/.git": true,
-    "**/procheff.db": false
+    "**/procheff.db": false,
+    // Hide build/config files
+    "**/next-env.d.ts": true,
+    "**/tsconfig.tsbuildinfo": true,
+    "**/.turbo": true,
+    // Hide deployment scripts (moved to scripts/)
+    "**/deploy-*.sh": true,
+    "**/install-doctl.sh": true,
+    "**/cloudbuild.yaml": true,
+    "**/docker-compose.*.yml": true,
+    // Hide logs folder
+    "**/logs": true,
+    // Hide examples (if not actively used)
+    "**/examples": true,
+    // Hide backup databases
+    "**/procheff.db.backup.*": true
   },
   "search.exclude": {
     "**/node_modules": true,

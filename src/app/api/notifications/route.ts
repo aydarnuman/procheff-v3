@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
 import {
   getNotifications,
   getUnreadCount,
-  markAsRead,
-  markAllAsRead
+  markAllAsRead,
+  markAsRead
 } from "@/lib/alerts/notifier";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +21,7 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const unreadOnly = searchParams.get("unread") === "true";
 
+    // Ensure database is accessible
     const notifications = getNotifications({ limit, unreadOnly });
     const unreadCount = getUnreadCount();
 
@@ -31,11 +32,16 @@ export async function GET(req: Request) {
       total: notifications.length
     });
   } catch (error) {
-    console.error("Failed to get notifications:", error);
+    console.error("Notifications API Error:", error);
+    
+    // Return a safe fallback response
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error"
+        error: error instanceof Error ? error.message : "Database connection failed",
+        notifications: [],
+        unreadCount: 0,
+        total: 0
       },
       { status: 500 }
     );

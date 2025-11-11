@@ -6,10 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { fadeInUp, scaleIn, staggerContainer } from "@/lib/animations";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Calculator, Info, Lightbulb, TrendingUp, ArrowLeft, ArrowRight } from "lucide-react";
+import { AlertTriangle, Calculator, Info, Lightbulb, TrendingUp, ArrowLeft, ArrowRight, FileText, CheckCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { usePipelineStore, PIPELINE_STEPS } from "@/store/usePipelineStore";
+import { PipelineNavigator } from "@/components/ui/PipelineNavigator";
 
 interface CostAnalysisResult {
   gunluk_kisi_maliyeti?: string;
@@ -54,15 +55,35 @@ export default function CostAnalysisPage() {
 
   // Store'dan gelen verileri kullan
   const [input, setInput] = useState({
-    kurum: selectedTender?.organization || "Milli Eğitim Bakanlığı",
-    ihale_turu: selectedTender?.tenderType || "Yemek Hizmeti",
-    kisilik: menuData?.[0]?.kisi?.toString() || "250",
-    butce: selectedTender?.budget || "500000 TL",
+    kurum: "",
+    ihale_turu: "",
+    kisilik: "",
+    butce: "",
   });
 
   useEffect(() => {
     setCurrentStep(PIPELINE_STEPS.COST_ANALYSIS);
-  }, [setCurrentStep]);
+
+    // Auto-fill from pipeline store
+    if (selectedTender) {
+      setInput(prev => ({
+        ...prev,
+        kurum: (selectedTender as any).kurum || selectedTender.organization || prev.kurum,
+        ihale_turu: (selectedTender as any).ihale_turu || selectedTender.tenderType || prev.ihale_turu,
+        butce: (selectedTender as any).butce || (selectedTender as any).budget || prev.butce,
+      }));
+    }
+
+    if (menuData && menuData.length > 0) {
+      const kisiSayisi = menuData[0]?.kisi || 0;
+      if (kisiSayisi > 0) {
+        setInput(prev => ({
+          ...prev,
+          kisilik: kisiSayisi.toString()
+        }));
+      }
+    }
+  }, [setCurrentStep, selectedTender, menuData]);
 
   async function analyze() {
     setLoading(true);
@@ -113,6 +134,26 @@ export default function CostAnalysisPage() {
             />
           </div>
         </div>
+
+        {/* Selected Tender and Menu Info */}
+        {selectedTender && (
+          <div className="glass-card p-4 mb-6 bg-gradient-to-r from-indigo-500/10 to-transparent border-indigo-500/30">
+            <div className="flex items-center gap-3">
+              <FileText className="w-5 h-5 text-indigo-400" />
+              <div className="flex-1">
+                <p className="text-sm text-slate-400">Seçili İhale</p>
+                <p className="font-medium text-white">
+                  {(selectedTender as any).kurum || selectedTender.organization} - {(selectedTender as any).ihale_no || selectedTender.id}
+                </p>
+                {menuData && menuData.length > 0 && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    {menuData.length} menü kalemi yüklendi • Toplam {menuData.reduce((sum, item) => sum + item.gramaj, 0).toLocaleString('tr-TR')} gram
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="flex items-center justify-between mb-6">
@@ -462,6 +503,36 @@ export default function CostAnalysisPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Pipeline Navigation */}
+        <div className="mt-8">
+          <PipelineNavigator
+            currentStep="cost"
+            enableNext={result?.success === true}
+            onNext={() => {
+              if (result) {
+                setCostAnalysis(result.data as any);
+                markStepCompleted(PIPELINE_STEPS.COST_ANALYSIS);
+                router.push('/decision');
+              }
+            }}
+          />
+
+          {/* Quick Action to Decision */}
+          {result?.success && (
+            <button
+              onClick={() => {
+                setCostAnalysis(result.data as any);
+                markStepCompleted(PIPELINE_STEPS.COST_ANALYSIS);
+                router.push('/decision');
+              }}
+              className="w-full mt-4 px-6 py-3 btn-gradient rounded-lg font-medium flex items-center justify-center gap-2"
+            >
+              <TrendingUp className="w-5 h-5" />
+              Karar Verme Aşamasına Geç
+            </button>
+          )}
+        </div>
       </div>
     </motion.div>
   );

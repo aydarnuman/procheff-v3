@@ -5,7 +5,10 @@
 ## ✨ Özellikler
 
 - ⚡ **Auto-Pipeline Orchestrator** - Tek tıkla uçtan uca otomatik analiz
-- 🔄 **Pipeline State Management** - Zustand ile veri kaybı önleme (NEW!)
+- 📊 **3-Tab Analysis System** - Veri Havuzu, Bağlamsal ve Derin Analiz (NEW!)
+- 🔄 **Pipeline State Management** - Zustand ile veri kaybı önleme
+- 📍 **Source Tracking** - Her veri noktasında dosya:sayfa referansı (NEW!)
+- 🎨 **Auto-Categorization** - Tablolar otomatik sınıflandırma (menü/maliyet/personel/teknik) (NEW!)
 - 🧠 **Claude Sonnet 4.5 Entegrasyonu** - Akıllı ihale analizi
 - 📄 **OCR + Document Processing** - Gemini Vision ile PDF/DOCX analizi
 - 💰 **AI Cost Analysis Engine** - Maliyet hesaplama ve optimizasyon
@@ -22,7 +25,7 @@
 - 🔍 **Log Viewer** - Web-based log görüntüleme arayüzü
 - 📊 **Monitoring Dashboard** - Real-time metrik ve grafik izleme
 - 📄 **Report Export** - PDF & Excel raporlama
-- 📊 **Pipeline Progress Tracking** - Visual step indicators (NEW!)
+- 📊 **Pipeline Progress Tracking** - Visual step indicators
 
 ## 🚀 Quick Start
 
@@ -86,6 +89,35 @@ npm run dev
 - Notifications Stream (SSE): http://localhost:3001/api/notifications/stream
 - Auth Register: http://localhost:3001/api/auth/register
 
+## 🎯 Analysis System
+
+Procheff-v3 features a sophisticated 3-tab analysis system designed for comprehensive tender evaluation:
+
+### 📊 Data Pool (Veri Havuzu)
+- **Raw Data View**: Organized display of all extracted entities with source tracking
+- **Tables View**: Auto-categorized tables (menu, cost, personnel, technical)
+- Every data point includes file:page reference for full traceability
+
+### 🧠 Contextual Analysis (Bağlamsal Analiz)
+- Operational risk assessment with scoring
+- Cost deviation probability analysis
+- Time suitability evaluation
+- Personnel and equipment requirements
+
+### 🤖 Deep Analysis (Derin Analiz)
+- AI-powered strategic recommendations
+- Requires contextual and market analysis completion
+- Confidence-scored decision making
+
+**Key Features:**
+- 📍 Source tracking on every data point
+- 🎨 Color-coded categorization
+- 📤 Export to CSV/Excel
+- 🔍 Full-text search across all data
+- 📱 Responsive design with glassmorphism theme
+
+See [Analysis System Documentation](./docs/ANALYSIS-SYSTEM.md) for detailed guide.
+
 ## 📁 Project Structure
 
 ```
@@ -94,29 +126,39 @@ src/
 │   ├── ai/
 │   │   ├── logger.ts          # AI Logger with SQLite
 │   │   ├── utils.ts           # JSON cleaner, token estimator
-│   │   ├── prompts.ts         # 🆕 AI prompt templates
+│   │   ├── prompts.ts         # AI prompt templates
 │   │   └── provider-factory.ts # Anthropic client factory
+│   ├── analysis/              # 🆕 Analysis helpers (NEW!)
+│   │   └── helpers.ts         # Data extraction and categorization
 │   └── db/
 │       └── sqlite-client.ts   # Database connection
 ├── app/
 │   ├── api/
 │   │   ├── ai/
 │   │   │   ├── deep-analysis/ # Claude AI endpoint
-│   │   │   └── cost-analysis/ # 🆕 Cost calculation
+│   │   │   └── cost-analysis/ # Cost calculation
 │   │   ├── logs/              # Log viewer API
-│   │   └── metrics/           # 🆕 Monitoring metrics API
+│   │   └── metrics/           # Monitoring metrics API
+│   ├── analysis/              # 🆕 3-Tab Analysis System (NEW!)
+│   │   └── [id]/
+│   │       └── page.tsx       # Analysis result page
 │   ├── logs/
 │   │   └── page.tsx           # Log viewer page
-│   └── monitor/               # 🆕 Monitoring dashboard
+│   └── monitor/               # Monitoring dashboard
 │       └── page.tsx
 ├── components/
-│   ├── analysis/
+│   ├── analysis/              # 🆕 Analysis components (NEW!)
+│   │   ├── RawDataView.tsx    # Raw data display
+│   │   ├── TablesView.tsx     # Categorized tables
+│   │   ├── TableFullScreenModal.tsx # Table modal
+│   │   ├── ContextualView.tsx # Risk analysis
 │   │   └── LogViewer.tsx      # Log UI component
-│   └── ui/                    # 🆕 UI components
+│   └── ui/                    # UI components
 │       └── card.tsx
 └── store/
-    ├── useAnalysisStore.ts    # Zustand state management
-    └── usePipelineStore.ts    # Pipeline state with persistence (NEW!)
+    ├── analysisStore.ts       # 🆕 Analysis results store (NEW!)
+    ├── useAnalysisStore.ts    # Legacy analysis state
+    └── usePipelineStore.ts    # Pipeline state with persistence
 ```
 
 ## 🧪 API Usage

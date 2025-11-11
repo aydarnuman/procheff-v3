@@ -14,6 +14,7 @@ import { AlertCircle, AlertTriangle, Brain, Calendar, CheckCircle, DollarSign, F
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { usePipelineStore, PIPELINE_STEPS } from "@/store/usePipelineStore";
+import { PipelineNavigator } from "@/components/ui/PipelineNavigator";
 
 interface DecisionData {
   karar: "Katıl" | "Katılma" | "Dikkatli Katıl";
@@ -178,6 +179,26 @@ export default function DecisionPage() {
             />
           </div>
         </div>
+
+        {/* Selected Tender and Cost Analysis Info */}
+        {selectedTender && (
+          <div className="glass-card p-4 mb-6 bg-gradient-to-r from-indigo-500/10 to-transparent border-indigo-500/30">
+            <div className="flex items-center gap-3">
+              <FileText className="w-5 h-5 text-indigo-400" />
+              <div className="flex-1">
+                <p className="text-sm text-slate-400">Seçili İhale</p>
+                <p className="font-medium text-white">
+                  {(selectedTender as any).kurum || selectedTender.organization} - {(selectedTender as any).ihale_no || selectedTender.id}
+                </p>
+                {costAnalysis && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    Maliyet Analizi: {costAnalysis.gunluk_kisi_maliyeti || 'Tamamlandı'} • Karlılık: {costAnalysis.onerilen_karlilik_orani || '%7.5'}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="flex items-center justify-between mb-6">
@@ -550,6 +571,36 @@ export default function DecisionPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Pipeline Navigation */}
+        <div className="mt-8">
+          <PipelineNavigator
+            currentStep="decision"
+            enableNext={decision?.success === true && decision?.data !== undefined}
+            onNext={() => {
+              if (decision?.data) {
+                saveDecision(decision.data as any);
+                markStepCompleted(PIPELINE_STEPS.DECISION);
+                router.push('/reports');
+              }
+            }}
+          />
+
+          {/* Quick Action to Reports */}
+          {decision?.success && decision?.data && (
+            <button
+              onClick={() => {
+                saveDecision(decision.data as any);
+                markStepCompleted(PIPELINE_STEPS.DECISION);
+                router.push('/reports');
+              }}
+              className="w-full mt-4 px-6 py-3 btn-gradient rounded-lg font-medium flex items-center justify-center gap-2"
+            >
+              <FileText className="w-5 h-5" />
+              Rapor ve Teklif Hazırla
+            </button>
+          )}
+        </div>
       </div>
     </motion.div>
   );

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ihbDetail, ihbLogin } from '@/lib/ihale/client';
 import { getDB } from '@/lib/db/sqlite-client';
+import { rewriteForIframe } from '@/lib/ihale/rewrite-for-iframe';
+import { sanitizeForSnapshot } from '@/lib/ihale/html-sanitize';
+import { parseTenderHTML, formatParsedData } from '@/lib/utils/html-parser';
+import { parseTenderHTMLWithAI } from '@/lib/ai/parse-tender-html';
 
 export async function GET(
   req: NextRequest,
@@ -30,6 +34,33 @@ export async function GET(
   try {
     // Get detail from worker (HTML + documents)
     const detail = await ihbDetail(sessionId!, id);
+
+    // Process HTML in different formats
+    if (detail.html) {
+      // 1. Raw HTML (original)
+      detail.html_raw = detail.html;
+
+      // 2. Rewritten HTML for iframe (pixel-perfect)
+      detail.html_iframe = rewriteForIframe(detail.html);
+
+      // 3. Sanitized HTML for snapshot mode
+      detail.html_snapshot = sanitizeForSnapshot(detail.html);
+
+      // 4. AI-powered parsing (structured data)
+      const aiParsed = await parseTenderHTMLWithAI(detail.html);
+      if (aiParsed) {
+        detail.ai_parsed = aiParsed;
+        detail.parsed_sections = aiParsed.sections;
+      } else {
+        // Fallback to basic parsing
+        const parsed = parseTenderHTML(detail.html);
+        detail.html_formatted = formatParsedData(parsed);
+        detail.parsed_sections = parsed.sections;
+      }
+
+      // Keep original for backward compatibility
+      detail.html = detail.html_formatted || detail.html;
+    }
 
     // Try to get additional info from database
     try {

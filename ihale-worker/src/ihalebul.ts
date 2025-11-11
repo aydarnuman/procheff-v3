@@ -244,7 +244,7 @@ function parseList(html: string) {
 
 function extractDocuments(html: string) {
   const $ = cheerio.load(html);
-  const docs: { title: string; url: string }[] = [];
+  const docs: { title: string; url: string; filename?: string; fileType?: string }[] = [];
 
   // Doküman linklerini bul
   $('a[href*="downloadfile"], a[href*="/download/"], a[href*=".pdf"], a[href*=".docx"]').each((_, a) => {
@@ -254,7 +254,40 @@ function extractDocuments(html: string) {
     const title = $(a).text().trim() || $(a).attr('title') || 'Doküman';
     const absoluteUrl = href.startsWith('http') ? href : `${BASE}${href}`;
 
-    docs.push({ title, url: absoluteUrl });
+    // Extract filename and type from URL or hash parameter
+    let filename = '';
+    let fileType = '';
+
+    try {
+      const url = new URL(absoluteUrl);
+      const hash = url.searchParams.get('hash');
+
+      if (hash) {
+        // Decode base64 hash (e.g., ekap://2025/25DT1965815.cetvel.docx -> 25DT1965815.cetvel.docx)
+        const decoded = Buffer.from(hash, 'base64').toString('utf-8');
+        const filenameMatch = decoded.match(/([^/]+\.(pdf|docx?|xlsx?|txt|zip|rar))$/i);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+          fileType = filenameMatch[2].toUpperCase();
+        }
+      } else {
+        // Fallback: try to extract from URL path
+        const urlMatch = href.match(/\.([a-z0-9]+)(\?|$)/i);
+        if (urlMatch) {
+          fileType = urlMatch[1].toUpperCase();
+          filename = title.replace(/[^a-z0-9\s]/gi, '_') + '.' + urlMatch[1];
+        }
+      }
+    } catch (e) {
+      // Ignore errors, filename will remain empty
+    }
+
+    docs.push({
+      title,
+      url: absoluteUrl,
+      filename: filename || undefined,
+      fileType: fileType || undefined
+    });
   });
 
   console.log(`📄 Found ${docs.length} documents`);
@@ -463,8 +496,32 @@ export function mountIhalebul(app: express.Express) {
       const contentType = response.headers()['content-type'] || 'application/octet-stream';
       res.setHeader('Content-Type', contentType);
 
-      // Filename from URL
-      const filename = targetUrl.split('/').pop() || 'document';
+      // Extract filename from hash parameter if available
+      let filename = 'document';
+      try {
+        const url = new URL(targetUrl);
+        const hash = url.searchParams.get('hash');
+
+        if (hash) {
+          // Decode base64 hash (e.g., ekap://2025/2025.1745912.idari.zip)
+          const decoded = Buffer.from(hash, 'base64').toString('utf-8');
+          console.log('[Proxy] Decoded hash:', decoded);
+
+          const filenameMatch = decoded.match(/([^/]+\.(pdf|docx?|xlsx?|txt|zip|rar))$/i);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+            console.log('[Proxy] Extracted filename:', filename);
+          }
+        } else {
+          // Fallback: try to get from URL path
+          const pathParts = url.pathname.split('/');
+          filename = pathParts[pathParts.length - 1] || 'document';
+        }
+      } catch (e) {
+        console.error('[Proxy] Filename extraction error:', e);
+        filename = 'document';
+      }
+
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
       res.send(Buffer.from(buffer));

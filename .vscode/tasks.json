@@ -42,6 +42,259 @@
       "type": "shell",
       "command": "npm run lint",
       "problemMatcher": ["$eslint-stylish"]
+    },
+    {
+      "label": "� Fresh Start",
+      "type": "shell",
+      "command": "./scripts/fresh-start.sh",
+      "args": ["--quick"],
+      "group": "build",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "�🚀 Procheff Menu",
+      "type": "shell",
+      "command": "./scripts/menu.sh",
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "📊 System Monitor",
+      "type": "shell", 
+      "command": "./scripts/monitor.sh",
+      "args": ["all"],
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "📈 Live Monitor", 
+      "type": "shell",
+      "command": "./scripts/monitor.sh",
+      "args": ["live"],
+      "isBackground": true,
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "📋 Git Status",
+      "type": "shell",
+      "command": "./scripts/git-helpers.sh",
+      "args": ["status"],
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "💾 Quick Commit",
+      "type": "shell",
+      "command": "./scripts/git-helpers.sh",
+      "args": ["commit", "${input:commitMessage}"],
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "🌟 New Feature Branch",
+      "type": "shell",
+      "command": "./scripts/git-helpers.sh", 
+      "args": ["feature", "${input:featureName}"],
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "🔄 Merge Feature",
+      "type": "shell",
+      "command": "./scripts/git-helpers.sh",
+      "args": ["merge-feature"],
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "🔧 Development Setup",
+      "type": "shell",
+      "command": "./scripts/dev-utils.sh",
+      "args": ["setup"],
+      "group": "build",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "🧹 Clean Cache",
+      "type": "shell",
+      "command": "./scripts/dev-utils.sh",
+      "args": ["clean"],
+      "group": "build",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "🗄️ Reset Database",
+      "type": "shell",
+      "command": "./scripts/dev-utils.sh",
+      "args": ["db-reset"],
+      "group": "build",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "💾 Project Backup",
+      "type": "shell",
+      "command": "./scripts/dev-utils.sh",
+      "args": ["backup"],
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "📋 View Logs",
+      "type": "shell",
+      "command": "./scripts/dev-utils.sh",
+      "args": ["logs"],
+      "isBackground": true,
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "🐳 Docker Build",
+      "type": "shell",
+      "command": "./scripts/docker-build.sh",
+      "group": "build",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "🚀 Deploy Production",
+      "type": "shell",
+      "command": "./scripts/deploy-digitalocean.sh",
+      "args": ["production"],
+      "group": "build",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "🎯 Deploy Staging", 
+      "type": "shell",
+      "command": "./scripts/deploy-digitalocean.sh",
+      "args": ["staging"],
+      "group": "build",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "⚙️ Terminal Setup",
+      "type": "shell",
+      "command": "./scripts/terminal-setup.sh",
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "commitMessage",
+      "description": "Commit message",
+      "default": "Quick update",
+      "type": "promptString"
+    },
+    {
+      "id": "featureName", 
+      "description": "Feature branch name",
+      "default": "new-feature",
+      "type": "promptString"
     }
   ]
 }

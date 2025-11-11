@@ -8,33 +8,52 @@
 
 @layer theme {
   :root {
-    /* ========== CHARCOAL LUXURY PALETTE ========== */
-    /* Base Colors */
-    --color-base: #0A0A0A;           /* Near black */
-    --color-surface: #141414;        /* Charcoal */
-    --color-card: #1E1E1E;           /* Elevated charcoal */
-    --color-elevated: #252525;       /* Highest elevation */
-    --color-border: #2D2D2D;         /* Soft edge */
-    --color-border-bright: #404040;  /* Hover borders */
+    /* ========== PREMIUM DARK SURFACES (Material 3 + Fluent) ========== */
+    /* Ton-based surfaces - depth hierarchy */
+    --surface-0: #0A0F1C;            /* Page background - deepest */
+    --surface-1: #16181F;            /* Sidebar body */
+    --surface-2: #1E212A;            /* Active menu / hover panel */
+    --surface-overlay: rgba(99, 102, 241, 0.08); /* Tonal overlay */
 
-    /* Text Colors */
-    --color-text-primary: #E0E0E0;   /* Platinum white */
-    --color-text-secondary: #A0A0A0; /* Medium gray */
-    --color-text-tertiary: #707070;  /* Subtle gray */
-    --color-text-inverted: #0A0A0A;  /* For light backgrounds */
+    /* ========== SOFT DARK PALETTE ========== */
+    /* Base Colors - Yumuşak koyu gri tonları */
+    --color-base: #1a1d29;           /* Ana arka plan - yumuşak lacivert-gri */
+    --color-surface: #252836;        /* Yüzey rengi */
+    --color-card: #2d3142;           /* Kart rengi - hafif açık */
+    --color-elevated: #353849;       /* Yükseltilmiş elemanlar */
+    --color-border: #3d4158;         /* Kenarlık - soft */
+    --color-border-bright: #4a5070;  /* Hover kenarlık */
 
-    /* Accent Colors */
-    --color-accent-blue: #4A9EFF;    /* Electric blue */
-    --color-accent-mint: #00D9A3;    /* Mint success */
-    --color-accent-gold: #FFB020;    /* Gold warning */
-    --color-accent-red: #FF4757;     /* Red error */
-    --color-accent-purple: #8B5CF6;  /* Purple highlight */
+    /* Text Colors - AA/AAA Compliant */
+    --text-active: #E6E7EA;          /* Active menu (≥4.5:1) */
+    --text-passive: #B6BBC6;         /* Passive menu (≥4.5:1) */
+    --text-hover: #CBD2E0;           /* Hover state */
+    --text-icon-passive: #9AA1AE;    /* Icon passive */
+    --text-icon-hover: #CBD2E0;      /* Icon hover */
+    --text-icon-active: #FFFFFF;     /* Icon active */
 
-    /* Glow Effects */
-    --color-glow-blue: rgba(74, 158, 255, 0.4);
-    --color-glow-mint: rgba(0, 217, 163, 0.3);
-    --color-glow-gold: rgba(255, 176, 32, 0.3);
-    --color-glow-red: rgba(255, 71, 87, 0.3);
+    /* Legacy Text Colors */
+    --color-text-primary: #e5e7eb;   /* Açık gri metin */
+    --color-text-secondary: #9ca3af; /* Orta gri */
+    --color-text-tertiary: #6b7280;  /* Soluk gri */
+    --color-text-inverted: #1a1d29;  /* Açık arka planlar için */
+
+    /* Hairline borders + Low-opacity shadows */
+    --border-hairline: rgba(255, 255, 255, 0.06); /* 1px thin border */
+    --border-divider: rgba(255, 255, 255, 0.08);  /* Separator lines */
+
+    /* Accent Colors - Canlı ve modern */
+    --color-accent-blue: #06b6d4;    /* Cyan - fresh */
+    --color-accent-mint: #10b981;    /* Emerald green */
+    --color-accent-gold: #f59e0b;    /* Amber warning */
+    --color-accent-red: #ef4444;     /* Red error */
+    --color-accent-purple: #8b5cf6;  /* Purple highlight */
+
+    /* Glow Effects - Yumuşak parlama */
+    --color-glow-blue: rgba(6, 182, 212, 0.3);
+    --color-glow-mint: rgba(16, 185, 129, 0.25);
+    --color-glow-gold: rgba(245, 158, 11, 0.25);
+    --color-glow-red: rgba(239, 68, 68, 0.3);
     --color-glow-purple: rgba(139, 92, 246, 0.3);
 
     /* Legacy Support */
@@ -107,56 +126,62 @@
 
   /* Subtle Glass - For backgrounds */
   .glass-subtle {
-    background: rgba(30, 30, 30, 0.4);
+    background: rgba(45, 49, 66, 0.4);
     -webkit-backdrop-filter: blur(10px) saturate(130%);
     backdrop-filter: blur(10px) saturate(130%);
     border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(61, 65, 88, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
 
   /* Standard Glass - Main cards */
   .glass {
-    background: rgba(30, 30, 30, 0.6);
+    background: rgba(45, 49, 66, 0.6);
     -webkit-backdrop-filter: blur(20px) saturate(150%);
     backdrop-filter: blur(20px) saturate(150%);
     border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(61, 65, 88, 0.4);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   }
 
   /* Strong Glass - Important content */
   .glass-strong {
-    background: rgba(30, 30, 30, 0.8);
+    background: rgba(53, 56, 73, 0.8);
     -webkit-backdrop-filter: blur(30px) saturate(180%);
     backdrop-filter: blur(30px) saturate(180%);
     border-radius: 16px;
-    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(74, 80, 112, 0.5);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
   }
 
   /* Glass Card - With padding and hover */
   .glass-card {
-    background: rgba(30, 30, 30, 0.6);
+    background: rgba(45, 49, 66, 0.6);
     -webkit-backdrop-filter: blur(20px) saturate(150%);
     backdrop-filter: blur(20px) saturate(150%);
     border-radius: 16px;
+    border: 1px solid rgba(61, 65, 88, 0.4);
     padding: 1.5rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .glass-card:hover {
-    background: rgba(30, 30, 30, 0.75);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7), 0 0 20px var(--color-glow-blue);
+    background: rgba(53, 56, 73, 0.7);
+    border-color: rgba(6, 182, 212, 0.5);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 20px var(--color-glow-blue);
     transform: translateY(-2px);
   }
 
   /* Glass Elevated - Highest z-index cards */
   .glass-elevated {
-    background: rgba(30, 30, 30, 0.7);
+    background: rgba(53, 56, 73, 0.75);
     -webkit-backdrop-filter: blur(24px) saturate(160%);
     backdrop-filter: blur(24px) saturate(160%);
     border-radius: 16px;
+    border: 1px solid rgba(74, 80, 112, 0.5);
     padding: 1.5rem;
-    box-shadow: 0 16px 56px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 16px 56px rgba(0, 0, 0, 0.6);
   }
 
   /* Sidebar - Transparent */
@@ -684,25 +709,25 @@
 
 /* Background Layers */
 .bg-base-gradient {
-  background: linear-gradient(135deg, #0A0A0A 0%, #141414 50%, #1E1E1E 100%);
+  background: linear-gradient(135deg, #1a1d29 0%, #252836 50%, #2d3142 100%);
 }
 
 .orb-blue {
-  background: radial-gradient(circle, rgba(74, 158, 255, 0.15), transparent 70%);
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.12), transparent 70%);
   top: 10%;
   left: 15%;
   animation: float-slow 20s ease-in-out infinite;
 }
 
 .orb-purple {
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.12), transparent 70%);
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.1), transparent 70%);
   top: 60%;
   right: 10%;
   animation: float-medium 25s ease-in-out infinite;
 }
 
 .orb-mint {
-  background: radial-gradient(circle, rgba(0, 217, 163, 0.08), transparent 70%);
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.08), transparent 70%);
   bottom: 15%;
   left: 50%;
   animation: float-fast 18s ease-in-out infinite;
@@ -724,4 +749,28 @@
   width: 0;
   height: 0;
   transform: translate(-50%, -50%);
+}
+
+/* ================================
+   PIPELINE PROGRESS UTILITIES
+   Inline style fixes for ESLint
+   ================================ */
+
+.pipeline-progress {
+  width: var(--progress-width, 0%);
+}
+
+/* Alternative approach - class-based percentage utilities */
+@supports (width: calc(1 * var(--value))) {
+  .progress-0 { width: 0%; }
+  .progress-10 { width: 10%; }
+  .progress-20 { width: 20%; }
+  .progress-30 { width: 30%; }
+  .progress-40 { width: 40%; }
+  .progress-50 { width: 50%; }
+  .progress-60 { width: 60%; }
+  .progress-70 { width: 70%; }
+  .progress-80 { width: 80%; }
+  .progress-90 { width: 90%; }
+  .progress-100 { width: 100%; }
 }

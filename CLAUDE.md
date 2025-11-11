@@ -100,9 +100,26 @@ src/components/
 └── shell/              # Navigation, user menu
 ```
 
+### Analysis System ⭐ NEW!
+```
+src/lib/analysis/
+└── helpers.ts          # Data extraction and categorization utilities
+
+src/components/analysis/
+├── RawDataView.tsx     # Organized raw data display with source refs
+├── TablesView.tsx      # Categorized table viewer with export
+├── TableFullScreenModal.tsx # Advanced table viewer (20-row pagination)
+└── ContextualView.tsx  # Risk and opportunity visualization
+
+src/app/analysis/[id]/
+└── page.tsx           # 3-tab analysis result page (simplified from 5)
+```
+
 ### State Management ⭐ NEW!
 ```
 src/store/
+├── analysisStore.ts    # Analysis results management
+├── useAnalysisStore.ts # Legacy analysis state
 └── usePipelineStore.ts # Centralized pipeline state (Zustand + persist)
 ```
 
@@ -322,20 +339,24 @@ DATABASE_URL=./procheff.db
 ## 📚 Documentation
 
 - **Architecture**: `docs/ARCHITECTURE.md`
-- **Deployment**: `DIGITALOCEAN-SETUP.md`
+- **Deployment**: `docs/DIGITALOCEAN-DEPLOYMENT.md`
+- **Analysis System**: `docs/ANALYSIS-SYSTEM.md` ⭐ NEW!
 - **AI Logger**: `AI-LOGGER-README.md`
 - **Python Logging**: `PYTHON-LOGGING.md`
 - **İhalebul Integration**: `docs/IHALEBUL-INTEGRATION.md`
 - **İhalebul Quick Start**: `IHALEBUL-QUICKSTART.md`
-- **Pipeline State Guide**: `PIPELINE-GUIDE.md` ⭐ NEW!
-- **Changelog**: `CHANGELOG.md` ⭐ NEW!
+- **Pipeline State Guide**: `PIPELINE-GUIDE.md`
+- **Changelog**: `CHANGELOG.md`
 
 ## 🎯 Current Status
 
 - ✅ **Core Pipeline**: Upload → Parse → Analyze → Decide → Report
-- ✅ **Pipeline State Management**: Zustand store with localStorage persistence ⭐ NEW!
-- ✅ **Data Loss Prevention**: Automatic data transfer between pipeline steps ⭐ NEW!
-- ✅ **UI Consistency**: Unified loading, error, and empty state components ⭐ NEW!
+- ✅ **3-Tab Analysis System**: Veri Havuzu → Bağlamsal Analiz → Derin Analiz ⭐ NEW!
+- ✅ **Enhanced Data Organization**: Categorized tables with source tracking ⭐ NEW!
+- ✅ **Advanced Table Viewer**: Full-screen modal with search, sort, pagination ⭐ NEW!
+- ✅ **Pipeline State Management**: Zustand store with localStorage persistence
+- ✅ **Data Loss Prevention**: Automatic data transfer between pipeline steps
+- ✅ **UI Consistency**: Unified loading, error, and empty state components
 - ✅ **Authentication**: NextAuth v5 with RBAC
 - ✅ **Monitoring**: Real-time metrics dashboard
 - ✅ **OCR Integration**: Gemini 2.0 Vision for PDFs
@@ -348,7 +369,53 @@ DATABASE_URL=./procheff.db
 
 ## 🆕 Latest Features (11 Kasım 2025)
 
-### 🔄 Pipeline State Management ⭐ NEW!
+### 📊 3-Tab Analysis Structure ⭐ NEW!
+
+**Simplified from 5 tabs to 3 tabs for better UX:**
+
+1. **📊 Veri Havuzu Tab** (Data Pool)
+   - **Ham Veri Sub-tab**:
+     - Temel bilgiler kartları (kurum, bütçe, kişi sayısı)
+     - Kronolojik tarih timeline
+     - Dokümanlara göre metin gruplandırma
+     - Tespit edilen detaylar (lokasyon, yetkili, özel şartlar)
+   - **Tablolar Sub-tab**:
+     - Otomatik kategorizasyon (menü/yeşil, maliyet/mavi, personel/mor, teknik/turuncu)
+     - Excel'e export ve kopyalama
+     - Tam ekran görüntüleme modalı
+
+2. **🧠 Bağlamsal Analiz Tab** (Contextual Analysis)
+   - Operasyonel risk değerlendirmesi
+   - Maliyet sapma olasılığı
+   - Zaman uygunluğu analizi
+   - Personel gereksinimi
+   - Ekipman ihtiyacı
+
+3. **🤖 Derin Analiz Tab** (Deep Analysis)
+   - Ön koşul kontrolü (bağlamsal + piyasa analizi gerekli)
+   - AI danışman stratejik öneriler
+   - Güven skorlu karar verme
+
+### 🔧 New Analysis Components
+
+```typescript
+// Helper Functions
+src/lib/analysis/helpers.ts
+- extractBasicInfo()      // Temel bilgileri çıkarır
+- extractCriticalDates()  // Tarihleri kronolojik sıralar
+- groupByDocument()       // Metinleri dokümana göre gruplar
+- extractDetails()        // Lokasyon, yetkili, şartları tespit eder
+- categorizeAllTables()   // Tabloları otomatik sınıflandırır
+
+// View Components
+src/components/analysis/
+├── RawDataView.tsx           // Ham veri organizasyonu (kaynak referanslı)
+├── TablesView.tsx            // Kategorize tablo görüntüleyici
+├── TableFullScreenModal.tsx  // 20 satırlık sayfalama ile modal
+└── ContextualView.tsx        // Risk ve fırsat analizi
+```
+
+### 🔄 Pipeline State Management
 Centralized state management prevents data loss between pipeline steps:
 
 **Store Structure:**

@@ -5,6 +5,7 @@ import { webQuote } from '@/lib/market/provider/web';
 import { dbQuote } from '@/lib/market/provider/db';
 import { fuse } from '@/lib/market/fuse';
 import { cacheSet, cacheClearAll } from '@/lib/market/cache';
+import type { MarketQuote } from '@/lib/market/schema';
 
 /**
  * Market cache refresh cron job
@@ -83,7 +84,7 @@ export async function GET(req: NextRequest) {
           dbQuote(product_key),
         ]);
 
-        const quotes = [qTuik, qWeb, qDb].filter(Boolean);
+        const quotes = [qTuik, qWeb, qDb].filter(Boolean) as MarketQuote[];
 
         if (quotes.length > 0) {
           const fusion = fuse(quotes);

@@ -5,6 +5,74 @@ All notable changes to Procheff-v3 will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.1] - 2025-11-11
+
+### 🧹 Project Cleanup & Documentation
+
+#### Removed
+- Deprecated `MarketView.tsx` component (unused in 3-tab system)
+- 10 duplicate deployment documentation files consolidated into one:
+  - `DIGITALOCEAN-SETUP.md`
+  - `DEPLOY-NOW.md`
+  - `DEPLOYMENT-READY.md`
+  - `DEPLOYMENT-SUMMARY.md`
+  - `QUICK-DEPLOY-CHECKLIST.md`
+  - `README-DEPLOYMENT.md`
+  - `docs/DEPLOYMENT-NOTES.md`
+  - `docs/DEPLOYMENT.md`
+  - `docs/DIGITALOCEAN-DEPLOY.md`
+  - `docs/QUICK-DEPLOY.md`
+
+#### Changed
+- Consolidated all deployment docs into `docs/DIGITALOCEAN-DEPLOYMENT.md`
+- Updated documentation to reflect removal of MarketView
+- Store file descriptions clarified in README and CLAUDE.md
+
+#### Documentation
+- Updated README.md project structure
+- Updated CLAUDE.md to remove MarketView references
+- Fixed deployment documentation links
+- Added clarity to store file purposes
+
+## [3.5.0] - 2025-11-11
+
+### 🎯 Major: 3-Tab Analysis System
+
+#### Added
+- **3-Tab Structure** replacing previous 5-tab system
+  - `Veri Havuzu`: Dual sub-tabs for raw data and tables
+  - `Bağlamsal Analiz`: Integrated risk assessment
+  - `Derin Analiz`: Strategic AI recommendations with prerequisites
+
+- **Data Organization Components**
+  - `RawDataView`: Smart entity grouping with source tracking (file:page)
+  - `TablesView`: Auto-categorization into menu/cost/personnel/technical
+  - `TableFullScreenModal`: Professional table viewer with pagination
+  - Helper utilities for data extraction and categorization
+
+- **Enhanced Features**
+  - Every data point shows source reference
+  - Logical grouping of related information
+  - Table categorization with color coding
+  - CSV/Excel export capabilities
+  - Full-text search across all data
+
+#### Changed
+- Reduced analysis tabs from 5 to 3 for improved UX
+- `ContextualTab` now accepts `dataPool` parameter
+- `DeepTab` shows prerequisites and accepts all analysis params
+- Unified data flow through centralized store
+
+#### Removed
+- `MarketTab` component (merged into contextual)
+- `DecisionTab` component (merged into deep analysis)
+- Redundant data passing between components
+
+### Performance
+- Reduced context size by ~30% with 3-tab structure
+- Faster navigation with sub-tabs instead of main tabs
+- Improved data organization reduces cognitive load
+
 ## [3.1.0] - 2025-11-11
 
 ### Added

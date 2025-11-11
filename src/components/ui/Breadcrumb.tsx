@@ -1,9 +1,9 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { ChevronRight, Home } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 
 interface BreadcrumbItem {
   label: string;
@@ -58,7 +58,12 @@ export function Breadcrumb() {
     <motion.nav
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-center gap-2 px-6 py-3 text-sm border-b border-white/5 bg-gradient-to-r from-white/[0.02] to-transparent"
+      className="flex items-center gap-2 py-3 text-sm border-b border-white/5 
+                 bg-linear-to-r from-white/2 to-transparent
+                 px-6 md:px-6 lg:px-6
+                 fixed top-16 left-0 md:left-20 lg:left-[280px] right-0 z-30
+                 w-full md:w-[calc(100%-80px)] lg:w-[calc(100%-280px)]
+                 backdrop-blur-sm"
     >
       {breadcrumbs.map((crumb, index) => {
         const isLast = index === breadcrumbs.length - 1;
@@ -79,7 +84,7 @@ export function Breadcrumb() {
                 <ChevronRight className="w-4 h-4 text-gray-600" />
                 {isLast ? (
                   <span className="text-white font-medium flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-linear-to-r from-indigo-500 to-purple-600 animate-pulse" />
                     {crumb.label}
                   </span>
                 ) : (

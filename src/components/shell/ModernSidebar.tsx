@@ -2,325 +2,270 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Activity,
   BarChart4,
+  Bell,
   Brain,
-  Briefcase,
-  Calculator,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
+  Database,
+  FileBarChart,
+  FileSpreadsheet,
   FileText,
   Layers,
+  LayoutDashboard,
   Menu,
-  Search,
+  MessageSquare,
+  Package,
+  Palette,
+  ScrollText,
   Settings,
+  Shield,
+  Star,
+  TrendingUp,
   UploadCloud,
-  Utensils,
-  Zap,
-  Bell,
-  Home,
+  User
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
-type NavItem = {
+/**
+ * ProCheff Sidebar v3 – Synerque Clone (Dribbble)
+ * - Open width: 260px, Closed width: 80px
+ * - Dark, borderless, soft-shadow, smooth hover
+ * - Tasks submenu with colored dots
+ * - Collapsed hover panel (floating card on hover)
+ * - Active route detection with usePathname
+ */
+
+// Premium Design System Constants
+const HOVER = "hover:bg-[rgba(255,255,255,0.05)]";
+const ACTIVE = "bg-[#1E212A]"; // surface-2
+
+function cn(...c: (string | false | null | undefined)[]) {
+  return c.filter(Boolean).join(" ");
+}
+
+// Gradient logo badge
+function LogoBadge() {
+  return (
+    <div
+      className="h-9 w-9 rounded-full shadow-md bg-[radial-gradient(120%_120%_at_20%_20%,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.08)_38%,rgba(0,0,0,0)_62%),linear-gradient(135deg,#2b2b2b,#171717)]"
+      aria-label="ProCheff"
+    />
+  );
+}
+
+// Types
+type Item = {
   label: string;
   href: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  badge?: number;
-  children?: NavItem[];
+  badge?: string | number;
+  id?: string;
+  colorIndex?: number;
 };
 
-const NAV: NavItem[] = [
-  {
-    label: "Analiz Merkezi",
-    href: "/analysis",
-    icon: Briefcase,
-    children: [
-      { label: "Yeni Analiz", href: "/analysis", icon: UploadCloud },
-      { label: "Geçmiş", href: "/analysis/history", icon: FileText },
-    ],
-  },
-  { label: "Menü Parser", href: "/menu-parser", icon: Utensils },
-  { label: "Raporlar", href: "/reports", icon: FileText },
-  { label: "Monitoring", href: "/monitor", icon: BarChart4 },
-  { label: "Bildirimler", href: "/notifications", icon: Bell },
-  {
-    label: "Ayarlar",
-    href: "/settings",
-    icon: Settings,
-    children: [
-      { label: "Profil", href: "/settings/profile", icon: Settings },
-      { label: "Pipeline", href: "/settings/pipeline", icon: Settings },
-      { label: "Veritabanı", href: "/settings/database", icon: Settings },
-      { label: "Raporlar", href: "/settings/reports", icon: Settings },
-      { label: "Loglar", href: "/settings/logs", icon: Settings },
-      { label: "Güvenlik", href: "/settings/security", icon: Settings },
-    ],
-  },
+// Data
+const primary: Item[] = [
+  { id: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { id: "chat", label: "AI Asistan", href: "/chat", icon: MessageSquare, badge: "NEW" },
+  { id: "analysis", label: "Analiz Merkezi", href: "/analysis", icon: TrendingUp },
+  { id: "piyasa", label: "Piyasa Robotu", href: "/piyasa-robotu", icon: TrendingUp },
+  { id: "batch", label: "Toplu İşlem", href: "/batch/jobs", icon: Package },
+  { id: "reports", label: "Raporlar", href: "/reports", icon: FileBarChart },
+];
+
+const tasksChildren: Item[] = [
+  { id: "inprogress", label: "In progress", href: "/analysis", icon: BarChart4, colorIndex: 0 },
+  { id: "paused", label: "Paused", href: "/analysis/history", icon: UploadCloud, colorIndex: 1 },
+  { id: "bugs", label: "Bugs", href: "/cost-analysis", icon: FileText, colorIndex: 2, badge: "12" },
+  { id: "done", label: "Done", href: "/decision", icon: Star, colorIndex: 3 },
+];
+
+const secondary: Item[] = [
+  { id: "notifications", label: "Bildirimler", href: "/notifications", icon: Bell, badge: "3" },
+  { id: "monitoring", label: "Monitoring", href: "/monitor", icon: Activity },
+  { id: "settings", label: "Ayarlar", href: "/settings", icon: Settings },
+];
+
+const settingsChildren: Item[] = [
+  { id: "profile", label: "Profil", href: "/settings/profile", icon: User },
+  { id: "pipeline", label: "Pipeline", href: "/settings/pipeline", icon: Settings },
+  { id: "ai", label: "AI Model", href: "/settings/ai", icon: Brain },
+  { id: "notifications", label: "Bildirimler", href: "/settings/notifications", icon: Bell },
+  { id: "appearance", label: "Görünüm", href: "/settings/appearance", icon: Palette },
+  { id: "database", label: "Veritabanı", href: "/settings/database", icon: Database },
+  { id: "reports-settings", label: "Raporlar", href: "/settings/reports", icon: FileSpreadsheet },
+  { id: "security", label: "Güvenlik", href: "/settings/security", icon: Shield },
+  { id: "logs", label: "Loglar", href: "/settings/logs", icon: ScrollText },
+  { id: "api", label: "API", href: "/settings/api", icon: Layers },
 ];
 
 export function ModernSidebar() {
   const pathname = usePathname();
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  // Use pathname directly instead of state
+  const path = pathname || "/";
+
+  const [open, setOpen] = useState(false);
+  const [hoverPanel, setHoverPanel] = useState<string | null>(null);
+  const [hoverPanelY, setHoverPanelY] = useState<number>(180);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activePipelines, setActivePipelines] = useState(0);
-  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
-    "/analysis": true,
-  });
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch active pipeline count
-  useEffect(() => {
-    async function fetchActivePipelines() {
-      try {
-        const res = await fetch("/api/orchestrate/active-count");
-        const data = await res.json();
-        if (data.success) {
-          setActivePipelines(data.count || 0);
-        }
-      } catch (error) {
-        console.error("Failed to fetch active pipelines:", error);
-      }
-    }
+  const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
-    fetchActivePipelines();
-    const interval = setInterval(fetchActivePipelines, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const toggleMenu = (href: string) => {
-    setExpandedMenus((prev) => ({
-      ...prev,
-      [href]: !prev[href],
-    }));
-  };
-
-  // Filter navigation based on search
-  const filteredNav = NAV.filter((item) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    const matchesLabel = item.label.toLowerCase().includes(query);
-    const matchesChildren = item.children?.some((child) =>
-      child.label.toLowerCase().includes(query)
-    );
-    return matchesLabel || matchesChildren;
-  });
-
-  function NavItem({ item, isChild = false }: { item: NavItem; isChild?: boolean }) {
-    const Icon = item.icon;
-    const hasChildren = item.children && item.children.length > 0;
-    const isMenuExpanded = expandedMenus[item.href];
-    const isChildActive =
-      hasChildren &&
-      item.children?.some(
-        (child) => pathname === child.href || pathname.startsWith(child.href + "/")
-      );
-    const active =
-      pathname === item.href ||
-      pathname.startsWith(item.href + "/") ||
-      isChildActive;
-
-    // Show badge for active pipelines on Analysis History
-    const showBadge = item.href === "/analysis/history" && activePipelines > 0;
-
-    if (hasChildren && !isChild) {
-      return (
-        <div className="w-full">
-          <button
-            onClick={() => toggleMenu(item.href)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden
-              ${
-                active
-                  ? "bg-gradient-to-r from-indigo-600/30 to-purple-600/30 border border-indigo-500/50 shadow-lg shadow-indigo-500/20"
-                  : "hover:bg-white/5 border border-transparent hover:border-white/10"
-              }
-            `}
+  const SidebarContent = (
+    <motion.aside
+      animate={{ width: open ? 280 : 80 }}
+      transition={{
+        duration: 0.35,
+        ease: [0.32, 0.72, 0, 1],
+        type: "tween"
+      }}
+      onClick={() => setOpen((o) => !o)}
+      data-sidebar="true"
+      className={cn(
+        "fixed left-0 top-0 h-screen select-none z-50",
+        // Premium ton-based surface (Material 3)
+        "bg-[#16181F]",
+        "backdrop-blur-xl",
+        // Hairline border (Fluent)
+        "border-r border-[rgba(255,255,255,0.06)]",
+        // Low-opacity shadow for elevation
+        "shadow-[0_8px_24px_rgba(0,0,0,0.35)]",
+        "cursor-pointer will-change-[width] overflow-x-hidden overflow-y-auto",
+        // Subtle tonal overlay
+        "before:absolute before:inset-0 before:bg-[rgba(99,102,241,0.04)] before:pointer-events-none",
+        // Refined border glow
+        "after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-linear-to-b after:from-transparent after:via-indigo-500/12 after:to-transparent"
+      )}
+    >
+      {/* Header */}
+      <div
+        className={cn(
+          "px-4 py-4 flex items-center justify-center bg-[#0A0F1C] border-b border-[rgba(255,255,255,0.06)] overflow-hidden"
+        )}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <motion.div
+            animate={{ scale: open ? 1 : 1 }}
+            transition={{ duration: 0.35 }}
           >
-            <div
-              className={`absolute inset-0 bg-gradient-to-r from-indigo-600/0 via-purple-600/10 to-indigo-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${
-                active ? "animate-pulse" : ""
-              }`}
-            />
-            <Icon
-              className={`w-5 h-5 transition-all duration-300 relative z-10 ${
-                active
-                  ? "text-indigo-300 drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]"
-                  : "text-gray-400 group-hover:text-white"
-              }`}
-            />
-            {isExpanded && (
-              <>
-                <span
-                  className={`flex-1 text-left font-medium transition-colors duration-300 relative z-10 ${
-                    active ? "text-white" : "text-gray-300 group-hover:text-white"
-                  }`}
-                >
-                  {item.label}
-                </span>
-                <ChevronDown
-                  className={`w-4 h-4 transition-all duration-300 relative z-10 ${
-                    isMenuExpanded ? "rotate-180" : ""
-                  } ${active ? "text-indigo-300" : "text-gray-500 group-hover:text-white"}`}
-                />
-              </>
-            )}
-          </button>
-
-          <AnimatePresence>
-            {isMenuExpanded && isExpanded && (
+            <LogoBadge />
+          </motion.div>
+          <AnimatePresence mode="wait">
+            {open && (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-1 ml-4 space-y-1"
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+                className="leading-tight whitespace-nowrap overflow-hidden"
               >
-                {item.children?.map((child) => (
-                  <NavItem key={child.href} item={child} isChild={true} />
-                ))}
+                <div className="text-[16px] font-semibold tracking-[-0.01em] text-[#E6E7EA]">ProCheff</div>
+                <div className="text-[11px] font-medium text-[#9AA1AE]">Task manager</div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      );
-    }
+      </div>
 
-    return (
-      <Link href={item.href} className="no-underline w-full">
-        <motion.div
-          whileHover={{ x: 4 }}
-          whileTap={{ scale: 0.98 }}
-          className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden ${
-            isChild ? "pl-8" : ""
-          }
-            ${
-              active
-                ? "bg-gradient-to-r from-indigo-600/30 to-purple-600/30 border border-indigo-500/50 shadow-lg shadow-indigo-500/20"
-                : "hover:bg-white/5 border border-transparent hover:border-white/10"
-            }
-          `}
+      {/* NAVIGATION */}
+      <div className="relative" onClick={(e) => e.stopPropagation()}>
+        <nav className="px-3 pt-6 flex flex-col gap-1.5">
+          {primary.map((it) => (
+            <NavItem
+              key={it.id}
+              item={it}
+              active={isActive(it.href)}
+              open={open}
+              onCollapsedHover={(id, y) => {
+                // Clear any pending close timeout
+                if (closeTimeoutRef.current) {
+                  clearTimeout(closeTimeoutRef.current);
+                  closeTimeoutRef.current = null;
+                }
+                if (it.id === "analysis") {
+                  setHoverPanel("tasks");
+                } else {
+                  setHoverPanel(id);
+                }
+                setHoverPanelY(y);
+              }}
+              onCollapsedLeave={() => {
+                // Delay closing to allow mouse to move to panel
+                closeTimeoutRef.current = setTimeout(() => {
+                  setHoverPanel(null);
+                }, 150);
+              }}
+            />
+          ))}
+
+          {secondary.map((it) => (
+            <NavItem
+              key={it.id}
+              item={it}
+              active={isActive(it.href)}
+              open={open}
+              onCollapsedHover={(id, y) => {
+                // Clear any pending close timeout
+                if (closeTimeoutRef.current) {
+                  clearTimeout(closeTimeoutRef.current);
+                  closeTimeoutRef.current = null;
+                }
+                if (it.id === "settings") {
+                  setHoverPanel("settings");
+                } else {
+                  setHoverPanel(id);
+                }
+                setHoverPanelY(y);
+              }}
+              onCollapsedLeave={() => {
+                // Delay closing to allow mouse to move to panel
+                closeTimeoutRef.current = setTimeout(() => {
+                  setHoverPanel(null);
+                }, 150);
+              }}
+            />
+          ))}
+        </nav>
+      </div>
+
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Bottom gradient fade */}
+      <div className="h-16 bg-linear-to-t from-[#0A0F1C]/80 to-transparent pointer-events-none" />
+
+      {/* Footer user - ultra minimal + glassmorphism + glow */}
+      <div
+        className={cn("px-3 pb-2 relative")}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Link
+          href="/settings/profile"
+          className={cn(
+            "rounded-xl p-2 flex items-center backdrop-blur-md border border-[rgba(255,255,255,0.06)] no-underline",
+            open ? "gap-2.5" : "gap-1 justify-center",
+            "bg-[rgba(255,255,255,0.03)] shadow-[0_4px_16px_rgba(0,0,0,0.25)]",
+            "hover:bg-[rgba(255,255,255,0.06)] hover:shadow-[0_8px_24px_rgba(99,102,241,0.2)] transition-all duration-150 ease-out",
+            "cursor-pointer"
+          )}
         >
           <div
-            className={`absolute inset-0 bg-gradient-to-r from-indigo-600/0 via-purple-600/10 to-indigo-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${
-              active ? "animate-pulse" : ""
-            }`}
-          />
-          <div className="relative">
-            <Icon
-              className={`w-5 h-5 transition-all duration-300 ${
-                active
-                  ? "text-indigo-300 drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]"
-                  : "text-gray-400 group-hover:text-white"
-              }`}
-            />
-            {showBadge && (
-              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-pink-600 text-[10px] font-bold text-white animate-pulse shadow-lg shadow-red-500/50 border border-red-400/30">
-                {activePipelines > 9 ? "9+" : activePipelines}
-              </span>
-            )}
+            className="h-8 w-8 rounded-full ring-1 ring-[rgba(255,255,255,0.12)] bg-linear-to-tr from-[#7c3aed] to-[#2563eb] flex items-center justify-center text-[11px] font-bold text-white shadow-lg"
+            title={!open ? "ProCheff Admin - admin@procheff.com" : undefined}
+          >
+            PC
           </div>
-          {isExpanded && (
-            <span
-              className={`flex-1 text-left font-medium transition-colors duration-300 ${
-                active ? "text-white" : "text-gray-300 group-hover:text-white"
-              }`}
-            >
-              {item.label}
-            </span>
-          )}
-        </motion.div>
-      </Link>
-    );
-  }
-
-  const SidebarContent = (
-    <motion.aside
-      animate={{ width: isExpanded ? 280 : 80 }}
-      className="fixed left-0 top-0 h-screen bg-gradient-to-b from-slate-950/95 via-slate-900/95 to-slate-950/95 backdrop-blur-xl border-r border-white/10 shadow-2xl z-50 flex flex-col"
-    >
-      {/* Header */}
-      <div className="p-4 border-b border-white/10 bg-gradient-to-r from-indigo-600/10 to-purple-600/10">
-        <div className="flex items-center justify-between">
-          {isExpanded ? (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/50">
-                <Briefcase className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-white text-lg tracking-tight">
-                  ProCheff
-                </h2>
-                <p className="text-xs text-gray-400">v3.0</p>
-              </div>
-            </div>
-          ) : (
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/50 mx-auto">
-              <Briefcase className="w-5 h-5 text-white" />
+          {open && (
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-semibold text-[#E6E7EA] truncate tracking-[-0.01em]">ProCheff Admin</div>
             </div>
           )}
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors border border-transparent hover:border-white/20"
-            aria-label={isExpanded ? "Daralt" : "Genişlet"}
-          >
-            {isExpanded ? (
-              <ChevronLeft className="w-4 h-4 text-gray-400" />
-            ) : (
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-            )}
-          </button>
-        </div>
-
-        {/* Search Bar */}
-        {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4"
-          >
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Ara..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-              />
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-        {filteredNav.map((item) => (
-          <NavItem key={item.href} item={item} />
-        ))}
-      </div>
-
-      {/* Footer */}
-      <div className="p-4 border-t border-white/10 bg-gradient-to-r from-indigo-600/5 to-purple-600/5">
-        {isExpanded ? (
-          <div className="text-xs text-gray-500 space-y-1">
-            <div className="flex items-center justify-between">
-              <span>Aktif Pipeline</span>
-              <span className="font-bold text-indigo-400">{activePipelines}</span>
-            </div>
-            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: activePipelines > 0 ? "100%" : "0%" }}
-                className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full"
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <div className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 animate-pulse" />
-          </div>
-        )}
+        </Link>
       </div>
     </motion.aside>
   );
@@ -328,9 +273,11 @@ export function ModernSidebar() {
   const MobileMenu = (
     <>
       <button
-        aria-label="Menüyü aç"
+        type="button"
         onClick={() => setMobileOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-50 w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600/20 to-purple-600/20 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white hover:border-indigo-500/50 transition-all shadow-lg hover:shadow-indigo-500/20"
+        className="md:hidden fixed top-4 left-4 z-50 w-12 h-12 rounded-xl bg-[#1E212A] border border-[rgba(255,255,255,0.06)] flex items-center justify-center text-[#E6E7EA] shadow-[0_4px_16px_rgba(0,0,0,0.3)] hover:bg-[rgba(255,255,255,0.05)] transition-all duration-150 ease-out"
+        aria-label="Open menu"
+        title="Open menu"
       >
         <Menu className="h-5 w-5" />
       </button>
@@ -339,18 +286,19 @@ export function ModernSidebar() {
         {mobileOpen && (
           <>
             <motion.div
-              className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 z-40 bg-black/80 md:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
               onClick={() => setMobileOpen(false)}
             />
             <motion.div
-              className="fixed left-0 top-0 z-50 md:hidden"
+              className="fixed left-0 top-0 z-50 md:hidden h-screen"
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
             >
               <div onClick={() => setMobileOpen(false)}>{SidebarContent}</div>
             </motion.div>
@@ -364,6 +312,206 @@ export function ModernSidebar() {
     <>
       <div className="hidden md:block">{SidebarContent}</div>
       {MobileMenu}
+
+      {/* Hover Panels - Rendered via Portal to document.body */}
+      {typeof window !== 'undefined' && createPortal(
+        <AnimatePresence mode="wait">
+          {!open && hoverPanel === "tasks" && (
+            <HoverPanel
+              items={tasksChildren}
+              pathname={path}
+              onEnter={() => {
+                if (closeTimeoutRef.current) {
+                  clearTimeout(closeTimeoutRef.current);
+                  closeTimeoutRef.current = null;
+                }
+              }}
+              onLeave={() => setHoverPanel(null)}
+              title="Analiz Merkezi"
+              yPosition={hoverPanelY}
+            />
+          )}
+          {!open && hoverPanel === "settings" && (
+            <HoverPanel
+              items={settingsChildren}
+              pathname={path}
+              onEnter={() => {
+                if (closeTimeoutRef.current) {
+                  clearTimeout(closeTimeoutRef.current);
+                  closeTimeoutRef.current = null;
+                }
+              }}
+              onLeave={() => setHoverPanel(null)}
+              title="Ayarlar"
+              yPosition={hoverPanelY}
+            />
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
+  );
+}
+
+function NavItem({
+  item,
+  active,
+  open,
+  small,
+  onCollapsedHover,
+  onCollapsedLeave,
+}: {
+  item: Item;
+  active?: boolean;
+  open: boolean;
+  small?: boolean;
+  onCollapsedHover?: (id: string, y: number) => void;
+  onCollapsedLeave?: () => void;
+}) {
+  const Icon = item.icon;
+  const colorDot = (idx?: number) => {
+    const colors = ["bg-sky-400", "bg-violet-400", "bg-rose-500", "bg-yellow-400"];
+    return <span className={cn("h-2 w-2 rounded-full", colors[idx ?? 0])} />;
+  };
+
+  const content = (
+    <>
+      <div className="relative shrink-0">
+        <Icon
+          className={cn(
+            small ? "w-[18px] h-[18px]" : "w-5 h-5",
+            // Icon colors with passive/active states
+            active ? "text-[#FFFFFF] stroke-2" : "text-[#9AA1AE] stroke-[1.75]",
+            "group-hover:text-[#CBD2E0] transition-colors duration-150 ease-out"
+          )}
+        />
+        {!open && item.badge && (
+          <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-sky-400 ring-2 ring-[#16181F]" />
+        )}
+      </div>
+      <AnimatePresence mode="wait">
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, width: 0 }}
+            animate={{ opacity: 1, width: "auto" }}
+            exit={{ opacity: 0, width: 0 }}
+            transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+            className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden"
+          >
+            {typeof item.colorIndex === "number" && <div className="shrink-0">{colorDot(item.colorIndex)}</div>}
+            <span className="flex-1 truncate text-[15px] tracking-[-0.01em] whitespace-nowrap">{item.label}</span>
+            {item.badge && (
+              <span className="shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-lg bg-[rgba(255,255,255,0.08)] text-[#CBD2E0]">
+                {item.badge}
+              </span>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        "group flex items-center gap-3 rounded-xl px-3.5 py-2.5",
+        "transition-all duration-150 ease-out no-underline",
+        // Text colors with AA/AAA compliance
+        active ? "text-[#E6E7EA] font-semibold" : "text-[#B6BBC6] font-medium",
+        // Hover state
+        !active && "hover:text-[#CBD2E0]",
+        HOVER,
+        // Active state with surface-2
+        active && ACTIVE,
+        active && "border border-[rgba(255,255,255,0.08)] shadow-[0_2px_8px_rgba(0,0,0,0.2)]",
+        small && "text-[14px]"
+      )}
+      title={!open ? item.label : undefined}
+      onMouseEnter={!open ? (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        onCollapsedHover?.(item.id!, rect.top);
+      } : undefined}
+      onMouseLeave={!open ? () => onCollapsedLeave?.() : undefined}
+    >
+      {content}
+    </Link>
+  );
+}
+
+function HoverPanel({
+  items,
+  pathname,
+  onEnter,
+  onLeave,
+  title,
+  yPosition,
+}: {
+  items: Item[];
+  pathname: string;
+  onEnter?: () => void;
+  onLeave: () => void;
+  title: string;
+  yPosition: number;
+} & { onEnter?: () => void }) {
+  const colorDot = (idx?: number) => {
+    const colorClasses = ["bg-sky-400", "bg-violet-400", "bg-rose-500", "bg-yellow-400"];
+    return (
+      <span
+        className={cn("h-2 w-2 rounded-full", colorClasses[idx ?? 0])}
+      />
+    );
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -10 }}
+      transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+      className="fixed left-[92px] w-60 rounded-xl bg-[#1E212A] border border-[rgba(255,255,255,0.06)] shadow-[0_12px_40px_rgba(0,0,0,0.45)] p-3 pointer-events-auto backdrop-blur-xl"
+      style={{
+        top: `${yPosition}px`,
+        zIndex: 99999
+      }}
+      role="dialog"
+      onMouseEnter={() => onEnter?.()}
+      onMouseLeave={onLeave}
+    >
+      <div className="text-[11px] font-semibold text-[#9AA1AE] px-2 pb-2 mb-1.5 border-b border-[rgba(255,255,255,0.08)] tracking-wide uppercase">
+        {title}
+      </div>
+      {items.map((it) => {
+        const isActive = pathname === it.href;
+        return (
+          <Link
+            key={it.id}
+            href={it.href}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-150 ease-out no-underline",
+              isActive
+                ? "bg-[rgba(255,255,255,0.08)] text-[#E6E7EA] font-semibold"
+                : "hover:bg-[rgba(255,255,255,0.05)] text-[#B6BBC6] font-medium hover:text-[#CBD2E0]"
+            )}
+          >
+            {typeof it.colorIndex === "number" && colorDot(it.colorIndex)}
+            <it.icon
+              className={cn(
+                "w-[18px] h-[18px]",
+                isActive ? "text-[#FFFFFF] stroke-2" : "text-[#9AA1AE] stroke-[1.75]"
+              )}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-[14px] truncate tracking-[-0.01em]">{it.label}</div>
+            </div>
+            {it.badge && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(255,255,255,0.08)] text-[#CBD2E0]">
+                {it.badge}
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </motion.div>
   );
 }

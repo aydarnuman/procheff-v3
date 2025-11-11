@@ -1,327 +1,192 @@
-# Procheff v3 - Cursor AI Rules
+# Cursor Rules for Procheff-v3
 
-## Project Overview
-Procheff v3 is an enterprise-grade procurement intelligence platform for analyzing Turkish government tender documents (ihale) using AI. Built with Next.js 16, TypeScript, Claude Sonnet 4.5, and Gemini 2.0 Vision.
+## Auto-completions
 
-## Tech Stack
-- **Framework**: Next.js 16.0 (App Router)
-- **Language**: TypeScript 5
-- **AI**: Anthropic Claude Sonnet 4.5, Google Gemini 2.0 Flash
-- **UI**: TailwindCSS 4, Framer Motion 12, Lucide React
-- **Database**: SQLite (better-sqlite3)
-- **Auth**: NextAuth v5
-- **Cache/Queue**: Upstash Redis
-- **Deployment**: DigitalOcean (App Platform / Droplets), Docker
+### Import Statements
+When importing from @/lib/analysis/:
+- Suggest helper functions based on context
+- Auto-import types from types.ts
 
-## Project Structure
-```
-src/
-├── app/
-│   ├── (auth)/          # Authentication pages (login, register)
-│   ├── auto/            # Auto-Pipeline feature
-│   ├── api/             # API routes
-│   │   ├── orchestrate/ # Main orchestration endpoint
-│   │   ├── ai/          # AI endpoints (cost, decision)
-│   │   ├── ihale/       # Tender analysis endpoints
-│   │   └── health/      # Health check
-│   ├── dashboard/       # Main dashboard
-│   └── layout.tsx       # Root layout
-├── lib/
-│   ├── ai/              # AI client wrappers (Anthropic, Gemini)
-│   ├── db/              # Database operations (init-auth.ts)
-│   ├── jobs/            # Job management (SSE)
-│   └── redis/           # Redis client (Upstash)
-└── components/
-    ├── ui/              # Reusable UI components
-    └── features/        # Feature-specific components
-```
+### Component Props
+For analysis components:
+- Always include dataPool prop
+- Include searchTerm for searchable components
+- Add onExport for exportable components
 
-## Code Style Guidelines
-
-### TypeScript
-- Use explicit types, avoid `any`
-- Prefer interfaces over types for object shapes
-- Use proper null checking with `??` and `?.`
-- Enable strict mode
-
-### Next.js Patterns
-- Use Server Components by default
-- Add `"use client"` only when necessary (interactivity, hooks)
-- Use `NextRequest`, `NextResponse` for API routes
-- Implement proper error boundaries
-
-### API Routes
+### API Patterns
 ```typescript
-// Example API route structure
-import { NextRequest, NextResponse } from "next/server";
-
-export async function POST(req: NextRequest) {
+// Auto-complete this pattern for API routes:
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
-    // Process request
-    return NextResponse.json({ success: true, data });
+    const body = await request.json();
+    // Validate with Zod
+    // Process with AI
+    // Return NextResponse
   } catch (error) {
-    console.error("Error:", error);
-    return NextResponse.json(
-      { error: "Error message" },
-      { status: 500 }
-    );
+    AILogger.error("Operation failed", { error });
+    return NextResponse.json({ error }, { status: 500 });
   }
 }
 ```
 
-### Component Patterns
+## Code Generation Rules
+
+### React Components
+Generate with:
+- TypeScript interfaces
+- Loading/error states
+- Framer Motion animations
+- Glass-card styling
+
+### Helper Functions
+Include:
+- JSDoc comments
+- Type safety
+- Error handling
+- Source tracking
+
+## Refactoring Patterns
+
+### Table Processing
+When refactoring table code:
+1. Extract to categorizeTable helper
+2. Add type definitions
+3. Include export functionality
+4. Implement search
+
+### Data Extraction
+When extracting data:
+1. Create typed extractor function
+2. Include source references
+3. Handle edge cases
+4. Add to helpers.ts
+
+## File Templates
+
+### New Analysis Component
 ```typescript
-// Prefer explicit props interface
+'use client';
+
+import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import type { DataPool } from '@/lib/document-processor/types';
+
 interface ComponentProps {
-  title: string;
-  onAction: () => void;
-  children?: React.ReactNode;
+  dataPool: DataPool;
+  searchTerm?: string;
 }
 
-export function Component({ title, onAction, children }: ComponentProps) {
-  return (
-    <div>
-      <h1>{title}</h1>
-      {children}
-    </div>
-  );
+export function ComponentName({ dataPool, searchTerm = '' }: ComponentProps) {
+  // Implementation
 }
 ```
 
-### AI Integration
-- Use `AILogger` for AI operation logging
-- Implement retry logic with `postWithRetry`
-- Handle streaming responses properly
-- Always validate AI responses
-
-### Database Operations
-- Use transactions for related operations
-- Implement proper error handling
-- Close connections properly
-- Use parameterized queries
-
-### Job Management (SSE)
-- Create job with `createJob(jobId)`
-- Emit progress with `emitJob(jobId, data)`
-- Update DB with `updateOrchestration(jobId, data)`
-- Handle cleanup properly
-
-## Key Features to Remember
-
-### 1. Auto-Pipeline (src/app/api/orchestrate/route.ts)
-Multi-step AI workflow:
-1. Document upload → OCR (Gemini Vision)
-2. Deep analysis (Claude)
-3. Cost calculation (Claude)
-4. Decision engine (Claude)
-5. Report generation (PDF + XLSX)
-
-### 2. SSE Streaming
-Real-time progress updates to frontend using Server-Sent Events.
-
-### 3. Rate Limiting
-Using Upstash Redis with `@upstash/ratelimit`:
-- API routes: 10 requests/10s
-- AI endpoints: 5 requests/60s
-
-### 4. Caching
-Smart caching for AI responses (100x faster repeat requests).
-
-### 5. Authentication
-NextAuth v5 with SQLite adapter, supports:
-- Credentials (email/password)
-- Admin/Manager/User roles
-
-## Common Commands
-
-```bash
-# Development
-npm run dev          # Start dev server (port 3001)
-npm run build        # Build for production
-npm run lint         # Run ESLint
-
-# Docker
-docker build -t procheff-v3:latest .
-docker-compose up -d
-
-# DigitalOcean
-doctl apps create --spec .do/app.yaml
-doctl apps logs APP_ID --follow
-
-# Testing
-curl http://localhost:3001/api/health
-```
-
-## Environment Variables (Critical)
-
-```bash
-# AI APIs (Required)
-ANTHROPIC_API_KEY=sk-ant-...
-GOOGLE_API_KEY=AIza...
-GEMINI_API_KEY=AIza...
-
-# NextAuth (Required)
-NEXTAUTH_SECRET=<32+ chars>
-NEXTAUTH_URL=http://localhost:3001
-
-# Redis (Required for production)
-UPSTASH_REDIS_REST_URL=https://...
-UPSTASH_REDIS_REST_TOKEN=...
-
-# Database
-DATABASE_PATH=./procheff.db
-```
-
-## Security Best Practices
-
-1. **Never commit secrets**: Use `.env.local` for development
-2. **Validate all inputs**: Zod schemas for API requests
-3. **Rate limiting**: Always enabled in production
-4. **CORS**: Properly configured for API routes
-5. **SQL injection**: Use parameterized queries only
-6. **XSS**: Sanitize user inputs
-7. **Auth**: Check auth on protected routes
-
-## Performance Optimization
-
-1. **Enable caching**: Set `ENABLE_CACHING=true`
-2. **Use Redis**: For rate limiting and caching
-3. **Image optimization**: Use Next.js Image component
-4. **Code splitting**: Dynamic imports for heavy components
-5. **API batching**: Group related requests
-6. **Database indexes**: On frequently queried columns
-
-## Error Handling Patterns
-
+### New Helper Function
 ```typescript
-// Centralized error handler
-try {
-  await operation();
-} catch (error) {
-  AILogger.error("Operation failed", {
-    error: error instanceof Error ? error.stack : String(error),
-    context: { /* relevant data */ }
-  });
-
-  return NextResponse.json(
-    { error: "User-friendly message" },
-    { status: 500 }
-  );
+/**
+ * Description of what this function does
+ * @param dataPool - The data pool to process
+ * @returns Processed data with source references
+ */
+export function helperName(dataPool: DataPool): ProcessedData[] {
+  // Always include source tracking
+  return data.map(item => ({
+    ...item,
+    source: {
+      filename: doc.filename,
+      page_number: entity.page_number
+    }
+  }));
 }
 ```
 
-## Deployment
+## Quick Actions
 
-### DigitalOcean App Platform
-```bash
-# Deploy via CLI
-doctl apps create --spec .do/app.yaml
+- Convert to helper function
+- Add source tracking
+- Implement export
+- Add loading state
+- Apply glass-card styling
 
-# Or via GitHub (auto-deploy on push to main)
-git push origin main
+## Snippets
+
+### Table Category Check
+```typescript
+// Check table category
+if (isMenuTable(table.headers)) return 'menu';
+if (isCostTable(table.headers)) return 'cost';
+if (isPersonnelTable(table.headers)) return 'personnel';
+if (isTechnicalTable(table.headers)) return 'technical';
+return 'other';
 ```
 
-### Docker (VPS)
-```bash
-# Build and run
-docker build -t procheff-v3:latest .
-docker-compose up -d
-
-# Update
-git pull && docker-compose up -d --build
+### Source Reference Display
+```typescript
+<span className="text-xs text-slate-500">
+  📄 {source.filename}:{source.page_number}
+</span>
 ```
 
-## Debugging Tips
-
-1. **Check logs**: `docker-compose logs -f` or `doctl apps logs APP_ID`
-2. **Health endpoint**: `curl /api/health`
-3. **AI Logger**: Check console for AI operation logs
-4. **Database**: Use DB Browser for SQLite to inspect data
-5. **Network**: Use browser DevTools Network tab for SSE
-
-## Git Workflow
-
-```bash
-# Feature branch
-git checkout -b feature/new-feature
-git commit -m "feat: add new feature"
-git push origin feature/new-feature
-
-# Create PR on GitHub
-# After merge to main, auto-deploy triggers
+### Export to CSV
+```typescript
+const exportToCSV = () => {
+  const csv = convertToCSV(data);
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'export.csv';
+  a.click();
+};
 ```
 
-## Testing Guidelines
+## Linting Rules
 
-1. **Test health endpoint first**: Ensure basic connectivity
-2. **Test auth flow**: Login → Dashboard access
-3. **Test file upload**: PDF/DOCX → OCR → Analysis
-4. **Test Auto-Pipeline**: End-to-end workflow
-5. **Monitor logs**: During first deployment
-6. **Check performance**: Response times, cache hit rates
+### Enforce
+- No `any` types
+- Explicit return types
+- Source tracking on all data
+- Error handling in async functions
 
-## Common Issues & Solutions
+### Warn
+- Missing loading states
+- Console.log usage
+- Inline styles
+- Direct state mutation
 
-### Port already in use
-```bash
-# Find process using port
-lsof -i :3001
-# Kill process or change port
+## Context Awareness
+
+### Current Architecture
+- 3-Tab Analysis System (Veri Havuzu, Bağlamsal, Derin)
+- Source tracking (file:page) on all data
+- Auto-categorization for tables
+- Glassmorphism theme
+
+### Key Patterns
+- Use AILogger for logging
+- Clean Claude responses with cleanClaudeJSON
+- Use Zustand for state management
+- Apply glass-card classes for UI
+
+## Debugging Helpers
+
+### Log Analysis Data
+```typescript
+AILogger.info("Analysis data", {
+  documents: dataPool.documents.length,
+  tables: dataPool.tables.length,
+  entities: dataPool.entities.length
+});
 ```
 
-### Build fails
-```bash
-# Clear cache
-rm -rf .next node_modules
-npm install
-npm run build
+### Check Table Categories
+```typescript
+const categories = categorizeAllTables(dataPool.tables);
+console.table({
+  menu: categories.menu.length,
+  cost: categories.cost.length,
+  personnel: categories.personnel.length,
+  technical: categories.technical.length,
+  other: categories.other.length
+});
 ```
-
-### Database locked
-```bash
-# Ensure proper connection closure
-# Use transactions properly
-# Check for deadlocks
-```
-
-### AI API errors
-```bash
-# Check API keys are correct
-# Verify rate limits
-# Check model availability
-```
-
-## Documentation References
-
-- **Full Deployment**: `docs/DIGITALOCEAN-DEPLOYMENT.md`
-- **Quick Start**: `README-DEPLOYMENT.md`
-- **Architecture**: `docs/ARCHITECTURE.md`
-- **Production Features**: `docs/PRODUCTION-FEATURES.md`
-- **Database Schema**: `docs/DATABASE.md`
-
-## AI Assistance Guidelines
-
-When helping with this project:
-1. **Follow existing patterns**: Match code style and architecture
-2. **Prioritize TypeScript safety**: Explicit types, proper error handling
-3. **Consider production**: Security, performance, scalability
-4. **Use existing utilities**: AILogger, retry logic, etc.
-5. **Maintain consistency**: Follow project structure
-6. **Document changes**: Update relevant docs if needed
-7. **Test thoroughly**: Especially AI workflows and DB operations
-
-## Key Files to Know
-
-- `src/app/api/orchestrate/route.ts` - Main orchestration logic
-- `src/lib/ai/anthropic.ts` - Claude AI client
-- `src/lib/ai/gemini.ts` - Gemini Vision client
-- `src/lib/db/init-auth.ts` - Database operations
-- `src/lib/jobs/index.ts` - Job management (SSE)
-- `.do/app.yaml` - DigitalOcean configuration
-- `Dockerfile` - Production Docker build
-- `docker-compose.yml` - Local/VPS deployment
-
-## Last Updated
-2025-11-10
-Version: 3.0.0
