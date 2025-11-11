@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Loader2, Package, History } from 'lucide-react';
+import { Search, Loader2, Package, History, AlertTriangle } from 'lucide-react';
 import { PriceCard } from '@/components/market/PriceCard';
 import { BulkUploader } from '@/components/market/BulkUploader';
 import { TrendChart } from '@/components/market/TrendChart';
@@ -98,6 +98,28 @@ export default function PiyasaRobotuPage() {
             Gerçek zamanlı piyasa fiyatları ve akıllı tahminler
           </p>
         </div>
+
+        {/* Mock Data Warning Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card border-amber-500/30 p-4 rounded-xl mb-6"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-amber-400 font-semibold mb-1">
+                ⚠️ Geliştirme Modu
+              </h3>
+              <p className="text-sm text-slate-300">
+                Piyasa verileri şu an <strong className="text-amber-300">mock data</strong> kullanıyor.
+                Gerçek TÜİK API ve web scraping entegrasyonu henüz tamamlanmadı.
+                Gösterilen fiyatlar <strong className="text-amber-300">tahmin amaçlıdır</strong> ve
+                gerçek piyasa koşullarını yansıtmayabilir.
+              </p>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-slate-700/50">

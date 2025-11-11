@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { ihbList } from '@/lib/ihale/client';
 import { initTendersTable, upsertTender, getActiveTenders, archiveExpiredTenders } from '@/lib/db/init-tenders';
+import { AILogger } from '@/lib/ai/logger';
 
 export async function GET(req: NextRequest) {
   const sessionId = req.cookies.get('ihale_session')?.value;
@@ -15,13 +16,13 @@ export async function GET(req: NextRequest) {
     // If refresh requested, fetch from worker
     if (refresh && sessionId) {
       try {
-        console.log('🔄 Fetching fresh data from ihalebul.com...');
+        AILogger.info('Fetching fresh data from ihalebul.com', { sessionId });
 
         // Fetch from worker
         const items = await ihbList(sessionId);
 
         // Save to database (upsert - insert or update)
-        console.log(`💾 Saving ${items.length} tenders to database...`);
+        AILogger.info('Saving tenders to database', { count: items.length });
         for (const item of items) {
           upsertTender({
             id: item.id,
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
 
         // Archive expired tenders
         const archivedCount = archiveExpiredTenders();
-        console.log(`📦 Archived ${archivedCount} expired tenders`);
+        AILogger.info('Archived expired tenders', { count: archivedCount });
 
         // Return from database (includes newly added items)
         const tenders = getActiveTenders();
@@ -53,7 +54,9 @@ export async function GET(req: NextRequest) {
         });
 
       } catch (workerError: any) {
-        console.warn('⚠️ Worker fetch failed, falling back to database:', workerError.message);
+        AILogger.warn('Worker fetch failed, falling back to database', {
+          error: workerError.message
+        });
         // Continue to database fallback below
       }
     }
@@ -70,7 +73,7 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (e: any) {
-    console.error('❌ List error:', e.message);
+    AILogger.error('Tender list fetch failed', { error: e.message });
     return new Response(JSON.stringify({ error: e.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

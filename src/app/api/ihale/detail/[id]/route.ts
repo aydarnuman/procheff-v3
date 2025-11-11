@@ -5,6 +5,7 @@ import { rewriteForIframe } from '@/lib/ihale/rewrite-for-iframe';
 import { sanitizeForSnapshot } from '@/lib/ihale/html-sanitize';
 import { parseTenderHTML, formatParsedData } from '@/lib/utils/html-parser';
 import { parseTenderHTMLWithAI } from '@/lib/ai/parse-tender-html';
+import { AILogger } from '@/lib/ai/logger';
 
 export async function GET(
   req: NextRequest,
@@ -16,12 +17,12 @@ export async function GET(
   // If no session, try to login first
   if (!sessionId) {
     try {
-      console.log('[API] No session found, attempting login...');
+      AILogger.info('No session found, attempting login', { tenderId: id });
       sessionId = await ihbLogin();
 
       // Session ID is now guaranteed to be defined after successful login
     } catch (loginError) {
-      console.error('[API] Login failed:', loginError);
+      AILogger.error('İhalebul.com login failed', { error: loginError, tenderId: id });
       return new Response(JSON.stringify({
         error: 'login_failed',
         message: 'İhalebul.com\'a giriş yapılamadı. Lütfen tekrar deneyin.'
