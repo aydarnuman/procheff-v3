@@ -112,12 +112,12 @@ export async function GET(
 
     return response;
   } catch (e: any) {
-    console.error('[API] Error fetching tender detail:', e.message);
+    AILogger.error('Error fetching tender detail', { error: e.message, tenderId: id });
 
     // If session expired, try to login again
     if (e.message?.includes('session') || e.message?.includes('unauthorized')) {
       try {
-        console.log('[API] Session expired, attempting re-login...');
+        AILogger.info('Session expired, attempting re-login', { tenderId: id });
         const newSessionId = await ihbLogin();
 
         // Retry with new session
@@ -133,7 +133,7 @@ export async function GET(
 
         return response;
       } catch (retryError: any) {
-        console.error('[API] Retry failed:', retryError.message);
+        AILogger.error('Retry login failed', { error: retryError.message, tenderId: id });
         return new Response(JSON.stringify({
           error: 'session_expired',
           message: 'Oturum süresi doldu, lütfen sayfayı yenileyin.'
