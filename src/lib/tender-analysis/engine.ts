@@ -7,7 +7,9 @@ import type {
   TenderAnalysisResult,
   AnalysisOptions,
   ValidationResult,
-  ExtractedFields
+  ExtractedFields,
+  ContextualAnalysis,
+  MarketAnalysis
 } from './types';
 import type { DataPool } from '@/lib/document-processor/types';
 
@@ -57,30 +59,27 @@ export class TenderAnalysisEngine {
 
       if (this.options.parallel_processing) {
         // Parallel processing
-        const promises = [];
-
-        if (this.options.enable_contextual) {
-          promises.push(performContextualAnalysis(dataPool, extractedFields));
-        }
-
-        if (this.options.enable_market) {
-          const menuItems = extractMenuItems(dataPool);
-          promises.push(performMarketAnalysis(dataPool, extractedFields, menuItems));
-        }
+        const promises: [Promise<any>, Promise<any>] = [
+          this.options.enable_contextual
+            ? performContextualAnalysis(dataPool, extractedFields)
+            : Promise.resolve(undefined),
+          this.options.enable_market
+            ? performMarketAnalysis(dataPool, extractedFields, extractMenuItems(dataPool))
+            : Promise.resolve(undefined)
+        ];
 
         const results = await Promise.allSettled(promises);
 
         // Extract results
-        let index = 0;
         if (this.options.enable_contextual) {
-          const contextualResult = results[index++];
+          const contextualResult = results[0];
           contextual = contextualResult.status === 'fulfilled'
             ? contextualResult.value
             : undefined;
         }
 
         if (this.options.enable_market) {
-          const marketResult = results[index++];
+          const marketResult = results[1];
           market = marketResult.status === 'fulfilled'
             ? marketResult.value
             : undefined;
@@ -126,8 +125,8 @@ export class TenderAnalysisEngine {
       AILogger.success('Tender analysis completed', {
         analysisId: this.analysisId,
         duration: result.processing_time_ms,
-        contextualScore: contextual?.genel_degerlendirme.puan,
-        marketRisk: market?.comparison.risk_level
+        contextualScore: contextual?.genel_degerlendirme?.puan,
+        marketRisk: market?.comparison?.risk_level
       });
 
       return result;
@@ -175,8 +174,8 @@ export class TenderAnalysisEngine {
    */
   private async validateResults(
     extractedFields: ExtractedFields,
-    contextual?: any,
-    market?: any
+    contextual?: ContextualAnalysis,
+    market?: MarketAnalysis
   ): Promise<ValidationResult> {
     return validateAnalysisData(extractedFields, contextual, market);
   }
@@ -266,9 +265,22 @@ export class TenderAnalysisEngine {
       // Update contextual analysis
       if (result.contextual) {
         store.setContextualAnalysis({
-          operasyonel_riskler: result.contextual.operasyonel_riskler,
-          maliyet_sapma_olasiligi: result.contextual.maliyet_sapma_olasiligi,
-          zaman_uygunlugu: result.contextual.zaman_uygunlugu,
+          operasyonel_riskler: {
+            seviye: result.contextual.operasyonel_riskler.seviye,
+            nedenler: result.contextual.operasyonel_riskler.nedenler.map((s: any) => s.text),
+            aciklama: result.contextual.operasyonel_riskler.nedenler[0]?.text || '',
+            kaynak: result.contextual.operasyonel_riskler.nedenler.flatMap((s: any) => s.source_ref)
+          },
+          maliyet_sapma_olasiligi: {
+            oran: result.contextual.maliyet_sapma_olasiligi.oran,
+            neden: result.contextual.maliyet_sapma_olasiligi.faktorler[0]?.text || '',
+            kaynak: result.contextual.maliyet_sapma_olasiligi.faktorler.flatMap((s: any) => s.source_ref)
+          },
+          zaman_uygunlugu: {
+            yeterli: result.contextual.zaman_uygunlugu.yeterli,
+            gerekce: result.contextual.zaman_uygunlugu.gun_analizi[0]?.text || '',
+            kaynak: result.contextual.zaman_uygunlugu.gun_analizi.flatMap((s: any) => s.source_ref)
+          },
           genel_oneri: result.contextual.genel_degerlendirme.ozet
         });
       }
@@ -276,9 +288,27 @@ export class TenderAnalysisEngine {
       // Update market analysis
       if (result.market) {
         store.setMarketAnalysis({
-          cost_items: result.market.cost_items,
+          cost_items: result.market.cost_items.map((item: any) => ({
+            product_key: item.product_key,
+            name: item.name_normalized,
+            unit: item.unit,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price,
+            confidence: item.confidence,
+            source_mix: [
+              item.prices?.tuik ? 'tuik' : '',
+              item.prices?.web ? 'web' : '',
+              item.prices?.db ? 'db' : '',
+              item.prices?.manual ? 'manual' : ''
+            ].filter(Boolean)
+          })),
           total_cost: result.market.total_cost,
-          forecast: result.market.forecast
+          forecast: {
+            next_month_total: result.market.forecast.next_month,
+            confidence: result.market.forecast.confidence,
+            trend: result.market.forecast.trend
+          }
         });
       }
 
@@ -298,17 +328,20 @@ export class TenderAnalysisEngine {
    * Calculate overall scores
    */
   private calculateScores(result: TenderAnalysisResult) {
-    const riskScore = result.contextual
-      ? (100 - result.contextual.operasyonel_riskler.skor)
+    const contextual = result.contextual;
+    const market = result.market;
+
+    const riskScore = contextual
+      ? (100 - contextual.operasyonel_riskler.skor)
       : 50;
 
-    const opportunityScore = result.contextual
-      ? result.contextual.genel_degerlendirme.puan
+    const opportunityScore = contextual
+      ? contextual.genel_degerlendirme.puan
       : 50;
 
-    const feasibilityScore = result.market
-      ? (result.market.comparison.risk_level === 'safe' ? 80 :
-         result.market.comparison.risk_level === 'tight' ? 50 : 20)
+    const feasibilityScore = market
+      ? (market.comparison.risk_level === 'safe' ? 80 :
+         market.comparison.risk_level === 'tight' ? 50 : 20)
       : 50;
 
     const confidenceScore = result.validation

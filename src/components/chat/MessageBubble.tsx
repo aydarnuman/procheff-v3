@@ -2,11 +2,11 @@
  * MessageBubble - Chat message component with markdown support
  */
 
+import type { Message } from '@/store/chatStore';
 import { motion } from 'framer-motion';
-import { User, Bot, Loader2 } from 'lucide-react';
+import { Bot, Loader2, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { Message } from '@/store/chatStore';
 
 interface Props {
   message: Message;
@@ -23,22 +23,29 @@ export function MessageBubble({ message }: Props) {
       className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
       {/* Avatar */}
-      <div
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        whileHover={{ scale: 1.1 }}
         className={`
-          flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
+          relative shrink-0 w-10 h-10 rounded-full flex items-center justify-center
+          shadow-lg transition-all duration-200
           ${
             isUser
-              ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
-              : 'bg-gradient-to-br from-purple-500 to-pink-500'
+              ? 'bg-linear-to-br from-blue-500 via-cyan-500 to-blue-600 shadow-blue-500/25'
+              : 'bg-linear-to-br from-purple-500 via-pink-500 to-purple-600 shadow-purple-500/25'
           }
+          before:absolute before:inset-0.5 before:rounded-full before:bg-linear-to-br
+          before:from-white/20 before:to-transparent before:pointer-events-none
         `}
       >
         {isUser ? (
-          <User className="w-4 h-4 text-white" />
+          <User className="w-5 h-5 text-white drop-shadow-sm" />
         ) : (
-          <Bot className="w-4 h-4 text-white" />
+          <Bot className="w-5 h-5 text-white drop-shadow-sm" />
         )}
-      </div>
+      </motion.div>
 
       {/* Message Content */}
       <div className={`flex-1 max-w-[75%] ${isUser ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
@@ -48,7 +55,7 @@ export function MessageBubble({ message }: Props) {
             rounded-2xl px-4 py-3
             ${
               isUser
-                ? 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30'
+                ? 'bg-linear-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30'
                 : 'glass-card'
             }
           `}

@@ -5,13 +5,13 @@
 
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Bot, Trash2, Info, ChevronRight, ChevronLeft } from 'lucide-react';
 import { ChatInterface } from '@/components/chat/ChatInterface';
+import { AlertsWidget, MetricsWidget, PriceWidget } from '@/components/chat/ContextWidgets';
 import { InputArea } from '@/components/chat/InputArea';
-import { MetricsWidget, PriceWidget, AlertsWidget } from '@/components/chat/ContextWidgets';
 import { useChatStore } from '@/store/chatStore';
+import { motion } from 'framer-motion';
+import { Bot, ChevronLeft, ChevronRight, Info, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 export default function ChatPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -23,13 +23,22 @@ export default function ChatPage() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card rounded-none border-b border-slate-800/50 p-4"
+        className="relative backdrop-blur-xl bg-slate-900/95 border-b border-slate-800/50 p-6
+          shadow-xl shadow-black/20 before:absolute before:inset-0 
+          before:bg-linear-to-r before:from-indigo-500/5 before:via-purple-500/5 before:to-pink-500/5"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30">
-              <Bot className="w-6 h-6 text-indigo-400" />
-            </div>
+            <motion.div 
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              transition={{ duration: 0.2 }}
+              className="relative p-3 rounded-2xl bg-linear-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 
+                border border-indigo-500/30 shadow-lg shadow-indigo-500/20
+                before:absolute before:inset-0.5 before:rounded-xl before:bg-linear-to-br 
+                before:from-white/10 before:to-transparent before:pointer-events-none"
+            >
+              <Bot className="relative z-10 w-7 h-7 text-indigo-300 drop-shadow-lg" />
+            </motion.div>
             <div>
               <h1 className="text-xl font-bold text-white">AI İhale Asistanı</h1>
               <p className="text-sm text-slate-400">Sorularınızı sorun, ihale analizi yapın</p>
@@ -100,27 +109,41 @@ function ContextPanel() {
       {/* Info Cards */}
       <div className="space-y-4">
         {/* Capabilities */}
-        <div className="glass-card p-4 rounded-xl">
-          <h4 className="text-sm font-semibold text-white mb-3">🎯 Yetenekler</h4>
-          <ul className="space-y-2 text-xs text-slate-400">
-            <li className="flex items-start gap-2">
-              <span className="text-green-400 mt-0.5">✓</span>
-              <span>İhale dokümanı analizi</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-400 mt-0.5">✓</span>
-              <span>Maliyet hesaplama</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-400 mt-0.5">✓</span>
-              <span>Stratejik tavsiye</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-400 mt-0.5">✓</span>
-              <span>Geçmiş deneyimlerden öğrenme</span>
-            </li>
-          </ul>
-        </div>
+        <motion.div 
+          whileHover={{ scale: 1.02, y: -2 }}
+          transition={{ duration: 0.2 }}
+          className="relative group glass-card p-5 rounded-2xl border border-slate-700/50 
+            hover:border-indigo-500/30 transition-all duration-300
+            shadow-lg hover:shadow-xl hover:shadow-indigo-500/10
+            before:absolute before:inset-0 before:rounded-2xl before:bg-linear-to-br
+            before:from-indigo-500/5 before:via-purple-500/5 before:to-pink-500/5 before:opacity-0
+            before:group-hover:opacity-100 before:transition-opacity before:duration-300"
+        >
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-lg">🎯</span>
+              <h4 className="text-sm font-bold text-white">Yetenekler</h4>
+            </div>
+            <ul className="space-y-2.5 text-xs text-slate-400">
+              <li className="flex items-start gap-3">
+                <span className="text-green-400 mt-0.5 text-sm">✓</span>
+                <span className="group-hover:text-slate-300 transition-colors">İhale dokümanı analizi</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-green-400 mt-0.5 text-sm">✓</span>
+                <span className="group-hover:text-slate-300 transition-colors">Maliyet hesaplama</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-green-400 mt-0.5 text-sm">✓</span>
+                <span className="group-hover:text-slate-300 transition-colors">Stratejik tavsiye</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-green-400 mt-0.5 text-sm">✓</span>
+                <span className="group-hover:text-slate-300 transition-colors">Geçmiş deneyimlerden öğrenme</span>
+              </li>
+            </ul>
+          </div>
+        </motion.div>
 
         {/* Live Metrics */}
         <MetricsWidget />
@@ -158,7 +181,7 @@ function ContextPanel() {
           <h4 className="text-sm font-semibold text-white mb-3">💬 Nasıl Kullanılır?</h4>
           <ul className="space-y-2 text-xs text-slate-400">
             <li>• Doğal dilde soru sorun</li>
-            <li>• "Analiz et", "Hesapla", "Öner" gibi komutlar kullanın</li>
+            <li>• &ldquo;Analiz et&rdquo;, &ldquo;Hesapla&rdquo;, &ldquo;Öner&rdquo; gibi komutlar kullanın</li>
             <li>• Geçmiş kararlarınızı sorun</li>
             <li>• Benzer ihaleleri karşılaştırın</li>
           </ul>
@@ -169,13 +192,13 @@ function ContextPanel() {
           <h4 className="text-sm font-semibold text-white mb-3">📚 Örnek Sorular</h4>
           <div className="space-y-2 text-xs text-slate-400">
             <div className="bg-slate-800/50 rounded px-2 py-1.5">
-              "Bu ihaleye katılmamı önerir misin?"
+              &ldquo;Bu ihaleye katılmamı önerir misin?&rdquo;
             </div>
             <div className="bg-slate-800/50 rounded px-2 py-1.5">
-              "Günlük kişi başı maliyet nasıl hesaplanır?"
+              &ldquo;Günlük kişi başı maliyet nasıl hesaplanır?&rdquo;
             </div>
             <div className="bg-slate-800/50 rounded px-2 py-1.5">
-              "Sağlık ihalelerinde dikkat edilmesi gerekenler?"
+              &ldquo;Sağlık ihalelerinde dikkat edilmesi gerekenler?&rdquo;
             </div>
           </div>
         </div>

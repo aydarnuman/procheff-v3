@@ -3,7 +3,7 @@
  * Handles text, table, and metadata extraction from various document formats
  */
 
-import * as pdfjs from 'pdfjs-dist';
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import * as cheerio from 'cheerio';
@@ -37,8 +37,10 @@ export async function extractFromFile(
   tables: ExtractedTable[];
   rawText: string;
 }> {
-  const buffer = file instanceof File ? await file.arrayBuffer() : file;
-  const hash = calculateHash(Buffer.from(buffer));
+  const buffer: ArrayBuffer = file instanceof File
+    ? await file.arrayBuffer()
+    : file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) as ArrayBuffer;
+  const hash = calculateHash(file instanceof File ? Buffer.from(buffer) : file);
 
   let info: DocumentInfo;
   let textBlocks: TextBlock[] = [];
@@ -93,7 +95,8 @@ export async function extractFromFile(
         {
           block_id: `${docId}:1`,
           text: text,
-          doc_id: docId
+          doc_id: docId,
+          source: docId
         }
       ];
     }
@@ -158,6 +161,7 @@ async function extractFromPDF(
             block_id: `${docId}:${pageNum}.${blockIndex}`,
             text: text,
             doc_id: docId,
+            source: docId,
             page: pageNum,
             bbox: item.transform ? {
               x: item.transform[4],
@@ -226,7 +230,8 @@ async function extractFromDOCX(
   const textBlocks: TextBlock[] = paragraphs.map((para, index) => ({
     block_id: `${docId}:${index + 1}`,
     text: para,
-    doc_id: docId
+    doc_id: docId,
+    source: docId
   }));
 
   return { textBlocks, rawText: text };
@@ -301,7 +306,8 @@ async function extractFromHTML(
       textBlocks.push({
         block_id: `${docId}:${blockIndex}`,
         text: text,
-        doc_id: docId
+        doc_id: docId,
+        source: docId
       });
       rawText += text + '\n';
       blockIndex++;

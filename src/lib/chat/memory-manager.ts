@@ -12,9 +12,15 @@ export interface UserFeedback {
   userId?: string;
 }
 
+interface MCPEntity {
+  name: string;
+  entityType: string;
+  observations?: string[];
+}
+
 export interface Context {
-  similarTenders: any[];
-  learnedRules: any[];
+  similarTenders: MCPEntity[];
+  learnedRules: MCPEntity[];
   relevantObservations: string[];
 }
 
@@ -250,7 +256,7 @@ export class MemoryManager {
   /**
    * Remove duplicate entities
    */
-  private removeDuplicates(entities: any[]): any[] {
+  private removeDuplicates(entities: MCPEntity[]): MCPEntity[] {
     const seen = new Set();
     return entities.filter(entity => {
       const key = entity.name || JSON.stringify(entity);
@@ -270,7 +276,7 @@ export class MemoryManager {
    * Wrapper for mcp__memory__create_entities
    * TODO: Integrate with MCP tools via Claude Code
    */
-  private async createEntities(entities: any[]): Promise<void> {
+  private async createEntities(entities: MCPEntity[]): Promise<void> {
     // Placeholder - will be implemented when MCP integration is ready
     console.log('[Memory] Would create entities:', entities.length);
     return Promise.resolve();
@@ -279,7 +285,7 @@ export class MemoryManager {
   /**
    * Wrapper for mcp__memory__create_relations
    */
-  private async createRelations(relations: any[]): Promise<void> {
+  private async createRelations(relations: Array<{from: string; to: string; relationType: string}>): Promise<void> {
     // Placeholder
     console.log('[Memory] Would create relations:', relations.length);
     return Promise.resolve();

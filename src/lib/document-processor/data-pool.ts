@@ -10,6 +10,9 @@ import type {
   DocumentInfo,
   TextBlock,
   ExtractedTable,
+  ExtractedEntity,
+  ExtractedDate,
+  ExtractedAmount,
   ProcessingOptions,
   ProcessingResult,
   ProcessingError,
@@ -277,7 +280,7 @@ function mergeAdjacentBlocks(blocks: TextBlock[]): TextBlock[] {
 /**
  * Deduplicate entities
  */
-function deduplicateEntities(entities: any[]): any[] {
+function deduplicateEntities(entities: ExtractedEntity[]): ExtractedEntity[] {
   const seen = new Set<string>();
   return entities.filter(entity => {
     const key = `${entity.kind}:${entity.value}`;
@@ -290,7 +293,7 @@ function deduplicateEntities(entities: any[]): any[] {
 /**
  * Deduplicate dates
  */
-function deduplicateDates(dates: any[]): any[] {
+function deduplicateDates(dates: ExtractedDate[]): ExtractedDate[] {
   const seen = new Set<string>();
   return dates.filter(date => {
     const key = `${date.kind}:${date.value}`;

@@ -22,7 +22,9 @@ export interface TextBlock {
   block_id: string;         // Reference ID (e.g., "A:12")
   text: string;             // Extracted text
   doc_id: string;           // Parent document ID
+  source: string;           // Source reference (same as doc_id for compatibility)
   page?: number;            // Page number (if applicable)
+  page_number?: number;     // Alias for page (for compatibility)
   line_start?: number;      // Starting line number
   line_end?: number;        // Ending line number
   confidence?: number;      // OCR confidence (0-1)
@@ -115,6 +117,20 @@ export interface DataPool {
 
   // Combined text for search/analysis
   rawText: string;
+
+  // Basic info (for analysis helpers)
+  basicInfo?: {
+    kurum?: string;           // Institution
+    butce?: string;           // Budget
+    kisilik?: string;         // Person count
+    ihale_turu?: string;      // Tender type
+    sure?: string;            // Duration
+    institution?: string;     // Alias
+    budget?: string;          // Alias
+    person_count?: string;    // Alias
+    tender_type?: string;     // Alias
+    duration?: string;        // Alias
+  };
 
   // Metadata
   metadata: {

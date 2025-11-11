@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Clock,
@@ -25,7 +25,7 @@ interface BatchJob {
   error: string | null;
 }
 
-export default function BatchJobsPage() {
+function BatchJobsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const highlightId = searchParams?.get("highlight");
@@ -307,5 +307,17 @@ export default function BatchJobsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function BatchJobsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+      </div>
+    }>
+      <BatchJobsContent />
+    </Suspense>
   );
 }
