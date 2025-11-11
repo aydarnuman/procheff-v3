@@ -35,9 +35,9 @@ if [ ! -f ".env" ]; then
     cat > .env <<'EOF'
 # Procheff v3 - DigitalOcean Production Environment
 
-# API KEYS
-ANTHROPIC_API_KEY=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
-GOOGLE_API_KEY=AIzaSyB3Fz7u9dD5i9BAooTJGCnFzTkTiWPrHT8
+# API KEYS (Replace with your actual keys)
+ANTHROPIC_API_KEY=sk-ant-api03-YOUR_ANTHROPIC_API_KEY_HERE
+GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY_HERE
 NEXTAUTH_SECRET=f4d41086daa6d1036794c8b81758b0b6840045ac28b9fee9208f01f4f2c65fc7
 
 # UPSTASH REDIS (Update with real values if needed)
