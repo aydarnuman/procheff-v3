@@ -7,12 +7,14 @@ import { motion } from 'framer-motion';
 import { Bot, Loader2, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { InlineFeedbackButtons } from './FeedbackWidget';
 
 interface Props {
   message: Message;
+  previousMessage?: Message;
 }
 
-export function MessageBubble({ message }: Props) {
+export function MessageBubble({ message, previousMessage }: Props) {
   const isUser = message.role === 'user';
   const isStreaming = message.isStreaming;
 
@@ -124,6 +126,16 @@ export function MessageBubble({ message }: Props) {
             </div>
           )}
         </div>
+
+        {/* Feedback buttons for assistant messages */}
+        {!isUser && !isStreaming && previousMessage && (
+          <InlineFeedbackButtons
+            messageId={message.id}
+            conversationId={message.conversationId || 'default'}
+            message={previousMessage.content}
+            response={message.content}
+          />
+        )}
 
         {/* Timestamp */}
         <span className={`text-xs text-slate-500 px-2 ${isUser ? 'text-right' : 'text-left'}`}>

@@ -14,6 +14,11 @@ interface TenderSection {
 interface ParsedTenderDetail {
   sections: TenderSection[];
   rawText: string;
+  tables?: Array<{
+    title?: string;
+    headers?: string[];
+    rows?: string[][];
+  }>;
 }
 
 /**

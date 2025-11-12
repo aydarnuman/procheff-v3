@@ -1,7 +1,11 @@
 "use client";
 
+import { CacheMetricsCard } from "@/components/monitoring/CacheMetricsCard";
+import { RateLimitCard } from "@/components/monitoring/RateLimitCard";
+import { RedisHealthIndicator } from "@/components/monitoring/RedisHealthIndicator";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MetricCard } from "@/components/ui/MetricCard";
 import { fadeInUp, scaleIn, staggerContainer } from "@/lib/animations";
 import { motion } from "framer-motion";
 import { Activity, AlertTriangle, BarChart3, CheckCircle, Clock, Info, TrendingUp, XCircle, Zap } from "lucide-react";
@@ -35,6 +39,32 @@ interface HistoryPoint extends Metrics {
   time: string;
 }
 
+interface PerformanceStats {
+  rateLimit: {
+    enabled: boolean;
+    totalRequests?: number;
+    endpointStats?: Record<string, { requests: number; limit: number }>;
+    globalLimit?: number;
+  } | null;
+  cache: {
+    enabled: boolean;
+    hitRate?: number;
+    totalHits?: number;
+    totalMisses?: number;
+    cacheSize?: number;
+    topKeys?: Array<{ key: string; hits: number }>;
+  } | null;
+  redis: {
+    connected: boolean;
+    configured: boolean;
+    latency: number | null;
+  } | null;
+  featureFlags: {
+    rateLimiting: boolean;
+    caching: boolean;
+  };
+}
+
 const COLORS = {
   info: "#4A9EFF",      // (--color-accent-blue)
   success: "#00D9A3",   // (--color-accent-mint)
@@ -48,6 +78,8 @@ export default function MonitorPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string>("");
+  const [performanceStats, setPerformanceStats] = useState<PerformanceStats | null>(null);
+  const [performanceLoading, setPerformanceLoading] = useState(true);
 
   const fetchMetrics = async () => {
     try {
@@ -75,11 +107,30 @@ export default function MonitorPage() {
     }
   };
 
+  const fetchPerformanceStats = async () => {
+    try {
+      const res = await fetch("/api/performance/stats");
+      const data = await res.json();
+      if (data.success) {
+        setPerformanceStats(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch performance stats:", err);
+    } finally {
+      setPerformanceLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     fetchMetrics();
+    fetchPerformanceStats();
     const interval = setInterval(fetchMetrics, 10000); // Her 10 saniyede bir güncelle
-    return () => clearInterval(interval);
+    const perfInterval = setInterval(fetchPerformanceStats, 30000); // Her 30 saniyede bir güncelle
+    return () => {
+      clearInterval(interval);
+      clearInterval(perfInterval);
+    };
   }, []);  const getLevelIcon = (level: string) => {
     switch (level) {
       case "info": return Info;
@@ -199,76 +250,62 @@ export default function MonitorPage() {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
           variants={staggerContainer}
         >
-          <motion.div variants={scaleIn}>
-            <Card hoverable variant="elevated" className="h-full">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-[(--color-accent-blue)]/20">
-                    <BarChart3 className="w-6 h-6 text-[(--color-accent-blue)]" />
-                  </div>
-                  <span className="body-sm text-[(--color-text-tertiary)]">
-                    Toplam Log
-                  </span>
-                </div>
-                <div className="h2 text-[(--color-accent-blue)]">
-                  {metrics.total_logs}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <MetricCard
+            title="Toplam Log"
+            value={metrics.total_logs}
+            icon={BarChart3}
+            iconColor="text-blue-400"
+            iconBg="bg-blue-500/20"
+            loading={loading}
+          />
+          <MetricCard
+            title="Başarı Oranı"
+            value={`${metrics.success_rate}%`}
+            icon={TrendingUp}
+            iconColor="text-green-400"
+            iconBg="bg-green-500/20"
+            loading={loading}
+          />
+          <MetricCard
+            title="Hata Sayısı"
+            value={metrics.errors}
+            icon={XCircle}
+            iconColor="text-red-400"
+            iconBg="bg-red-500/20"
+            loading={loading}
+          />
+          <MetricCard
+            title="Son 24 Saat"
+            value={metrics.last_24h}
+            icon={Zap}
+            iconColor="text-purple-400"
+            iconBg="bg-purple-500/20"
+            loading={loading}
+          />
+        </motion.div>
 
+        {/* Performance Features (Rate Limit, Cache, Redis) */}
+        <motion.div
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+          variants={staggerContainer}
+        >
           <motion.div variants={scaleIn}>
-            <Card hoverable variant="elevated" className="h-full">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-[(--color-accent-mint)]/20">
-                    <TrendingUp className="w-6 h-6 text-[(--color-accent-mint)]" />
-                  </div>
-                  <span className="body-sm text-[(--color-text-tertiary)]">
-                    Başarı Oranı
-                  </span>
-                </div>
-                <div className="h2 text-[(--color-accent-mint)]">
-                  {metrics.success_rate}%
-                </div>
-              </CardContent>
-            </Card>
+            <RateLimitCard 
+              stats={performanceStats?.rateLimit || null} 
+              loading={performanceLoading}
+            />
           </motion.div>
-
           <motion.div variants={scaleIn}>
-            <Card hoverable variant="elevated" className="h-full">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-[(--color-accent-red)]/20">
-                    <XCircle className="w-6 h-6 text-[(--color-accent-red)]" />
-                  </div>
-                  <span className="body-sm text-[(--color-text-tertiary)]">
-                    Hata Sayısı
-                  </span>
-                </div>
-                <div className="h2 text-[(--color-accent-red)]">
-                  {metrics.errors}
-                </div>
-              </CardContent>
-            </Card>
+            <CacheMetricsCard 
+              stats={performanceStats?.cache || null} 
+              loading={performanceLoading}
+            />
           </motion.div>
-
           <motion.div variants={scaleIn}>
-            <Card hoverable variant="elevated" className="h-full">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-[(--color-accent-purple)]/20">
-                    <Zap className="w-6 h-6 text-[(--color-accent-purple)]" />
-                  </div>
-                  <span className="body-sm text-[(--color-text-tertiary)]">
-                    Son 24 Saat
-                  </span>
-                </div>
-                <div className="h2 text-[(--color-accent-purple)]">
-                  {metrics.last_24h}
-                </div>
-              </CardContent>
-            </Card>
+            <RedisHealthIndicator 
+              health={performanceStats?.redis || null} 
+              loading={performanceLoading}
+            />
           </motion.div>
         </motion.div>
 

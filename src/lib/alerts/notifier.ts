@@ -46,30 +46,61 @@ export function getNotifications(options?: {
   limit?: number;
   unreadOnly?: boolean;
 }): Notification[] {
-  const db = getDB();
-  const limit = options?.limit || 50;
-  const unreadOnly = options?.unreadOnly || false;
+  try {
+    const db = getDB();
+    const limit = options?.limit || 50;
+    const unreadOnly = options?.unreadOnly || false;
 
-  let query = "SELECT * FROM notifications";
-  if (unreadOnly) {
-    query += " WHERE is_read = 0";
+    // Check if table exists
+    const tableExists = db.prepare(`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' AND name='notifications'
+    `).get();
+    
+    if (!tableExists) {
+      console.warn("Notifications table does not exist");
+      return [];
+    }
+
+    let query = "SELECT * FROM notifications";
+    if (unreadOnly) {
+      query += " WHERE is_read = 0";
+    }
+    query += " ORDER BY created_at DESC LIMIT ?";
+
+    return db.prepare(query).all(limit) as Notification[];
+  } catch (error) {
+    console.error("Error getting notifications:", error);
+    return [];
   }
-  query += " ORDER BY created_at DESC LIMIT ?";
-
-  return db.prepare(query).all(limit) as Notification[];
 }
 
 /**
  * Get unread count
  */
 export function getUnreadCount(): number {
-  const db = getDB();
+  try {
+    const db = getDB();
 
-  const result = db
-    .prepare("SELECT COUNT(*) as count FROM notifications WHERE is_read = 0")
-    .get() as { count: number };
+    // Check if table exists
+    const tableExists = db.prepare(`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' AND name='notifications'
+    `).get();
+    
+    if (!tableExists) {
+      return 0;
+    }
 
-  return result.count;
+    const result = db
+      .prepare("SELECT COUNT(*) as count FROM notifications WHERE is_read = 0")
+      .get() as { count: number };
+
+    return result?.count || 0;
+  } catch (error) {
+    console.error("Error getting unread count:", error);
+    return 0;
+  }
 }
 
 /**

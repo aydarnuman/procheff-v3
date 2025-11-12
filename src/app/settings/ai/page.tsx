@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useState } from "react";
 
 type ModelProvider = "claude" | "gemini";
-type ClaudeModel = "claude-sonnet-4" | "claude-haiku-1" | "claude-opus-1";
+type ClaudeModel = "claude-sonnet-4-20250514" | "claude-haiku-4-5-20251001" | "claude-opus-4-20250514";
 type GeminiModel = "gemini-2.0-flash-exp" | "gemini-1.5-pro";
 
 export default function AISettingsPage() {
   // Claude Settings
-  const [claudeModel, setClaudeModel] = useState<ClaudeModel>("claude-sonnet-4");
+  const [claudeModel, setClaudeModel] = useState<ClaudeModel>("claude-sonnet-4-20250514");
   const [claudeTemperature, setClaudeTemperature] = useState(0.7);
   const [claudeMaxTokens, setClaudeMaxTokens] = useState(4096);
   const [claudeTimeout, setClaudeTimeout] = useState(90);
@@ -22,7 +22,7 @@ export default function AISettingsPage() {
   // Pipeline Settings
   const [primaryProvider, setPrimaryProvider] = useState<ModelProvider>("claude");
   const [enableFallback, setEnableFallback] = useState(true);
-  const [fallbackModel, setFallbackModel] = useState<ClaudeModel>("claude-haiku-1");
+  const [fallbackModel, setFallbackModel] = useState<ClaudeModel>("claude-haiku-4-5-20251001");
 
   const handleSave = () => {
     const settings = {
@@ -87,9 +87,9 @@ export default function AISettingsPage() {
               onChange={(e) => setClaudeModel(e.target.value as ClaudeModel)}
               className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
             >
-              <option value="claude-sonnet-4">Claude Sonnet 4 (Önerilen)</option>
-              <option value="claude-haiku-1">Claude Haiku 1 (Hızlı)</option>
-              <option value="claude-opus-1">Claude Opus 1 (En Güçlü)</option>
+              <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (Önerilen)</option>
+              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Hızlı)</option>
+              <option value="claude-opus-4-20250514">Claude Opus 4 (En Güçlü)</option>
             </select>
           </div>
 
@@ -261,8 +261,8 @@ export default function AISettingsPage() {
                 onChange={(e) => setFallbackModel(e.target.value as ClaudeModel)}
                 className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               >
-                <option value="claude-haiku-1">Claude Haiku 1 (Önerilen)</option>
-                <option value="claude-sonnet-4">Claude Sonnet 4</option>
+                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Önerilen)</option>
+                <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
               </select>
             </div>
           )}

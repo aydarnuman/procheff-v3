@@ -207,14 +207,16 @@ export default function WorkspacePage() {
           {/* File Input */}
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <div className="flex-1">
-              <label className="block text-sm text-gray-400 mb-2">
+              <label htmlFor="ihale-document-upload" className="block text-sm text-gray-400 mb-2">
                 İhale Dokümanı Seçin (PDF, DOCX, TXT)
               </label>
               <input
+                id="ihale-document-upload"
                 type="file"
                 accept=".pdf,.docx,.txt"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-500/20 file:text-indigo-300 hover:file:bg-indigo-500/30 cursor-pointer border border-white/10 rounded-lg bg-slate-900/50 px-3 py-2"
+                aria-label="İhale dokümanı yükle"
               />
               {file && (
                 <p className="mt-2 text-sm text-gray-500">

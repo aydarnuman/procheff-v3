@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { AILogger } from '@/lib/ai/logger';
 
 /**
  * Proxy endpoint for ihalebul.com assets
@@ -10,6 +11,7 @@ export async function GET(req: NextRequest) {
   const sessionId = req.cookies.get('ihale_session')?.value;
   const targetUrl = req.nextUrl.searchParams.get('url');
   const useWorker = req.nextUrl.searchParams.get('worker') === 'true';
+  const inline = req.nextUrl.searchParams.get('inline') === 'true'; // For ZIP extraction, don't trigger download
 
   if (!targetUrl) {
     return new Response('Missing url parameter', { status: 400 });
@@ -35,25 +37,46 @@ export async function GET(req: NextRequest) {
       const workerUrl = process.env.IHALE_WORKER_URL;
       const proxyUrl = `${workerUrl}/proxy?sessionId=${sessionId}&url=${encodeURIComponent(targetUrl)}`;
 
-      const response = await fetch(proxyUrl);
+      // Add timeout for worker proxy request (90 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+      const response = await fetch(proxyUrl, { signal: controller.signal }).finally(() => {
+        clearTimeout(timeoutId);
+      });
 
       if (!response.ok) {
-        throw new Error('Worker proxy failed');
+        throw new Error(`Worker proxy failed: ${response.status} ${response.statusText}`);
       }
 
       const buffer = await response.arrayBuffer();
       const contentType = response.headers.get('content-type') || 'application/octet-stream';
-      const contentDisposition = response.headers.get('content-disposition') || '';
+      let contentDisposition = response.headers.get('content-disposition') || '';
+
+      // If inline=true, override Content-Disposition to prevent download
+      if (inline && contentDisposition.includes('attachment')) {
+        contentDisposition = contentDisposition.replace('attachment', 'inline');
+      }
 
       return new Response(buffer, {
         headers: {
           'Content-Type': contentType,
-          'Content-Disposition': contentDisposition,
+          'Content-Disposition': contentDisposition || (inline ? 'inline' : 'attachment'),
           'Cache-Control': 'public, max-age=3600',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'X-Content-Type-Options': 'nosniff',
         },
       });
-    } catch (e: any) {
-      console.error('Worker proxy error:', e.message);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      const errorStack = e instanceof Error ? e.stack : undefined;
+      AILogger.warn('Worker proxy failed, using direct proxy', {
+        error: errorMessage,
+        url: targetUrl,
+        stack: errorStack,
+      });
       // Fall through to direct proxy
     }
   }
@@ -61,10 +84,11 @@ export async function GET(req: NextRequest) {
   // Direct proxy mode
   try {
     const headers: HeadersInit = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Accept': '*/*',
       'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
       'Referer': 'https://www.ihalebul.com/',
+      'Accept-Encoding': 'gzip, deflate, br',
     };
 
     // Add session cookie if available
@@ -72,11 +96,27 @@ export async function GET(req: NextRequest) {
       headers['Cookie'] = `ASP.NET_SessionId=${sessionId}`;
     }
 
-    const response = await fetch(targetUrl, {
-      method: 'GET',
-      headers,
-      redirect: 'manual',
-    });
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout (büyük dosyalar için)
+
+    let response: Response;
+    try {
+      response = await fetch(targetUrl, {
+        method: 'GET',
+        headers,
+        redirect: 'manual',
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        AILogger.error('Proxy request timeout', { url: targetUrl });
+        return new Response('Request timeout', { status: 504 });
+      }
+      throw fetchError;
+    }
 
     // Handle redirects
     if (response.status >= 300 && response.status < 400) {
@@ -92,36 +132,94 @@ export async function GET(req: NextRequest) {
     }
 
     if (!response.ok) {
+      AILogger.warn('Proxy request failed', {
+        url: targetUrl,
+        status: response.status,
+        statusText: response.statusText,
+      });
       return new Response(`Proxy failed: ${response.statusText}`, {
         status: response.status,
-      });
-    }
-
-    const contentType = response.headers.get('content-type') || 'application/octet-stream';
-
-    // For CSS, rewrite URLs
-    if (contentType.includes('css')) {
-      const text = await response.text();
-      const rewrittenCss = rewriteCssUrls(text);
-      return new Response(rewrittenCss, {
         headers: {
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=3600',
           'Access-Control-Allow-Origin': '*',
         },
       });
     }
 
-    // For text content
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+
+    // For CSS, rewrite URLs with better error handling and CORB prevention
+    if (contentType.includes('css') || targetUrl.includes('.css')) {
+      try {
+        const text = await response.text();
+        if (!text || text.trim().length === 0) {
+          AILogger.warn('Empty CSS content', { url: targetUrl });
+          // Return minimal CSS to prevent errors
+          return new Response('/* Empty CSS */', {
+            headers: {
+              'Content-Type': 'text/css; charset=utf-8',
+              'Cache-Control': 'public, max-age=300',
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type',
+              'X-Content-Type-Options': 'nosniff',
+              'Cross-Origin-Resource-Policy': 'cross-origin',
+            },
+          });
+        }
+        const rewrittenCss = rewriteCssUrls(text);
+        return new Response(rewrittenCss, {
+          headers: {
+            'Content-Type': 'text/css; charset=utf-8',
+            'Cache-Control': 'public, max-age=3600',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'X-Content-Type-Options': 'nosniff',
+            'Cross-Origin-Resource-Policy': 'cross-origin',
+          },
+        });
+      } catch (cssError: unknown) {
+        const errorMessage = cssError instanceof Error ? cssError.message : String(cssError);
+        AILogger.error('CSS processing error', {
+          url: targetUrl,
+          error: errorMessage,
+        });
+        // Return minimal CSS to prevent breaking the page
+        return new Response('/* CSS load error */', {
+          headers: {
+            'Content-Type': 'text/css; charset=utf-8',
+            'Cache-Control': 'no-cache',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'X-Content-Type-Options': 'nosniff',
+            'Cross-Origin-Resource-Policy': 'cross-origin',
+          },
+        });
+      }
+    }
+
+    // For text content (including JavaScript)
     if (contentType.includes('text/') ||
         contentType.includes('javascript') ||
         contentType.includes('json')) {
       const text = await response.text();
+      const finalContentType = contentType.includes('javascript')
+        ? 'application/javascript; charset=utf-8'
+        : contentType.includes('json')
+        ? 'application/json; charset=utf-8'
+        : contentType.includes('text/')
+        ? `${contentType}; charset=utf-8`
+        : contentType;
+      
       return new Response(text, {
         headers: {
-          'Content-Type': contentType,
+          'Content-Type': finalContentType,
           'Cache-Control': 'public, max-age=3600',
           'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'X-Content-Type-Options': 'nosniff',
         },
       });
     }
@@ -151,18 +249,50 @@ export async function GET(req: NextRequest) {
       filename = 'document';
     }
 
-    return new Response(buffer, {
+      return new Response(buffer, {
+        headers: {
+          'Content-Type': contentType,
+          // Use inline for ZIP extraction to prevent automatic download
+          'Content-Disposition': inline ? `inline; filename="${filename}"` : `attachment; filename="${filename}"`,
+          'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      });
+
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    const errorStack = e instanceof Error ? e.stack : undefined;
+    AILogger.error('Direct proxy error', {
+      error: errorMessage,
+      url: targetUrl,
+      stack: errorStack,
+    });
+    
+    // For CSS files, return empty CSS instead of error to prevent page breakage
+    if (targetUrl.includes('.css')) {
+      return new Response('/* Proxy error - CSS not loaded */', {
+        status: 200, // Return 200 to prevent browser error
+        headers: {
+          'Content-Type': 'text/css; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'X-Content-Type-Options': 'nosniff',
+          'Cross-Origin-Resource-Policy': 'cross-origin',
+        },
+      });
+    }
+    
+    return new Response(`Proxy error: ${errorMessage}`, {
+      status: 500,
       headers: {
-        'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Cache-Control': 'public, max-age=86400',
         'Access-Control-Allow-Origin': '*',
       },
     });
-
-  } catch (e: any) {
-    console.error('Direct proxy error:', e);
-    return new Response(`Proxy error: ${e.message}`, { status: 500 });
   }
 }
 

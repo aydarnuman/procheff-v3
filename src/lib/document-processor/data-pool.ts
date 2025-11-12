@@ -3,8 +3,9 @@
  * Combines extracted data from multiple documents into a unified structure
  */
 
-import { extractFromFile, guessDocumentType } from './extractor';
+import { extractFromFile, guessDocumentType, type ProgressCallback } from './extractor';
 import { extractDates, extractAmounts, extractEntities, parseMenuFromTable } from './parser';
+import { AILogger } from '@/lib/ai/logger';
 import type {
   DataPool,
   DocumentInfo,
@@ -21,6 +22,7 @@ import type {
 
 /**
  * Process multiple files and build a data pool
+ * Enhanced with progress callback support
  */
 export async function buildDataPool(
   files: File[],
@@ -33,7 +35,8 @@ export async function buildDataPool(
     merge_blocks: true,
     clean_text: true,
     detect_language: false
-  }
+  },
+  onProgress?: ProgressCallback
 ): Promise<ProcessingResult> {
   const startTime = Date.now();
   const errors: ProcessingError[] = [];
@@ -58,29 +61,123 @@ export async function buildDataPool(
     provenance: new Map()
   };
 
-  // Process each file
+  // First pass: Extract all ZIP files and collect extracted files
+  const filesToProcess: File[] = [];
+  const processedZipFiles = new Set<string>(); // Track processed ZIP files to prevent loops
+  
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
+    
+    // Handle ZIP files - extract first, then process extracted files
+    if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
+      // Check if we've already processed this ZIP (prevent infinite loops)
+      const fileKey = `${file.name}_${file.size}`;
+      if (processedZipFiles.has(fileKey)) {
+        AILogger.warn('ZIP dosyası zaten işlendi, atlanıyor', { filename: file.name });
+        continue;
+      }
+      processedZipFiles.add(fileKey);
+      
+      AILogger.info('ZIP dosyası tespit edildi', { filename: file.name, size: file.size });
+      onProgress?.(`📦 ZIP çıkarılıyor: ${file.name}`);
+      
+      const extractResult = await extractZipFile(file);
+      if (extractResult.success && extractResult.files.length > 0) {
+        // Add extracted files to processing queue (not to current array to avoid infinite loop)
+        filesToProcess.push(...extractResult.files);
+        // Log successful extraction
+        AILogger.info('ZIP dosyası başarıyla çıkarıldı', {
+          filename: file.name,
+          extractedCount: extractResult.files.length,
+          files: extractResult.files.map(f => ({ name: f.name, type: f.type, size: f.size }))
+        });
+        dataPool.metadata.warnings.push(
+          `ZIP dosyası çıkarıldı: ${extractResult.files.length} dosya (${file.name})`
+        );
+        onProgress?.(`✅ ${extractResult.files.length} dosya çıkarıldı`);
+      } else {
+        // ZIP extraction failed - add ZIP file itself to processing queue as fallback
+        const errorMsg = extractResult.error instanceof Error 
+          ? extractResult.error.message 
+          : String(extractResult.error || 'Bilinmeyen hata');
+        AILogger.error('ZIP dosyası çıkarılamadı', {
+          filename: file.name,
+          error: errorMsg
+        });
+        errors.push({
+          doc_id: generateDocId(i),
+          stage: 'extract_zip',
+          message: `ZIP dosyası çıkarılamadı: ${file.name}`,
+          details: errorMsg
+        });
+        // Add ZIP file itself to processing queue as fallback
+        filesToProcess.push(file);
+      }
+    } else {
+      // Non-ZIP file, add directly to processing queue
+      filesToProcess.push(file);
+    }
+  }
+  
+  // Second pass: Process all files (including extracted ones)
+  for (let i = 0; i < filesToProcess.length; i++) {
+    const file = filesToProcess[i];
     const docId = generateDocId(i);
 
     try {
-      // Handle ZIP files
+      // Skip nested ZIP files (prevent recursive extraction)
       if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
-        const extractedFiles = await extractZipFile(file);
-        files.push(...extractedFiles);
+        AILogger.warn('İç içe ZIP dosyası atlandı', { filename: file.name });
+        errors.push({
+          doc_id: docId,
+          stage: 'extract',
+          message: `İç içe ZIP dosyası desteklenmiyor: ${file.name}`,
+          details: 'Nested ZIP files are not supported to prevent infinite loops'
+        });
         continue;
       }
 
       // Extract content from file
-      const { info, textBlocks, tables, rawText } = await extractFromFile(
-        file,
-        docId,
-        options
-      );
+      let extractionResult;
+      try {
+        onProgress?.(`📄 İşleniyor: ${file.name} (${i + 1}/${filesToProcess.length})`);
+        extractionResult = await extractFromFile(
+          file,
+          docId,
+          options,
+          (msg, progress) => {
+            onProgress?.(`[${file.name}] ${msg}`, progress);
+          }
+        );
+      } catch (extractError) {
+        AILogger.error('File extraction threw exception', {
+          filename: file.name,
+          docId,
+          error: extractError instanceof Error ? extractError.message : String(extractError)
+        });
+        errors.push({
+          doc_id: docId,
+          stage: 'extract',
+          message: `Dosya işlenirken hata: ${file.name}`,
+          details: extractError instanceof Error ? extractError.message : String(extractError)
+        });
+        continue;
+      }
 
-      // Update document type based on content
+      const { info, textBlocks, tables, rawText } = extractionResult;
+
+      // Update document type based on content (with confidence)
       if (info.type_guess === 'bilinmeyen' && rawText) {
-        info.type_guess = guessDocumentType(info.name, rawText);
+        const typeGuess = guessDocumentType(info.name, rawText);
+        info.type_guess = typeGuess.type;
+        info.type_confidence = typeGuess.confidence;
+      } else if (rawText && !info.type_confidence) {
+        // Re-guess with content for better confidence
+        const typeGuess = guessDocumentType(info.name, rawText);
+        if (typeGuess.confidence > (info.type_confidence || 0)) {
+          info.type_guess = typeGuess.type;
+          info.type_confidence = typeGuess.confidence;
+        }
       }
 
       // Add to data pool
@@ -190,28 +287,102 @@ function generateDocId(index: number): string {
 /**
  * Extract files from ZIP
  */
-async function extractZipFile(zipFile: File): Promise<File[]> {
+async function extractZipFile(zipFile: File): Promise<{
+  success: boolean;
+  files: File[];
+  error?: unknown;
+}> {
   const JSZip = (await import('jszip')).default;
   const zip = new JSZip();
   const extracted: File[] = [];
+  const maxFiles = 100; // Prevent too many files
+  const maxSize = 200 * 1024 * 1024; // 200MB total
+  let totalSize = 0;
 
   try {
     const zipContent = await zip.loadAsync(zipFile);
+    const fileEntries = Object.entries(zipContent.files);
 
-    for (const [path, file] of Object.entries(zipContent.files)) {
+    if (fileEntries.length === 0) {
+      return {
+        success: false,
+        files: [],
+        error: 'ZIP dosyası boş'
+      };
+    }
+
+    if (fileEntries.length > maxFiles) {
+      return {
+        success: false,
+        files: [],
+        error: `ZIP dosyası çok fazla dosya içeriyor (${fileEntries.length} > ${maxFiles})`
+      };
+    }
+
+    for (const [path, file] of fileEntries) {
       if (!file.dir) {
-        const blob = await file.async('blob');
-        const extractedFile = new File([blob], path, {
-          type: getMimeType(path)
-        });
-        extracted.push(extractedFile);
+        try {
+          const blob = await file.async('blob');
+          totalSize += blob.size;
+
+          if (totalSize > maxSize) {
+            return {
+              success: false,
+              files: extracted,
+              error: `ZIP içeriği çok büyük (${Math.round(totalSize / 1024 / 1024)}MB > ${Math.round(maxSize / 1024 / 1024)}MB)`
+            };
+          }
+
+          // Skip nested ZIP files to prevent infinite loops
+          if (path.toLowerCase().endsWith('.zip')) {
+            continue;
+          }
+
+          // Get filename from path (handle nested paths)
+          const filename = path.split('/').pop() || path;
+          const mimeType = getMimeType(filename);
+          
+          // Skip unsupported file types
+          const supportedExtensions = ['.pdf', '.docx', '.doc', '.xlsx', '.xls', '.txt', '.html', '.htm', '.csv'];
+          const fileExt = filename.toLowerCase().substring(filename.lastIndexOf('.'));
+          if (!supportedExtensions.includes(fileExt) && mimeType === 'application/octet-stream') {
+            AILogger.warn('ZIP içindeki desteklenmeyen dosya atlandı', {
+              filename,
+              mimeType
+            });
+            continue;
+          }
+          
+          const extractedFile = new File([blob], filename, {
+            type: mimeType
+          });
+          extracted.push(extractedFile);
+        } catch (fileError) {
+          // Skip individual file errors, continue with others
+          console.warn(`ZIP içindeki dosya çıkarılamadı: ${path}`, fileError);
+        }
       }
     }
-  } catch (error) {
-    console.error('Failed to extract ZIP:', error);
-  }
 
-  return extracted;
+    if (extracted.length === 0) {
+      return {
+        success: false,
+        files: [],
+        error: 'ZIP dosyasından hiçbir dosya çıkarılamadı'
+      };
+    }
+
+    return {
+      success: true,
+      files: extracted
+    };
+  } catch (error) {
+    return {
+      success: false,
+      files: extracted,
+      error: error instanceof Error ? error.message : 'ZIP çıkarma hatası'
+    };
+  }
 }
 
 /**
@@ -224,14 +395,25 @@ function getMimeType(filename: string): string {
       return 'application/pdf';
     case 'docx':
       return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'doc':
+      return 'application/msword';
     case 'xlsx':
       return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'xls':
+      return 'application/vnd.ms-excel';
     case 'txt':
       return 'text/plain';
     case 'html':
+    case 'htm':
       return 'text/html';
     case 'csv':
       return 'text/csv';
+    case 'zip':
+      return 'application/zip';
+    case 'rar':
+      return 'application/x-rar-compressed';
+    case '7z':
+      return 'application/x-7z-compressed';
     default:
       return 'application/octet-stream';
   }

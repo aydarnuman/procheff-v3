@@ -173,16 +173,17 @@ export default function DecisionPage() {
             <span>{getProgress()}%</span>
           </div>
           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            {/* eslint-disable-next-line react/forbid-dom-props */}
             <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
-              style={{ width: `${getProgress()}%` }}
+              className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+              style={{ width: `${getProgress()}%` } as React.CSSProperties}
             />
           </div>
         </div>
 
         {/* Selected Tender and Cost Analysis Info */}
         {selectedTender && (
-          <div className="glass-card p-4 mb-6 bg-gradient-to-r from-indigo-500/10 to-transparent border-indigo-500/30">
+          <div className="glass-card p-4 mb-6 bg-linear-to-r from-indigo-500/10 to-transparent border-indigo-500/30">
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-indigo-400" />
               <div className="flex-1">
@@ -216,7 +217,7 @@ export default function DecisionPage() {
                 setCurrentStep(PIPELINE_STEPS.PROPOSAL);
                 router.push('/reports');
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg font-semibold transition-all group"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg font-semibold transition-all group"
             >
               <span>Teklif Hazırla</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

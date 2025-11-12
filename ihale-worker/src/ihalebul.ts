@@ -8,16 +8,16 @@ const BASE = 'https://www.ihalebul.com';
 type Session = { storageState: any; createdAt: number };
 const SESSIONS = new Map<string, Session>();
 
-// Session cleanup - 1 saat sonra sil
+// Session cleanup - 8 saat sonra sil (1 iş günü için yeterli)
 setInterval(() => {
   const now = Date.now();
   for (const [sid, session] of SESSIONS.entries()) {
-    if (now - session.createdAt > 3600000) {
+    if (now - session.createdAt > 28800000) { // 8 saat = 8 * 60 * 60 * 1000
       SESSIONS.delete(sid);
       console.log(`🗑️  Session expired: ${sid}`);
     }
   }
-}, 300000); // Her 5 dakikada kontrol
+}, 600000); // Her 10 dakikada kontrol (session artık uzun ömürlü olduğu için daha seyrek kontrol)
 
 async function makeContext(sessionId: string) {
   const session = SESSIONS.get(sessionId);
@@ -38,7 +38,7 @@ async function doLogin(context: BrowserContext, username: string, password: stri
 
   try {
     console.log('🔐 Logging in to ihalebul.com...');
-    await page.goto(`${BASE}/signin`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto(`${BASE}/signin`, { waitUntil: 'networkidle', timeout: 60000 }); // 60 saniye (ihalebul.com yavaş olabiliyor)
 
     // ID'li formu kullan (3 form var, ID'li olan ana form)
     await page.waitForSelector('input#kul_adi', { state: 'visible', timeout: 10000 });
@@ -52,7 +52,7 @@ async function doLogin(context: BrowserContext, username: string, password: stri
     // Login butonuna tıkla (form#form içindeki butonu seç)
     console.log('🚀 Clicking login button...');
     await page.click('form#form button[type="submit"]');
-    await page.waitForLoadState('networkidle', { timeout: 30000 });
+    await page.waitForLoadState('networkidle', { timeout: 60000 }); // 60 saniye (ihalebul.com yavaş olabiliyor)
 
     const html = await page.content();
 
@@ -98,21 +98,95 @@ function parseList(html: string) {
 
     // Tam metin - tüm parse için
     const cardText = $card.text();
+    
+    // Card body içindeki bilgileri al (tender number için de kullanılacak)
+    const $body = $card.find('.card-body');
 
-    // 1️⃣ İLAN NUMARASI - Başlıktan veya karttan çıkar
+    // 1️⃣ İLAN NUMARASI - ÖNCE card body'de "Kayıt No:" veya "İlan No:" etiketini ara (GERÇEK KAYIT NUMARASI)
+    // Başlıktaki numaralar genellikle ihale numarası değil, başka bir referans numarası olabilir
     const fullHeaderText = $card.find('.card-header a.details').text().trim();
-    const tenderNumberMatch = fullHeaderText.match(/(\d{5,}\/\d+)/);
-    const tenderNumber = tenderNumberMatch ? tenderNumberMatch[1] : null;
+    
+    // Try multiple patterns for tender number
+    let tenderNumber: string | null = null;
+    
+    // ÖNCE: Card body'de "Kayıt No:" veya "İlan No:" etiketini ara (en güvenilir - GERÇEK KAYIT NUMARASI)
+    // Pattern 1: Look in card body for "İlan No:" or "Kayıt No:" labels (PRIORITY - this is the real registration number)
+    // First, try to find in dt/dd structure
+    $body.find('dt').each((_, dt) => {
+      const $dt = $(dt);
+      const label = $dt.text().trim().toLowerCase();
+      // Look for exact matches: "kayıt no", "ilan no", "kayıt numarası", "ilan numarası"
+      if (label.includes('kayıt') || label.includes('ilan') || label.includes('numara')) {
+        const $dd = $dt.next('dd');
+        const numberText = $dd.text().trim();
+        if (numberText) {
+          // Take the full text as tender number (don't filter, just trim)
+          tenderNumber = numberText.trim();
+          return false; // break
+        }
+      }
+    });
+    
+    // Pattern 2: Search in full card text for "Kayıt No:" or "İlan No:" pattern (more flexible)
+    if (!tenderNumber) {
+      // Try "Kayıt No:" first (more specific)
+      const kayitMatch = cardText.match(/Kayıt\s*(?:No|numarası)[:\s]+([^\n\r]+)/i);
+      if (kayitMatch) {
+        tenderNumber = kayitMatch[1].trim();
+      } else {
+        // Fallback to "İlan No:"
+        const ilanMatch = cardText.match(/İlan\s*(?:No|numarası)[:\s]+([^\n\r]+)/i);
+        if (ilanMatch) {
+          tenderNumber = ilanMatch[1].trim();
+        }
+      }
+    }
+    
+    // Pattern 3: Look for "Kayıt No" in any format in card body text
+    if (!tenderNumber) {
+      const bodyText = $body.text();
+      const kayitBodyMatch = bodyText.match(/Kayıt\s*(?:No|numarası)[:\s]+([^\n\r]+)/i);
+      if (kayitBodyMatch) {
+        tenderNumber = kayitBodyMatch[1].trim();
+      }
+    }
+    
+    // FALLBACK: If no "Kayıt No" or "İlan No" found, try to extract from header (may not be the real registration number)
+    // Pattern 4: YYYY/NNNNNN format (2025/1845237) - from header
+    if (!tenderNumber) {
+      const pattern1 = fullHeaderText.match(/(\d{4}\/\d+)/);
+      if (pattern1) {
+        tenderNumber = pattern1[1];
+      }
+    }
+    
+    // Pattern 5: ILN + numbers (ILN02328625) - from header
+    if (!tenderNumber) {
+      const pattern2 = fullHeaderText.match(/(ILN\d+)/i);
+      if (pattern2) {
+        tenderNumber = pattern2[1];
+      }
+    }
+    
+    // Pattern 6: YYDT + numbers (25DT2004948) - from header
+    if (!tenderNumber) {
+      const pattern3 = fullHeaderText.match(/(\d{2}DT\d+)/i);
+      if (pattern3) {
+        tenderNumber = pattern3[1];
+      }
+    }
 
     // 2️⃣ BAŞLIK - İlan numarasını temizle
     let title = fullHeaderText;
     if (tenderNumber) {
-      title = fullHeaderText.replace(`${tenderNumber} - `, '').trim();
+      // Remove tender number from title (handle different formats)
+      title = fullHeaderText
+        .replace(`${tenderNumber} - `, '')
+        .replace(`${tenderNumber} `, '')
+        .replace(`- ${tenderNumber}`, '')
+        .trim();
     }
-    if (!title) title = 'İsimsiz İhale';
-
-    // Card body içindeki bilgileri al
-    const $body = $card.find('.card-body');
+    if (!title || title === tenderNumber) title = 'İsimsiz İhale';
 
     // 3️⃣ İDARE - "İdare adı:" satırını bul
     let org = '';
@@ -128,33 +202,81 @@ function parseList(html: string) {
       if (orgMatch) org = orgMatch[1].trim();
     }
 
-    // 4️⃣ ŞEHİR - badge veya span içinde
+    // 4️⃣ İŞİN ADI - "İşin Adı:" etiketini ara
+    let workName = '';
+    $body.find('dt').each((_, dt) => {
+      const $dt = $(dt);
+      const label = $dt.text().trim().toLowerCase();
+      if (label.includes('işin') && label.includes('adı')) {
+        const $dd = $dt.next('dd');
+        const workText = $dd.text().trim();
+        if (workText) {
+          workName = workText.trim();
+          return false; // break
+        }
+      }
+    });
+    if (!workName) {
+      // Fallback: card text'te ara
+      const workMatch = cardText.match(/İşin\s+adı[:\s]+([^\n]+)/i);
+      if (workMatch) {
+        workName = workMatch[1].trim();
+      }
+    }
+    // Eğer hala bulunamadıysa, title'ı kullan (ama bu başlık olabilir)
+    if (!workName) {
+      workName = title;
+    }
+
+    // 5️⃣ ŞEHİR - badge veya span içinde
     let city = $card.find('.text-dark-emphasis.fw-medium').first().text().trim();
     if (!city) {
       // Card footer'daki şehir bilgisi
       city = $card.find('.card-footer .text-dark-emphasis').text().trim();
     }
 
-    // 5️⃣ İHALE TÜRÜ - "Ekap Açık ihale usulü", "Pazarlık usulü" vs
+    // 6️⃣ İHALE TÜRÜ/USULÜ - "Ekap Açık ihale usulü", "Pazarlık usulü" vs
     let tenderType = '-';
-    const typePatterns = [
-      /Ekap\s+[^\n]+usulü/i,
-      /Açık\s+ihale\s+usulü/i,
-      /Pazarlık\s+usulü/i,
-      /Belli\s+istekliler\s+arası/i
-    ];
-    for (const pattern of typePatterns) {
-      const match = cardText.match(pattern);
-      if (match) {
-        tenderType = match[0].trim();
-        break;
+    
+    // Önce dt/dd yapısında "İhale usulü" veya "İhale türü" etiketini ara
+    $body.find('dt').each((_, dt) => {
+      const $dt = $(dt);
+      const label = $dt.text().trim().toLowerCase();
+      if (label.includes('ihale') && (label.includes('usul') || label.includes('tür'))) {
+        const $dd = $dt.next('dd');
+        const typeText = $dd.text().trim();
+        if (typeText) {
+          // Temizle: yeni satırları ve fazla boşlukları kaldır
+          tenderType = typeText.replace(/\s+/g, ' ').trim();
+          return false; // break
+        }
+      }
+    });
+    
+    // Eğer bulunamadıysa, regex pattern'leri dene
+    if (tenderType === '-') {
+      const typePatterns = [
+        /Ekap\s+[^\n]+usulü/i,
+        /Açık\s+ihale\s+usulü/i,
+        /Pazarlık\s+usulü/i,
+        /Belli\s+istekliler\s+arası/i,
+        /[^\n]*ihale\s+usulü[^\n]*/i,
+        /[^\n]*usulü[^\n]*/i
+      ];
+      for (const pattern of typePatterns) {
+        const match = cardText.match(pattern);
+        if (match) {
+          // Temizle: yeni satırları ve fazla boşlukları kaldır
+          tenderType = match[0].replace(/\s+/g, ' ').trim();
+          break;
+        }
       }
     }
 
-    // 6️⃣ KISMİ TEKLİF - "Kısmi teklif verilebilir" kontrolü
+    // 7️⃣ KISMİ TEKLİF - "Kısmi teklif verilebilir" kontrolü
     const partialBidAllowed = cardText.includes('Kısmi teklif verilebilir');
 
-    // 7️⃣ TARİHLER - Yayın tarihi ve Teklif tarihi
+    // 8️⃣ TARİHLER - Yayın tarihi ve Teklif tarihi
     let publishDate = '';
     let tenderDate = '';
 
@@ -210,7 +332,7 @@ function parseList(html: string) {
       }
     }
 
-    // 8️⃣ KALAN GÜN - tenderDate'ten hesapla
+    // 9️⃣ KALAN GÜN - tenderDate'ten hesapla
     let daysRemaining: number | null = null;
     if (tenderDate) {
       const parts = tenderDate.split(/[./]/);
@@ -227,6 +349,7 @@ function parseList(html: string) {
       id,
       tenderNumber: tenderNumber || '-',
       title,
+      workName: workName || title, // İşin Adı (fallback: title)
       organization: org || '-',
       city: city || '-',
       tenderType,
@@ -344,7 +467,7 @@ export function mountIhalebul(app: express.Express) {
       // İlk sayfaya git ve toplam sayfa sayısını tespit et
       await page.goto(`${BASE}/tenders/search?workcategory_in=15`, {
         waitUntil: 'domcontentloaded',
-        timeout: 30000
+        timeout: 60000 // 60 saniye (ihalebul.com yavaş olabiliyor)
       });
 
       // "Son sayfa" linkinden maksimum page sayısını al
@@ -370,7 +493,7 @@ export function mountIhalebul(app: express.Express) {
 
         await page.goto(url, {
           waitUntil: 'domcontentloaded',
-          timeout: 30000
+          timeout: 60000 // 60 saniye (ihalebul.com yavaş olabiliyor)
         });
 
         const html = await page.content();
@@ -411,8 +534,10 @@ export function mountIhalebul(app: express.Express) {
       const { browser, context } = await makeContext(sessionId);
       const page = await context.newPage();
 
-      // 🔍 Network monitoring - XHR/fetch isteklerini yakala
+      // 🔍 Network monitoring - XHR/fetch isteklerini ve response'larını yakala
       const apiRequests: string[] = [];
+      const apiResponses: Map<string, any> = new Map();
+      
       page.on('request', request => {
         const url = request.url();
         if (request.resourceType() === 'xhr' || request.resourceType() === 'fetch') {
@@ -421,10 +546,51 @@ export function mountIhalebul(app: express.Express) {
         }
       });
 
+      // Response'ları yakala
+      page.on('response', async response => {
+        const url = response.url();
+        const request = response.request();
+        if (request.resourceType() === 'xhr' || request.resourceType() === 'fetch') {
+          try {
+            // Clone response to avoid "already read" error
+            const clonedResponse = response;
+            const contentType = response.headers()['content-type'] || '';
+            
+            if (contentType.includes('application/json')) {
+              try {
+                const json = await clonedResponse.json();
+                console.log(`📦 JSON response captured: ${url}`);
+                apiResponses.set(url, json);
+              } catch (e) {
+                // Response might be already consumed, try text
+                try {
+                  const text = await clonedResponse.text();
+                  const json = JSON.parse(text);
+                  apiResponses.set(url, json);
+                } catch (e2) {
+                  console.warn(`⚠️ Could not parse JSON from ${url}`);
+                }
+              }
+            } else if (contentType.includes('text/')) {
+              try {
+                const text = await clonedResponse.text();
+                console.log(`📄 Text response captured: ${url}`);
+                apiResponses.set(url, text);
+              } catch (e) {
+                console.warn(`⚠️ Could not read text from ${url}`);
+              }
+            }
+          } catch (e) {
+            // Response zaten okunmuş olabilir, ignore
+            console.warn(`⚠️ Could not capture response from ${url}:`, e);
+          }
+        }
+      });
+
       // Navigate to detail page
       await page.goto(`${BASE}/tender/${id}`, {
         waitUntil: 'domcontentloaded',
-        timeout: 30000
+        timeout: 60000 // 60 saniye (ihalebul.com yavaş olabiliyor)
       });
 
       // ⏳ SPA spinner handling - wait for content to fully load
@@ -442,11 +608,172 @@ export function mountIhalebul(app: express.Express) {
         console.warn('⚠️ Spinner wait timeout, proceeding with available content');
       }
 
-      const html = await page.content();
+      // 📄 Check for pagination in tables (Mal/Hizmet Listesi)
+      // Look for pagination controls in tables
+      let allTablePages: string[] = [];
+      try {
+        // Wait a bit for any dynamic content to load
+        await page.waitForTimeout(2000);
+        
+        // Check if there are pagination controls for tables
+        const paginationInfo = await page.evaluate(() => {
+          // Look for pagination in table containers
+          const tables = document.querySelectorAll('table');
+          const paginationData: any[] = [];
+          
+          tables.forEach((table) => {
+            // Find pagination near this table
+            const container = table.closest('div, section');
+            if (container) {
+              const pagination = container.querySelector('.pagination, [class*="pagination"], [class*="page"]');
+              if (pagination) {
+                // Try to find total pages
+                const pageLinks = pagination.querySelectorAll('a, button');
+                let maxPage = 1;
+                let currentPage = 1;
+                
+                pageLinks.forEach((link: Element) => {
+                  const text = link.textContent?.trim() || '';
+                  const pageNum = parseInt(text);
+                  if (!isNaN(pageNum)) {
+                    maxPage = Math.max(maxPage, pageNum);
+                    if (link.classList.contains('active') || link.getAttribute('aria-current') === 'page') {
+                      currentPage = pageNum;
+                    }
+                  }
+                });
+                
+                // Also check for "Son sayfa" or "Son" link
+                const lastPageLink = Array.from(pageLinks).find((link: Element) => 
+                  link.textContent?.toLowerCase().includes('son')
+                ) as HTMLElement | undefined;
+                if (lastPageLink) {
+                  const href = lastPageLink.getAttribute('href') || '';
+                  const match = href.match(/page[=_](\d+)/i);
+                  if (match) {
+                    maxPage = parseInt(match[1], 10);
+                  }
+                }
+                
+                if (maxPage > 1) {
+                  paginationData.push({ hasPagination: true, totalPages: maxPage, currentPage });
+                }
+              }
+            }
+          });
+          
+          return paginationData;
+        });
+        
+        console.log(`📊 Pagination info:`, paginationInfo);
+        
+        // If pagination found, collect all pages
+        if (paginationInfo.length > 0 && paginationInfo[0].totalPages > 1) {
+          console.log(`📄 Found paginated table with ${paginationInfo[0].totalPages} pages`);
+          
+          // Collect HTML from all pages
+          for (let pageNum = 1; pageNum <= paginationInfo[0].totalPages; pageNum++) {
+            if (pageNum > 1) {
+              // Click on page number or "Sonraki" button
+              try {
+                const pageSelector = `a:has-text("${pageNum}"), button:has-text("${pageNum}"), .pagination a[href*="page=${pageNum}"]`;
+                await page.click(pageSelector, { timeout: 5000 }).catch(() => {
+                  // Try "Sonraki" button
+                  return page.click('a:has-text("Sonraki"), button:has-text("Sonraki"), .pagination a:has-text(">")', { timeout: 5000 });
+                });
+                
+                // Wait for content to load
+                await page.waitForTimeout(2000);
+                await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+              } catch (e) {
+                console.warn(`⚠️ Could not navigate to page ${pageNum}:`, e);
+                break; // Stop if can't navigate
+              }
+            }
+            
+            // Get current page HTML
+            const pageHtml = await page.content();
+            allTablePages.push(pageHtml);
+            console.log(`   ✅ Collected page ${pageNum}/${paginationInfo[0].totalPages}`);
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ Error checking pagination:', e);
+      }
+
+      // Merge all table pages into one HTML
+      let html = '';
+      if (allTablePages.length > 0) {
+        // Use first page as base, then append tables from other pages
+        const $base = cheerio.load(allTablePages[0]);
+        
+        // Find the main table container
+        const mainTable = $base('table').first();
+        if (mainTable.length > 0) {
+          // Find or create tbody
+          let tbody = mainTable.find('tbody');
+          if (tbody.length === 0) {
+            // Create tbody and append to table
+            const tbodyHtml = '<tbody></tbody>';
+            mainTable.append(tbodyHtml);
+            tbody = mainTable.find('tbody');
+          }
+          
+          // For each additional page, extract table rows and append
+          for (let i = 1; i < allTablePages.length; i++) {
+            const $page = cheerio.load(allTablePages[i]);
+            const pageTable = $page('table').first();
+            const pageRows = pageTable.find('tbody tr').length > 0 
+              ? pageTable.find('tbody tr')
+              : pageTable.find('tr').not('thead tr').slice(1); // Skip header row
+            
+            // Append rows to the main table's tbody
+            pageRows.each((_, row) => {
+              const rowHtml = $page.html(row) || '';
+              if (rowHtml.trim()) {
+                tbody.append(rowHtml);
+              }
+            });
+          }
+        }
+        
+        html = $base.html() || allTablePages[0];
+      } else {
+        html = await page.content();
+      }
+      
       const $ = cheerio.load(html);
 
       const title = $('h1, .tender-title, .ihale-baslik').first().text().trim() || 'İhale Detayı';
       const documents = extractDocuments(html);
+
+      // 📸 Take screenshot (full page) for AI analysis
+      let screenshot: string | undefined;
+      try {
+        // Take screenshot as buffer and convert to base64
+        const screenshotBuffer = await page.screenshot({
+          fullPage: true
+        });
+        screenshot = screenshotBuffer.toString('base64');
+        
+        // CRITICAL: Ensure screenshot is a string (base64)
+        if (typeof screenshot !== 'string') {
+          console.warn('⚠️ Screenshot is not a string, converting...', {
+            type: typeof screenshot
+          });
+          screenshot = undefined;
+        }
+        
+        if (screenshot && typeof screenshot === 'string') {
+          console.log('📸 Screenshot captured (base64 string), length:', screenshot.length);
+        } else {
+          console.warn('⚠️ Screenshot conversion failed, setting to undefined');
+          screenshot = undefined;
+        }
+      } catch (e: any) {
+        console.warn('⚠️ Could not capture screenshot:', e?.message || String(e));
+        screenshot = undefined;
+      }
 
       await browser.close();
 
@@ -454,14 +781,33 @@ export function mountIhalebul(app: express.Express) {
       if (apiRequests.length > 0) {
         console.log('🔗 Endpoints:', apiRequests);
       }
+      console.log(`📦 API responses captured: ${apiResponses.size}`);
+
+      // API response'larını döndür
+      const apiData: Record<string, any> = {};
+      apiResponses.forEach((value, url) => {
+        // URL'den key oluştur (domain olmadan)
+        const key = url.split('/').pop() || url.replace(/https?:\/\/[^\/]+/, '');
+        apiData[key] = value;
+      });
+
+      // CRITICAL: Ensure screenshot is a string before JSON serialization
+      // Screenshot should already be a string (base64)
+      let screenshotString: string | undefined = undefined;
+      if (screenshot && typeof screenshot === 'string') {
+        screenshotString = screenshot;
+      }
 
       res.json({
         id,
         title,
         html,
         documents,
+        screenshot: screenshotString, // Base64-encoded string for AI vision analysis
+        apiData, // API'den gelen raw data
         debug: {
-          apiRequests, // Debug için - production'da kaldırılabilir
+          apiRequests,
+          apiResponseCount: apiResponses.size
         }
       });
 
@@ -490,7 +836,8 @@ export function mountIhalebul(app: express.Express) {
       const { browser, context } = await makeContext(sessionId);
       const page = await context.newPage();
 
-      const response = await page.request.get(targetUrl);
+      // 90 saniye timeout (32MB+ dosyalar için)
+      const response = await page.request.get(targetUrl, { timeout: 90000 });
       const buffer = await response.body();
 
       const contentType = response.headers()['content-type'] || 'application/octet-stream';
@@ -555,7 +902,7 @@ export function mountIhalebul(app: express.Express) {
       // Fetch first page to detect total pages
       await page.goto(`${BASE}/tenders/search?workcategory_in=15`, {
         waitUntil: 'domcontentloaded',
-        timeout: 30000
+        timeout: 60000 // 60 saniye (ihalebul.com yavaş olabiliyor)
       });
 
       const lastPageHref = await page.$eval('a:has-text("Son sayfa")', el => el.getAttribute('href')).catch(() => null);
@@ -580,7 +927,7 @@ export function mountIhalebul(app: express.Express) {
 
         await page.goto(url, {
           waitUntil: 'domcontentloaded',
-          timeout: 30000
+          timeout: 60000 // 60 saniye (ihalebul.com yavaş olabiliyor)
         });
 
         const html = await page.content();
@@ -635,7 +982,7 @@ export function mountIhalebul(app: express.Express) {
       const page = await context.newPage();
       await page.goto(`${BASE}/tenders/search?workcategory_in=15`, {
         waitUntil: 'domcontentloaded',
-        timeout: 30000
+        timeout: 60000 // 60 saniye (ihalebul.com yavaş olabiliyor)
       });
       const html = await page.content();
       await browser.close();

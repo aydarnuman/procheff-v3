@@ -9,7 +9,9 @@ import type {
   ValidationResult,
   ExtractedFields,
   ContextualAnalysis,
-  MarketAnalysis
+  MarketAnalysis,
+  SourcedStatement,
+  CostItem
 } from './types';
 import type { DataPool } from '@/lib/document-processor/types';
 
@@ -59,7 +61,7 @@ export class TenderAnalysisEngine {
 
       if (this.options.parallel_processing) {
         // Parallel processing
-        const promises: [Promise<any>, Promise<any>] = [
+        const promises: [Promise<ContextualAnalysis | null>, Promise<MarketAnalysis | null>] = [
           this.options.enable_contextual
             ? performContextualAnalysis(dataPool, extractedFields)
             : Promise.resolve(undefined),
@@ -264,22 +266,22 @@ export class TenderAnalysisEngine {
 
       // Update contextual analysis
       if (result.contextual) {
-        store.setContextualAnalysis({
+        store.setContextualAnalysis(this.analysisId, {
           operasyonel_riskler: {
             seviye: result.contextual.operasyonel_riskler.seviye,
-            nedenler: result.contextual.operasyonel_riskler.nedenler.map((s: any) => s.text),
+            nedenler: result.contextual.operasyonel_riskler.nedenler.map((s: SourcedStatement) => s.text),
             aciklama: result.contextual.operasyonel_riskler.nedenler[0]?.text || '',
-            kaynak: result.contextual.operasyonel_riskler.nedenler.flatMap((s: any) => s.source_ref)
+            kaynak: result.contextual.operasyonel_riskler.nedenler.flatMap((s: SourcedStatement) => s.source_ref)
           },
           maliyet_sapma_olasiligi: {
             oran: result.contextual.maliyet_sapma_olasiligi.oran,
             neden: result.contextual.maliyet_sapma_olasiligi.faktorler[0]?.text || '',
-            kaynak: result.contextual.maliyet_sapma_olasiligi.faktorler.flatMap((s: any) => s.source_ref)
+            kaynak: result.contextual.maliyet_sapma_olasiligi.faktorler.flatMap((s: SourcedStatement) => s.source_ref)
           },
           zaman_uygunlugu: {
             yeterli: result.contextual.zaman_uygunlugu.yeterli,
             gerekce: result.contextual.zaman_uygunlugu.gun_analizi[0]?.text || '',
-            kaynak: result.contextual.zaman_uygunlugu.gun_analizi.flatMap((s: any) => s.source_ref)
+            kaynak: result.contextual.zaman_uygunlugu.gun_analizi.flatMap((s: SourcedStatement) => s.source_ref)
           },
           genel_oneri: result.contextual.genel_degerlendirme.ozet
         });
@@ -287,8 +289,8 @@ export class TenderAnalysisEngine {
 
       // Update market analysis
       if (result.market) {
-        store.setMarketAnalysis({
-          cost_items: result.market.cost_items.map((item: any) => ({
+        store.setMarketAnalysis(this.analysisId, {
+          cost_items: result.market.cost_items.map((item: CostItem) => ({
             product_key: item.product_key,
             name: item.name_normalized,
             unit: item.unit,
@@ -314,7 +316,13 @@ export class TenderAnalysisEngine {
 
       // Complete analysis with scores
       const scores = this.calculateScores(result);
-      store.completeAnalysis(scores);
+      store.updateAnalysis(this.analysisId, {
+        status: 'completed',
+        contextual_analysis: result.contextual,
+        market_analysis: result.market,
+        deep_analysis: result.deep,
+        ...scores
+      });
 
     } catch (error) {
       AILogger.error('Failed to update store', {

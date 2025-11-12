@@ -24,8 +24,12 @@ export function ChatInterface() {
   return (
     <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
       <AnimatePresence>
-        {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+        {messages.map((message, index) => (
+          <MessageBubble
+            key={message.id}
+            message={message}
+            previousMessage={index > 0 && messages[index - 1].role === 'user' ? messages[index - 1] : undefined}
+          />
         ))}
       </AnimatePresence>
       <div ref={messagesEndRef} />

@@ -1,7 +1,8 @@
 import { AILogger } from "@/lib/ai/logger";
 import { MENU_PARSER_PROMPT } from "@/lib/ai/prompts";
 import { AIProviderFactory } from "@/lib/ai/provider-factory";
-import { cleanClaudeJSON, estimateTokens } from "@/lib/ai/utils";
+import { MENU_PARSER_SCHEMA, type MenuItemResponse } from "@/lib/ai/schemas";
+import { AnalysisRepository } from "@/lib/db/analysis-repository";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -33,76 +34,80 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const startTime = Date.now();
-    const client = AIProviderFactory.getClaude();
-
     const prompt = `${MENU_PARSER_PROMPT}
 
 DOSYA İÇERİĞİ:
 ${text}
 `;
 
-    const modelName = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
-    const result = await client.messages.create({
-      model: modelName,
-      temperature: 0.3,
-      max_tokens: 6000,
-      messages: [{ role: "user", content: prompt }],
+    // 🎯 Use structured output for guaranteed valid JSON
+    const { data, metadata } = await AIProviderFactory.createStructuredMessage<MenuItemResponse[]>(
+      prompt,
+      MENU_PARSER_SCHEMA,
+      {
+        temperature: 0.3,
+        max_tokens: 6000,
+      }
+    );
+
+    // Ensure data is an array (schema already guarantees this, but double-check)
+    const menuItems = Array.isArray(data) ? data : [data];
+
+    AILogger.success("🍽️  Menü başarıyla çözümlendi", {
+      duration_ms: metadata.duration_ms,
+      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+      input_tokens: metadata.input_tokens,
+      output_tokens: metadata.output_tokens,
+      total_tokens: metadata.total_tokens,
+      cost_usd: metadata.cost_usd,
+      items_count: menuItems.length,
     });
 
-    const elapsedMs = Date.now() - startTime;
-    const rawText = result.content?.[0]?.type === "text" ? result.content[0].text.trim() : "";
-    const cleanedText = cleanClaudeJSON(rawText);
-
-    const inputTokens = estimateTokens(prompt);
-    const outputTokens = estimateTokens(rawText);
-
-    let data;
+    // Save API metrics (non-blocking)
     try {
-      data = JSON.parse(cleanedText);
-
-      // Eğer array değilse, array'e çevir
-      if (!Array.isArray(data)) {
-        data = [data];
-      }
-
-      AILogger.success("🍽️  Menü başarıyla çözümlendi", {
-        duration_ms: elapsedMs,
-        model: modelName,
-        estimated_input_tokens: inputTokens,
-        estimated_output_tokens: outputTokens,
-        total_estimated_tokens: inputTokens + outputTokens,
-        items_count: data.length,
+      AnalysisRepository.saveAPIMetric({
+        endpoint: "/api/parser/menu",
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        input_tokens: metadata.input_tokens,
+        output_tokens: metadata.output_tokens,
+        total_tokens: metadata.total_tokens,
+        cost_usd: metadata.cost_usd,
+        duration_ms: metadata.duration_ms,
+        success: true,
       });
-    } catch (parseErr) {
-      AILogger.warn("⚠️  JSON parse hatası (menü parser)", {
-        duration_ms: elapsedMs,
-        error: parseErr instanceof Error ? parseErr.message : String(parseErr),
-        raw_text_preview: rawText.substring(0, 200),
-      });
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Menü verisi çözümlenemedi",
-          details: parseErr instanceof Error ? parseErr.message : String(parseErr),
-        },
-        { status: 500 }
-      );
+    } catch (metricError) {
+      AILogger.warn("Failed to save API metric", { error: metricError });
     }
 
     return NextResponse.json({
       success: true,
-      data,
+      data: menuItems,
       meta: {
-        duration_ms: elapsedMs,
-        model: modelName,
-        estimated_tokens: inputTokens + outputTokens,
-        items_count: data.length,
+        duration_ms: metadata.duration_ms,
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        input_tokens: metadata.input_tokens,
+        output_tokens: metadata.output_tokens,
+        total_tokens: metadata.total_tokens,
+        cost_usd: metadata.cost_usd,
+        items_count: menuItems.length,
       },
     });
   } catch (err) {
     const error = err instanceof Error ? err.message : "Unknown error occurred";
     AILogger.error("💥 Menü parser hatası", err);
+    
+    // Save error metric (non-blocking)
+    try {
+      AnalysisRepository.saveAPIMetric({
+        endpoint: "/api/parser/menu",
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        success: false,
+        error_message: error,
+      });
+    } catch (metricError) {
+      // Ignore metric errors
+    }
+    
     return NextResponse.json({ success: false, error }, { status: 500 });
   }
 }

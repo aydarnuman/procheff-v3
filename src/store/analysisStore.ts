@@ -1,413 +1,424 @@
 /**
- * Analysis Store
- * State management for tender analysis workflow
+ * Analysis Store - Enterprise Grade
+ * 
+ * 🎯 SINGLE SOURCE OF TRUTH
+ * - analysisHistory[] (all analyses)
+ * - currentAnalysis (selected one)
+ * 
+ * UI sadece buradan okur, asla DB'ye gitmez!
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, devtools } from 'zustand/middleware';
 import type { DataPool } from '@/lib/document-processor/types';
 
-export type AnalysisStage =
-  | 'idle'
-  | 'uploading'
-  | 'extracting'
-  | 'contextual'
-  | 'market'
-  | 'deep'
-  | 'completed'
-  | 'failed';
-
-export interface FileWithMetadata {
-  file: File;
-  id: string;
-  status: 'pending' | 'processing' | 'completed' | 'error';
-  progress: number;
-  error?: string;
-}
+// ========================================
+// Types (Enterprise Format)
+// ========================================
 
 export interface ContextualAnalysis {
-  operasyonel_riskler: {
-    seviye: 'dusuk' | 'orta' | 'yuksek';
-    nedenler: string[];
+  genel_degerlendirme?: {
+    puan: number;
+    kategori: string;
+    oneriler: string[];
+  };
+  riskler?: Array<{
+    kategori: string;
+    seviye: string;
     aciklama: string;
-    kaynak: string[];
-  };
-  maliyet_sapma_olasiligi: {
-    oran: number;
-    neden: string;
-    kaynak: string[];
-  };
-  zaman_uygunlugu: {
-    yeterli: boolean;
-    gerekce: string;
-    kaynak: string[];
-  };
-  genel_oneri: string;
+  }>;
+  firsatlar?: string[];
 }
 
 export interface MarketAnalysis {
-  cost_items: Array<{
-    product_key: string;
-    name: string;
-    unit: string;
-    quantity: number;
-    unit_price: number;
-    total_price: number;
-    confidence: number;
-    source_mix: string[];
-  }>;
-  total_cost: number;
-  forecast: {
-    next_month_total: number;
-    confidence: number;
-    trend: 'up' | 'down' | 'stable';
+  comparison?: {
+    risk_level: 'low' | 'medium' | 'high';
+    market_position: string;
+  };
+  pricing?: {
+    estimated_cost: number;
+    market_average: number;
   };
 }
 
 export interface DeepAnalysis {
-  firsat_analizi: {
-    puan: number;
-    firsatlar: string[];
-    kaynak: string[];
-  };
-  risk_analizi: {
-    seviye: 'dusuk' | 'orta' | 'yuksek';
-    riskler: Array<{
-      risk: string;
-      olasilik: number;
-      etki: number;
-      onlem: string;
-      kaynak: string;
+  maliyet_detay?: {
+    toplam: number;
+    breakdown: Array<{
+      kategori: string;
+      tutar: number;
     }>;
   };
-  maliyet_stratejisi: {
-    tavsiye: string;
-    gizli_maliyetler: string[];
-    optimizasyon: string[];
-    kaynak: string[];
-  };
-  operasyonel_plan: {
-    personel: string;
-    ekipman: string;
-    lojistik: string;
-    kaynak: string[];
-  };
-  teklif_stratejisi: {
-    fiyat_politikasi: string;
-    farklilastirma: string[];
-    kaynak: string[];
-  };
-  karar_onerisi: {
-    karar: 'KATIL' | 'DIKKATLI_KATIL' | 'KATILMA';
-    puan: number;
-    gerekce: string;
-    kritik_noktalar: string[];
-    kaynak: string[];
+  karar?: {
+    oneri: 'participate' | 'skip' | 'watch';
+    neden: string;
+    riskler: string[];
   };
 }
+
+// ========================================
+// MergedAnalysis (API'den gelen format)
+// ========================================
 
 export interface AnalysisResult {
+  // Core Identity
   id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  
+  // Timeline
   created_at: string;
-  status: AnalysisStage;
-
-  // Input files
-  files: FileWithMetadata[];
-
-  // Extracted data
-  dataPool?: DataPool;
-
-  // Analysis results
-  contextual?: ContextualAnalysis;
-  market?: MarketAnalysis;
-  deep?: DeepAnalysis;
-
-  // Metadata
-  scores?: {
-    risk: number;
-    opportunity: number;
-    feasibility: number;
-    confidence: number;
+  updated_at: string;
+  timeline?: {
+    started_at: string;
+    completed_at: string;
+    duration_ms: number;
   };
-
-  duration_ms?: number;
-  cost_usd?: number;
-  warnings?: string[];
+  
+  // DataPool (from data_pools table)
+  dataPool?: DataPool;
+  
+  // Analysis Results (added progressively)
+  contextual_analysis?: ContextualAnalysis;
+  market_analysis?: MarketAnalysis;
+  deep_analysis?: DeepAnalysis;
+  
+  // Metadata
+  inputFiles?: Array<{name: string; size: number; hash?: string}>;
+  steps?: string[];
+  error?: string | null;
+  warnings?: string | null;
+  
+  // Stats
+  stats?: {
+    documents: number;
+    tables: number;
+    textBlocks: number;
+    entities: number;
+    amounts: number;
+  };
 }
 
-interface AnalysisState {
-  // Current analysis
+// ========================================
+// Store Interface
+// ========================================
+
+interface AnalysisStore {
+  // ✅ STATE - Single Source of Truth
+  analysisHistory: AnalysisResult[];
   currentAnalysis: AnalysisResult | null;
-
-  // Analysis history
-  history: AnalysisResult[];
-
-  // Stage tracking
-  currentStage: AnalysisStage;
-  stageProgress: Record<AnalysisStage, number>;
-
-  // Error state
+  
+  // Loading states
+  isLoading: boolean;
   error: string | null;
-
-  // Actions
-  startNewAnalysis: (files: File[]) => string;
-  updateFileStatus: (fileId: string, status: FileWithMetadata['status'], progress?: number) => void;
-  setDataPool: (dataPool: DataPool) => void;
-  setContextualAnalysis: (analysis: ContextualAnalysis) => void;
-  setMarketAnalysis: (analysis: MarketAnalysis) => void;
-  setDeepAnalysis: (analysis: DeepAnalysis) => void;
-  setStage: (stage: AnalysisStage, progress?: number) => void;
-  setError: (error: string | null) => void;
-  completeAnalysis: (scores: AnalysisResult['scores']) => void;
-  reset: () => void;
-
-  // Getters
+  
+  // ✅ ACTIONS - Store Management
+  addAnalysis: (analysis: AnalysisResult) => void;
+  updateAnalysis: (id: string, updates: Partial<AnalysisResult>) => void;
+  deleteAnalysis: (id: string) => void;
+  setCurrentAnalysis: (id: string) => void;
+  clearCurrentAnalysis: () => void;
+  
+  // ✅ ACTIONS - Analysis Results
+  setDataPool: (id: string, dataPool: DataPool) => void;
+  setContextualAnalysis: (id: string, analysis: ContextualAnalysis) => void;
+  setMarketAnalysis: (id: string, analysis: MarketAnalysis) => void;
+  setDeepAnalysis: (id: string, analysis: DeepAnalysis) => void;
+  
+  // ✅ ACTIONS - Status Updates
+  setStatus: (id: string, status: AnalysisResult['status']) => void;
+  setError: (id: string, error: string) => void;
+  
+  // ✅ GETTERS
   getAnalysisById: (id: string) => AnalysisResult | undefined;
-  getCurrentProgress: () => number;
+  getRecentAnalyses: (limit?: number) => AnalysisResult[];
+  getCompletedAnalyses: () => AnalysisResult[];
+  
+  // ✅ UTILITIES
+  reset: () => void;
+  cleanupOldAnalyses: () => void;
 }
 
-export const useAnalysisStore = create<AnalysisState>()(
-  persist(
-    (set, get) => ({
-      // Initial state
-      currentAnalysis: null,
-      history: [],
-      currentStage: 'idle',
-      stageProgress: {
-        idle: 0,
-        uploading: 0,
-        extracting: 0,
-        contextual: 0,
-        market: 0,
-        deep: 0,
-        completed: 0,
-        failed: 0
-      },
-      error: null,
+// ========================================
+// Store Implementation
+// ========================================
 
-      // Actions
-      startNewAnalysis: (files: File[]) => {
-        const id = generateAnalysisId();
-        const analysis: AnalysisResult = {
-          id,
-          created_at: new Date().toISOString(),
-          status: 'uploading',
-          files: files.map(file => ({
-            file,
-            id: generateFileId(),
-            status: 'pending',
-            progress: 0
-          }))
-        };
+// ========================================
+// Store with conditional persist (SSR-safe)
+// ========================================
 
-        set({
-          currentAnalysis: analysis,
-          currentStage: 'uploading',
-          error: null,
-          stageProgress: {
-            idle: 100,
-            uploading: 0,
-            extracting: 0,
-            contextual: 0,
-            market: 0,
-            deep: 0,
-            completed: 0,
-            failed: 0
+const storeConfig = (set: any, get: any) => ({
+        // ========================================
+        // Initial State
+        // ========================================
+        analysisHistory: [],
+        currentAnalysis: null,
+        isLoading: false,
+        error: null,
+
+        // ========================================
+        // Store Management Actions
+        // ========================================
+        
+        /**
+         * Add new analysis to history
+         * Called when API returns merged analysis
+         */
+        addAnalysis: (analysis) => set((state) => {
+          // Prevent duplicates
+          const exists = state.analysisHistory.some(a => a.id === analysis.id);
+          if (exists) {
+            return {
+              analysisHistory: state.analysisHistory.map(a =>
+                a.id === analysis.id ? analysis : a
+              )
+            };
           }
-        });
-
-        return id;
-      },
-
-      updateFileStatus: (fileId, status, progress = 0) => {
-        set(state => {
-          if (!state.currentAnalysis) return state;
-
-          const updatedFiles = state.currentAnalysis.files.map(f =>
-            f.id === fileId ? { ...f, status, progress } : f
-          );
-
-          const overallProgress = calculateOverallProgress(updatedFiles);
-
+          
           return {
-            currentAnalysis: {
-              ...state.currentAnalysis,
-              files: updatedFiles
-            },
-            stageProgress: {
-              ...state.stageProgress,
-              uploading: overallProgress
-            }
+            analysisHistory: [analysis, ...state.analysisHistory]
           };
-        });
-      },
+        }),
 
-      setDataPool: (dataPool) => {
-        set(state => ({
-          currentAnalysis: state.currentAnalysis
-            ? {
-                ...state.currentAnalysis,
-                dataPool,
-                status: 'extracting' as AnalysisStage
-              }
-            : null,
-          currentStage: 'extracting',
-          stageProgress: {
-            ...state.stageProgress,
-            extracting: 100
-          }
-        }));
-      },
-
-      setContextualAnalysis: (analysis) => {
-        set(state => ({
-          currentAnalysis: state.currentAnalysis
-            ? {
-                ...state.currentAnalysis,
-                contextual: analysis,
-                status: 'contextual' as AnalysisStage
-              }
-            : null,
-          stageProgress: {
-            ...state.stageProgress,
-            contextual: 100
-          }
-        }));
-      },
-
-      setMarketAnalysis: (analysis) => {
-        set(state => ({
-          currentAnalysis: state.currentAnalysis
-            ? {
-                ...state.currentAnalysis,
-                market: analysis,
-                status: 'market' as AnalysisStage
-              }
-            : null,
-          stageProgress: {
-            ...state.stageProgress,
-            market: 100
-          }
-        }));
-      },
-
-      setDeepAnalysis: (analysis) => {
-        set(state => ({
-          currentAnalysis: state.currentAnalysis
-            ? {
-                ...state.currentAnalysis,
-                deep: analysis,
-                status: 'deep' as AnalysisStage
-              }
-            : null,
-          stageProgress: {
-            ...state.stageProgress,
-            deep: 100
-          }
-        }));
-      },
-
-      setStage: (stage, progress = 0) => {
-        set(state => ({
-          currentStage: stage,
-          currentAnalysis: state.currentAnalysis
-            ? {
-                ...state.currentAnalysis,
-                status: stage
-              }
-            : null,
-          stageProgress: {
-            ...state.stageProgress,
-            [stage]: progress
-          }
-        }));
-      },
-
-      setError: (error) => {
-        set(state => ({
-          error,
-          currentStage: error ? 'failed' : state.currentStage,
-          currentAnalysis: state.currentAnalysis && error
-            ? {
-                ...state.currentAnalysis,
-                status: 'failed' as AnalysisStage,
-                warnings: [...(state.currentAnalysis.warnings || []), error]
-              }
+        /**
+         * Update existing analysis
+         * Called when analysis progresses (contextual → market → deep)
+         */
+        updateAnalysis: (id, updates) => set((state) => ({
+          analysisHistory: state.analysisHistory.map(a =>
+            a.id === id 
+              ? { ...a, ...updates, updated_at: new Date().toISOString() } 
+              : a
+          ),
+          currentAnalysis: state.currentAnalysis?.id === id
+            ? { ...state.currentAnalysis, ...updates, updated_at: new Date().toISOString() }
             : state.currentAnalysis
-        }));
-      },
+        })),
 
-      completeAnalysis: (scores) => {
-        set(state => {
-          if (!state.currentAnalysis) return state;
+        /**
+         * Delete analysis from history
+         */
+        deleteAnalysis: (id) => set((state) => ({
+          analysisHistory: state.analysisHistory.filter(a => a.id !== id),
+          currentAnalysis: state.currentAnalysis?.id === id ? null : state.currentAnalysis
+        })),
 
-          const completedAnalysis = {
-            ...state.currentAnalysis,
-            status: 'completed' as AnalysisStage,
-            scores,
-            duration_ms: Date.now() - new Date(state.currentAnalysis.created_at).getTime()
-          };
+        /**
+         * Set current analysis (for detail page)
+         */
+        setCurrentAnalysis: (id) => set((state) => ({
+          currentAnalysis: state.analysisHistory.find(a => a.id === id) || null,
+          error: null
+        })),
 
-          return {
-            currentAnalysis: completedAnalysis,
-            history: [...state.history, completedAnalysis],
-            currentStage: 'completed',
-            stageProgress: {
-              ...state.stageProgress,
-              completed: 100
-            }
-          };
-        });
-      },
+        /**
+         * Clear current analysis
+         */
+        clearCurrentAnalysis: () => set({ currentAnalysis: null }),
 
-      reset: () => {
-        set({
+        // ========================================
+        // Analysis Results Actions
+        // ========================================
+        
+        /**
+         * Set DataPool (from API merged response)
+         */
+        setDataPool: (id, dataPool) => 
+          get().updateAnalysis(id, { dataPool }),
+
+        /**
+         * Add contextual analysis result
+         */
+        setContextualAnalysis: (id, analysis) => 
+          get().updateAnalysis(id, { contextual_analysis: analysis }),
+
+        /**
+         * Add market analysis result
+         */
+        setMarketAnalysis: (id, analysis) => 
+          get().updateAnalysis(id, { market_analysis: analysis }),
+
+        /**
+         * Add deep analysis result
+         */
+        setDeepAnalysis: (id, analysis) => 
+          get().updateAnalysis(id, { deep_analysis: analysis }),
+
+        // ========================================
+        // Status Update Actions
+        // ========================================
+        
+        /**
+         * Update analysis status
+         */
+        setStatus: (id, status) => 
+          get().updateAnalysis(id, { status }),
+
+        /**
+         * Set error message
+         */
+        setError: (id, error) => 
+          get().updateAnalysis(id, { error, status: 'failed' }),
+
+        // ========================================
+        // Getters
+        // ========================================
+        
+        /**
+         * Get analysis by ID
+         */
+        getAnalysisById: (id) => 
+          get().analysisHistory.find(a => a.id === id),
+
+        /**
+         * Get recent analyses (limit 20 by default)
+         */
+        getRecentAnalyses: (limit = 20) => 
+          get().analysisHistory.slice(0, limit),
+
+        /**
+         * Get only completed analyses
+         */
+        getCompletedAnalyses: () => 
+          get().analysisHistory.filter(a => a.status === 'completed'),
+
+        // ========================================
+        // Utilities
+        // ========================================
+        
+        /**
+         * Reset entire store
+         */
+        reset: () => set({
+          analysisHistory: [],
           currentAnalysis: null,
-          currentStage: 'idle',
-          error: null,
-          stageProgress: {
-            idle: 0,
-            uploading: 0,
-            extracting: 0,
-            contextual: 0,
-            market: 0,
-            deep: 0,
-            completed: 0,
-            failed: 0
+          isLoading: false,
+          error: null
+        }),
+
+        /**
+         * Cleanup old analyses (older than 30 days)
+         */
+        cleanupOldAnalyses: () => set((state) => {
+          const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+          return {
+            analysisHistory: state.analysisHistory.filter(a => 
+              new Date(a.created_at).getTime() > thirtyDaysAgo
+            )
+          };
+        })
+});
+
+// ✅ SSR-Safe: Only use persist on client-side
+export const useAnalysisStore = typeof window !== 'undefined'
+  ? create<AnalysisStore>()(
+      devtools(
+        persist(
+          storeConfig,
+          {
+            name: 'analysis-storage',
+            version: 2,
+            partialize: (state) => ({
+              // Only persist last 50 analyses (prevent localStorage bloat)
+              analysisHistory: state.analysisHistory.slice(0, 50)
+            })
           }
-        });
-      },
+        ),
+        { name: 'AnalysisStore' }
+      )
+    )
+  : create<AnalysisStore>()(
+      devtools(
+        storeConfig,
+        { name: 'AnalysisStore' }
+      )
+    );
 
-      // Getters
-      getAnalysisById: (id) => {
-        return get().history.find(a => a.id === id);
-      },
+// ========================================
+// Hooks (Convenience)
+// ========================================
 
-      getCurrentProgress: () => {
-        const { currentStage, stageProgress } = get();
-        return stageProgress[currentStage] || 0;
+/**
+ * Hook to load analysis from API and store in Zustand
+ * 
+ * ✅ Includes polling for pending/processing analyses
+ */
+export function useLoadAnalysis(id: string) {
+  const { getAnalysisById, addAnalysis, setCurrentAnalysis, updateAnalysis } = useAnalysisStore();
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let pollInterval: NodeJS.Timeout | null = null;
+
+    async function loadAnalysis() {
+      try {
+        const response = await fetch(`/api/analysis/${id}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch: ${response.statusText}`);
+        }
+        
+        const mergedAnalysis = await response.json();
+        
+        // ✅ Add or update in Zustand
+        const existing = getAnalysisById(id);
+        if (existing) {
+          updateAnalysis(id, mergedAnalysis);
+        } else {
+          addAnalysis(mergedAnalysis);
+        }
+        setCurrentAnalysis(id);
+        setError(null);
+        setLoading(false);
+
+        // ✅ Start polling if analysis is still in progress
+        const status = mergedAnalysis.status;
+        if (status === 'pending' || status === 'processing') {
+          if (!pollInterval) {
+            console.log('🔄 Starting polling for analysis:', id, 'status:', status);
+            pollInterval = setInterval(() => {
+              loadAnalysis(); // Poll every 2 seconds
+            }, 2000);
+          }
+        } else {
+          // ✅ Stop polling when completed/failed
+          if (pollInterval) {
+            console.log('✅ Stopping polling - analysis complete:', id, 'status:', status);
+            clearInterval(pollInterval);
+            pollInterval = null;
+          }
+        }
+
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        setLoading(false);
+        
+        // Stop polling on error
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
       }
-    }),
-    {
-      name: 'analysis-store',
-      partialize: (state) => ({
-        history: state.history.slice(-10) // Keep only last 10 analyses
-      })
     }
-  )
-);
 
-// Helper functions
-function generateAnalysisId(): string {
-  return `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    loadAnalysis();
+
+    // ✅ Cleanup: stop polling on unmount
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [id]);
+
+  return { loading, error };
 }
 
-function generateFileId(): string {
-  return `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
+// ========================================
+// Export for backward compatibility
+// ========================================
 
-function calculateOverallProgress(files: FileWithMetadata[]): number {
-  if (files.length === 0) return 0;
-  const total = files.reduce((sum, f) => sum + f.progress, 0);
-  return Math.round(total / files.length);
-}
+// Re-export types for convenience
+export type { DataPool };
+
+// React import for hooks
+import React from 'react';

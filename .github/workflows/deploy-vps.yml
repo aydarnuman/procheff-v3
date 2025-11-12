@@ -1,0 +1,118 @@
+name: Deploy to VPS (161.35.217.113)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  deploy:
+    name: Deploy to DigitalOcean VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: 📝 Add VPS to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 161.35.217.113 >> ~/.ssh/known_hosts
+
+      - name: 🚀 Deploy to VPS
+        env:
+          VPS_HOST: 161.35.217.113
+          VPS_USER: ${{ secrets.VPS_USER }}
+          PROJECT_PATH: ${{ secrets.VPS_PROJECT_PATH }}
+        run: |
+          echo "🔗 Connecting to VPS..."
+          
+          ssh $VPS_USER@$VPS_HOST << 'EOF'
+            set -e
+            
+            echo "📂 Navigating to project directory..."
+            cd $PROJECT_PATH || { echo "❌ Project directory not found!"; exit 1; }
+            
+            echo "📥 Pulling latest changes from GitHub..."
+            git fetch origin
+            git reset --hard origin/main
+            
+            echo "🐋 Building Docker image..."
+            docker build -t procheff-v3:latest .
+            
+            echo "🔄 Stopping old container..."
+            docker-compose -f docker-compose.digitalocean.yml down || true
+            
+            echo "🚀 Starting new container..."
+            docker-compose -f docker-compose.digitalocean.yml up -d
+            
+            echo "⏳ Waiting for container to start..."
+            sleep 10
+            
+            echo "🏥 Health check..."
+            for i in {1..10}; do
+              if curl -f http://localhost:3001/api/health > /dev/null 2>&1; then
+                echo "✅ Health check passed!"
+                break
+              fi
+              echo "⏳ Attempt $i/10..."
+              sleep 5
+            done
+            
+            echo "📊 Container status:"
+            docker ps | grep procheff-v3
+            
+            echo "🎉 Deployment completed!"
+          EOF
+
+      - name: 🧹 Cleanup old Docker images
+        env:
+          VPS_HOST: 161.35.217.113
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh $VPS_USER@$VPS_HOST << 'EOF'
+            echo "🧹 Cleaning up old Docker images..."
+            docker image prune -f
+            echo "✅ Cleanup completed!"
+          EOF
+
+      - name: 📋 Deployment Summary
+        if: always()
+        run: |
+          echo "## 🚀 VPS Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **VPS IP:** 161.35.217.113" >> $GITHUB_STEP_SUMMARY
+          echo "- **Port:** 3001" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** http://161.35.217.113:3001" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 Useful Commands" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "# SSH to server" >> $GITHUB_STEP_SUMMARY
+          echo "ssh ${{ secrets.VPS_USER }}@161.35.217.113" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# View logs" >> $GITHUB_STEP_SUMMARY
+          echo "docker logs -f procheff-v3" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Check status" >> $GITHUB_STEP_SUMMARY
+          echo "docker ps | grep procheff-v3" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: 🔔 Notify on failure
+        if: failure()
+        run: |
+          echo "## ❌ Deployment Failed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the logs above for error details." >> $GITHUB_STEP_SUMMARY
+
+
+

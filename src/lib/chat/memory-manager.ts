@@ -4,18 +4,14 @@
  */
 
 import type { AnalysisResult } from '@/store/analysisStore';
+import { mcpIntegration, type MCPEntity, type MCPRelation } from './mcp-integration';
+import { AILogger } from '@/lib/ai/logger';
 
 export interface UserFeedback {
   analysisId: string;
   correction: string;
   timestamp: string;
   userId?: string;
-}
-
-interface MCPEntity {
-  name: string;
-  entityType: string;
-  observations?: string[];
 }
 
 export interface Context {
@@ -43,16 +39,19 @@ export class MemoryManager {
       }];
 
       // Save to memory using MCP
-      await this.createEntities(entities);
+      const success = await this.createEntities(entities);
 
       // Extract and save keywords as separate entities
-      if (analysis.dataPool) {
+      if (success && analysis.dataPool) {
         await this.saveKeywordsAsEntities(entityName, analysis);
       }
 
-      console.log(`✅ Analysis saved to memory: ${entityName}`);
+      AILogger.success(`Analysis saved to memory: ${entityName}`, {
+        entityName,
+        observationCount: observations.length
+      });
     } catch (error) {
-      console.error('❌ Failed to save analysis to memory:', error);
+      AILogger.error('Failed to save analysis to memory', { error });
       throw error;
     }
   }
@@ -76,7 +75,7 @@ export class MemoryManager {
 
       return unique.slice(0, 5); // Return top 5
     } catch (error) {
-      console.error('❌ Failed to find similar tenders:', error);
+      AILogger.error('Failed to find similar tenders', { error });
       return [];
     }
   }
@@ -110,9 +109,9 @@ export class MemoryManager {
 
       await this.createRelations(relations);
 
-      console.log(`✅ User feedback saved: ${entityName}`);
+      AILogger.success(`User feedback saved: ${entityName}`);
     } catch (error) {
-      console.error('❌ Failed to save user feedback:', error);
+      AILogger.error('Failed to save user feedback', { error });
       throw error;
     }
   }
@@ -144,7 +143,7 @@ export class MemoryManager {
         relevantObservations
       };
     } catch (error) {
-      console.error('❌ Failed to get relevant context:', error);
+      AILogger.error('Failed to get relevant context', { error });
       return {
         similarTenders: [],
         learnedRules: [],
@@ -226,7 +225,7 @@ export class MemoryManager {
         await this.createRelations(relations);
       }
     } catch (error) {
-      console.error('⚠️ Failed to save keywords:', error);
+      AILogger.warn('Failed to save keywords', { error });
       // Non-critical, don't throw
     }
   }
@@ -269,34 +268,27 @@ export class MemoryManager {
   }
 
   // =========================================
-  // MCP Tool Wrappers (Temporarily disabled)
+  // MCP Tool Wrappers - ACTIVE
   // =========================================
 
   /**
-   * Wrapper for mcp__memory__create_entities
-   * TODO: Integrate with MCP tools via Claude Code
+   * Create entities in the knowledge graph
    */
-  private async createEntities(entities: MCPEntity[]): Promise<void> {
-    // Placeholder - will be implemented when MCP integration is ready
-    console.log('[Memory] Would create entities:', entities.length);
-    return Promise.resolve();
+  private async createEntities(entities: MCPEntity[]): Promise<boolean> {
+    return mcpIntegration.createEntities(entities);
   }
 
   /**
-   * Wrapper for mcp__memory__create_relations
+   * Create relations between entities
    */
-  private async createRelations(relations: Array<{from: string; to: string; relationType: string}>): Promise<void> {
-    // Placeholder
-    console.log('[Memory] Would create relations:', relations.length);
-    return Promise.resolve();
+  private async createRelations(relations: MCPRelation[]): Promise<boolean> {
+    return mcpIntegration.createRelations(relations);
   }
 
   /**
-   * Wrapper for mcp__memory__search_nodes
+   * Search for nodes in the knowledge graph
    */
-  private async searchNodes(query: string): Promise<any[]> {
-    // Placeholder - returns empty results for now
-    console.log('[Memory] Would search for:', query);
-    return Promise.resolve([]);
+  private async searchNodes(query: string): Promise<MCPEntity[]> {
+    return mcpIntegration.searchNodes(query);
   }
 }

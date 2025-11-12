@@ -7,10 +7,13 @@
 
 import { ChatInterface } from '@/components/chat/ChatInterface';
 import { AlertsWidget, MetricsWidget, PriceWidget } from '@/components/chat/ContextWidgets';
+import { AnalyticsWidget } from '@/components/chat/AnalyticsWidget';
+import { FeedbackMetrics } from '@/components/chat/FeedbackWidget';
+import { ProactiveSuggestions } from '@/components/chat/ProactiveSuggestions';
 import { InputArea } from '@/components/chat/InputArea';
 import { useChatStore } from '@/store/chatStore';
 import { motion } from 'framer-motion';
-import { Bot, ChevronLeft, ChevronRight, Info, Trash2 } from 'lucide-react';
+import { Bot, ChevronLeft, ChevronRight, Info, Trash2, BarChart } from 'lucide-react';
 import { useState } from 'react';
 
 export default function ChatPage() {
@@ -73,6 +76,18 @@ export default function ChatPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Chat Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Proactive Suggestions */}
+          <div className="px-6 pt-4">
+            <ProactiveSuggestions
+              context={{
+                messageCount: messages.length,
+                isLoading
+              }}
+              position="top"
+              maxSuggestions={2}
+            />
+          </div>
+
           <ChatInterface />
 
           {/* Input Area */}
@@ -98,13 +113,49 @@ export default function ChatPage() {
 }
 
 function ContextPanel() {
+  const [activeTab, setActiveTab] = useState<'context' | 'analytics'>('context');
+
   return (
     <div className="space-y-6">
-      {/* Title */}
-      <div className="flex items-center gap-2">
-        <Info className="w-5 h-5 text-indigo-400" />
-        <h3 className="text-lg font-semibold text-white">Bağlam</h3>
+      {/* Tab Selector */}
+      <div className="flex gap-1 bg-slate-800/50 rounded-lg p-1">
+        <button
+          onClick={() => setActiveTab('context')}
+          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded text-sm transition-colors ${
+            activeTab === 'context'
+              ? 'bg-indigo-500 text-white'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Info className="w-4 h-4" />
+          Bağlam
+        </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded text-sm transition-colors ${
+            activeTab === 'analytics'
+              ? 'bg-indigo-500 text-white'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <BarChart className="w-4 h-4" />
+          Analitik
+        </button>
       </div>
+
+      {/* Content based on active tab */}
+      {activeTab === 'context' ? (
+        <ContextTabContent />
+      ) : (
+        <AnalyticsWidget />
+      )}
+    </div>
+  );
+}
+
+function ContextTabContent() {
+  return (
+    <div className="space-y-4">
 
       {/* Info Cards */}
       <div className="space-y-4">
@@ -147,6 +198,9 @@ function ContextPanel() {
 
         {/* Live Metrics */}
         <MetricsWidget />
+
+        {/* Feedback Metrics */}
+        <FeedbackMetrics />
 
         {/* Market Price Widget */}
         <PriceWidget />
@@ -202,12 +256,6 @@ function ContextPanel() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Footer Info */}
-      <div className="text-xs text-slate-500 text-center pt-4 border-t border-slate-800/50">
-        <p>Powered by Claude Sonnet 4.5</p>
-        <p className="mt-1">Öğrenen AI Asistan</p>
       </div>
     </div>
   );

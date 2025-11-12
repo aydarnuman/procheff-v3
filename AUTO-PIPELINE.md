@@ -401,7 +401,7 @@ completed_at TEXT        -- Bitiş zamanı
 
 ## 📚 Detaylı Dokümantasyon
 
-**v2 özellikleri için**: [docs/AUTO-PIPELINE-V2.md](./docs/AUTO-PIPELINE-V2.md)
+**v2 özellikleri için**: [docs/AUTO-PIPELINE-V2.md](./docs/AUTO-PIPELINE-V2.md) (v3'ün kendi v2 versiyonu)
 
 Bu dokümantasyon içerir:
 - Architecture diagram

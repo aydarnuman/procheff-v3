@@ -1,7 +1,8 @@
 import { AILogger } from "@/lib/ai/logger";
 import { IHALE_ANALYSIS_PROMPT } from "@/lib/ai/prompts";
 import { AIProviderFactory } from "@/lib/ai/provider-factory";
-import { cleanClaudeJSON } from "@/lib/ai/utils";
+import { IHALE_ANALYSIS_SCHEMA, type IhaleAnalysisResponse } from "@/lib/ai/schemas";
+import { AnalysisRepository } from "@/lib/db/analysis-repository";
 import { auth } from "@/lib/auth";
 import { jobManager } from "@/lib/jobs/job-manager";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -165,29 +166,44 @@ export async function POST(req: NextRequest) {
 
     // Claude analysis
     jobManager.updateJob(jobId, { status: 'analyze', progress: 70 });
-    const client = AIProviderFactory.getClaude();
     const prompt = `${IHALE_ANALYSIS_PROMPT}\n\nDOKÜMAN METNİ:\n${text.slice(0, 20000)}`;
 
-    const start = Date.now();
-    const result = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
-      temperature: 0.3,
-      max_tokens: 8000,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const raw = result.content?.[0]?.type === "text" ? result.content[0].text : "";
-    const cleaned = cleanClaudeJSON(raw);
-    const data = JSON.parse(cleaned);
-    const duration = Date.now() - start;
+    // 🎯 Use structured output for guaranteed valid JSON
+    const { data, metadata } = await AIProviderFactory.createStructuredMessage<IhaleAnalysisResponse>(
+      prompt,
+      IHALE_ANALYSIS_SCHEMA,
+      {
+        temperature: 0.3,
+        max_tokens: 8000,
+      }
+    );
 
     AILogger.success("✅ İhale analizi tamamlandı", {
       jobId,
       kurum: data.kurum,
-      duration_ms: duration,
+      duration_ms: metadata.duration_ms,
+      input_tokens: metadata.input_tokens,
+      output_tokens: metadata.output_tokens,
+      cost_usd: metadata.cost_usd,
       ocr_used: ocrUsed,
       hash,
     });
+
+    // Save API metrics (non-blocking)
+    try {
+      AnalysisRepository.saveAPIMetric({
+        endpoint: "/api/ihale/upload",
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        input_tokens: metadata.input_tokens,
+        output_tokens: metadata.output_tokens,
+        total_tokens: metadata.total_tokens,
+        cost_usd: metadata.cost_usd,
+        duration_ms: metadata.duration_ms,
+        success: true,
+      });
+    } catch (metricError) {
+      AILogger.warn("Failed to save API metric", { error: metricError });
+    }
 
     // Update job as completed
     jobManager.updateJob(jobId, {
@@ -205,8 +221,12 @@ export async function POST(req: NextRequest) {
       jobId,
       data,
       meta: {
-        duration_ms: duration,
+        duration_ms: metadata.duration_ms,
         model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        input_tokens: metadata.input_tokens,
+        output_tokens: metadata.output_tokens,
+        total_tokens: metadata.total_tokens,
+        cost_usd: metadata.cost_usd,
         ocr_used: ocrUsed,
         sha256: hash,
         mime_type: mime,

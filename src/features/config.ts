@@ -17,12 +17,6 @@ export const FEATURE_FLAGS = {
    * Requires: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
    */
   CACHING_ENABLED: process.env.ENABLE_CACHING === "true",
-
-  /**
-   * Batch Processing
-   * Requires: Database migrations for batch_jobs and batch_files tables
-   */
-  BATCH_PROCESSING_ENABLED: process.env.ENABLE_BATCH === "true",
 } as const;
 
 /**
@@ -57,10 +51,6 @@ export const RATE_LIMIT_CONFIG = {
       requests: 10,
       window: "10 m" as const, // 10 uploads per 10 minutes
     },
-    "/api/batch/upload": {
-      requests: 3,
-      window: "1 h" as const, // 3 batch uploads per hour
-    },
     "/api/metrics": {
       requests: 60,
       window: "1 m" as const,
@@ -89,33 +79,6 @@ export const CACHE_CONFIG = {
   },
 } as const;
 
-/**
- * Batch Processing Configuration
- */
-export const BATCH_CONFIG = {
-  // Maximum files per batch
-  MAX_FILES_PER_BATCH: 50,
-
-  // Concurrent file processing
-  CONCURRENT_JOBS: 3,
-
-  // Retry configuration
-  MAX_RETRIES: 3,
-  RETRY_DELAY_MS: 2000,
-
-  // Priority levels
-  PRIORITIES: {
-    HIGH: "high",
-    NORMAL: "normal",
-    LOW: "low",
-  },
-
-  // Job timeout (30 minutes per job)
-  JOB_TIMEOUT_MS: 30 * 60 * 1000,
-
-  // Cleanup old jobs (7 days)
-  CLEANUP_AFTER_DAYS: 7,
-} as const;
 
 /**
  * Check if Redis is configured
@@ -138,10 +101,6 @@ export function getFeatureStatus() {
     caching: {
       enabled: FEATURE_FLAGS.CACHING_ENABLED,
       configured: isRedisConfigured(),
-    },
-    batchProcessing: {
-      enabled: FEATURE_FLAGS.BATCH_PROCESSING_ENABLED,
-      configured: true, // Uses SQLite, always configured
     },
   };
 }

@@ -3,10 +3,14 @@
  * Simple command parser for chat interface
  */
 
+import { exportHandler } from './export-handler';
+
 export interface CommandResult {
-  type: 'success' | 'error' | 'info';
+  type: 'success' | 'error' | 'info' | 'export';
   message: string;
   data?: any;
+  downloadUrl?: string;
+  filename?: string;
 }
 
 export async function executeCommand(command: string): Promise<CommandResult> {
@@ -27,11 +31,15 @@ export async function executeCommand(command: string): Promise<CommandResult> {
       return await alertCommand();
 
     case 'export':
-      return exportCommand(args[0]);
+      return await exportCommand(args);
 
     case 'metrik':
     case 'metrics':
       return await metricsCommand();
+
+    case 'list':
+    case 'liste':
+      return await listCommand();
 
     case 'help':
     case 'yardim':
@@ -130,24 +138,101 @@ async function alertCommand(): Promise<CommandResult> {
   }
 }
 
-function exportCommand(format?: string): CommandResult {
-  if (!format) {
+async function exportCommand(args: string[]): Promise<CommandResult> {
+  if (args.length === 0) {
     return {
       type: 'info',
-      message: '## 📤 Export Formatları\n\n' +
-        'Kullanılabilir formatlar:\n' +
-        '- `/export pdf` - PDF rapor\n' +
-        '- `/export excel` - Excel dosyası\n' +
-        '- `/export csv` - CSV dosyası'
+      message: '## 📤 Export Komutları\n\n' +
+        '**Kullanım:**\n' +
+        '- `/export pdf <analiz_id>` - PDF rapor oluştur\n' +
+        '- `/export excel <analiz_id>` - Excel dosyası oluştur\n' +
+        '- `/export csv <analiz_id>` - CSV dosyası oluştur\n' +
+        '- `/export json <analiz_id>` - JSON dosyası oluştur\n\n' +
+        '**Özel Komutlar:**\n' +
+        '- `/export summary` - Son 10 analiz özeti\n' +
+        '- `/export comparison <id1,id2,id3>` - Karşılaştırma raporu\n' +
+        '- `/export trend` - Son 30 gün trend analizi\n\n' +
+        '*İpucu: Analiz ID\'lerini /list komutu ile görebilirsiniz*'
     };
   }
 
-  return {
-    type: 'info',
-    message: `## 📤 ${format.toUpperCase()} Export\n\n` +
-      'Export için analiz sayfasından işlem yapın.\n' +
-      '*Direkt export özelliği yakında!*'
-  };
+  const format = args[0].toLowerCase();
+  const analysisId = args[1];
+
+  // Validate format
+  if (!['pdf', 'excel', 'csv', 'json'].includes(format)) {
+    return {
+      type: 'error',
+      message: `Geçersiz format: ${format}\n` +
+        'Desteklenen formatlar: pdf, excel, csv, json'
+    };
+  }
+
+  try {
+    // Determine export type and options
+    const options: any = {
+      format: format as 'pdf' | 'excel' | 'csv' | 'json'
+    };
+
+    // Handle special cases
+    if (analysisId === 'summary') {
+      options.type = 'summary';
+    } else if (analysisId === 'trend') {
+      options.type = 'trend';
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      options.dateRange = {
+        start: thirtyDaysAgo.toISOString(),
+        end: new Date().toISOString()
+      };
+    } else if (analysisId && analysisId.includes(',')) {
+      // Comparison
+      options.type = 'comparison';
+      options.compareIds = analysisId.split(',').map(id => id.trim());
+    } else if (analysisId) {
+      // Single analysis
+      options.analysisId = analysisId;
+    }
+
+    // Call export handler
+    const result = await exportHandler.export(options);
+
+    if (!result.success) {
+      return {
+        type: 'error',
+        message: `Export hatası: ${result.error}`
+      };
+    }
+
+    // Convert buffer to base64 for download
+    if (result.buffer) {
+      const base64 = result.buffer.toString('base64');
+      const dataUrl = `data:${result.mimeType};base64,${base64}`;
+
+      return {
+        type: 'export',
+        message: `## ✅ Export Başarılı!\n\n` +
+          `**Dosya:** ${result.filename}\n` +
+          `**Format:** ${format.toUpperCase()}\n` +
+          `**Boyut:** ${Math.round(result.buffer.length / 1024)} KB\n\n` +
+          `[📥 İndir](${dataUrl})`,
+        downloadUrl: dataUrl,
+        filename: result.filename,
+        data: result
+      };
+    }
+
+    return {
+      type: 'success',
+      message: 'Export tamamlandı',
+      data: result
+    };
+  } catch (error) {
+    return {
+      type: 'error',
+      message: `Export işlemi başarısız: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`
+    };
+  }
 }
 
 async function metricsCommand(): Promise<CommandResult> {
@@ -183,18 +268,84 @@ async function metricsCommand(): Promise<CommandResult> {
   }
 }
 
+async function listCommand(): Promise<CommandResult> {
+  try {
+    // Fetch recent analyses from database
+    const { getDB } = await import('@/lib/db/sqlite-client');
+    const db = getDB();
+
+    const stmt = db.prepare(`
+      SELECT id, created_at, status,
+        json_extract(data_pool, '$.basicInfo.kurum') as kurum,
+        json_extract(data_pool, '$.basicInfo.butce') as butce,
+        json_extract(deep, '$.karar_onerisi.karar') as karar
+      FROM analysis_results
+      ORDER BY created_at DESC
+      LIMIT 10
+    `);
+
+    const analyses = stmt.all();
+
+    if (analyses.length === 0) {
+      return {
+        type: 'info',
+        message: '## 📋 Analiz Listesi\n\n' +
+          '*Henüz analiz bulunmuyor.*\n\n' +
+          'İhale analizi yapmak için:\n' +
+          '1. İhale sayfasına gidin\n' +
+          '2. Bir ihale seçin\n' +
+          '3. Analiz başlatın'
+      };
+    }
+
+    let listMessage = '## 📋 Son Analizler\n\n';
+
+    analyses.forEach((analysis: any, idx: number) => {
+      const date = new Date(analysis.created_at).toLocaleDateString('tr-TR');
+      const time = new Date(analysis.created_at).toLocaleTimeString('tr-TR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      listMessage += `**${idx + 1}. ${analysis.kurum || 'İsimsiz İhale'}**\n`;
+      listMessage += `   📌 ID: \`${analysis.id}\`\n`;
+      listMessage += `   💰 Bütçe: ${analysis.butce || 'Belirtilmemiş'}\n`;
+      listMessage += `   🎯 Karar: ${analysis.karar || 'Bekliyor'}\n`;
+      listMessage += `   📅 Tarih: ${date} ${time}\n`;
+      listMessage += `   📊 Durum: ${analysis.status}\n\n`;
+    });
+
+    listMessage += '*Export için: `/export <format> <id>` komutunu kullanın*';
+
+    return {
+      type: 'success',
+      message: listMessage,
+      data: analyses
+    };
+  } catch (error) {
+    return {
+      type: 'error',
+      message: `Liste yüklenemedi: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`
+    };
+  }
+}
+
 function helpCommand(): CommandResult {
   return {
     type: 'info',
     message: `## 💬 Kullanılabilir Komutlar\n\n` +
+      `### Analiz\n` +
+      `- \`/list\` - Son analizleri listele\n` +
+      `- \`/export <format> <id>\` - Analiz raporu oluştur\n\n` +
       `### Piyasa\n` +
       `- \`/fiyat <ürün>\` - Ürün fiyatı sorgula\n\n` +
       `### Sistem\n` +
       `- \`/metrik\` - Sistem metrikleri\n` +
       `- \`/alert\` - Alert kontrolü çalıştır\n\n` +
       `### Export\n` +
-      `- \`/export <format>\` - Export bilgisi\n` +
-      `- \`/rapor\` - Rapor oluştur\n\n` +
+      `- \`/export summary\` - Özet rapor\n` +
+      `- \`/export trend\` - Trend analizi\n` +
+      `- \`/rapor\` - Rapor bilgisi\n\n` +
       `### Diğer\n` +
       `- \`/help\` - Bu yardım mesajı\n\n` +
       `*İpucu: Komutları yazmaya başladığınızda otomatik tamamlama görünecek!*`
@@ -207,10 +358,11 @@ export function isCommand(message: string): boolean {
 
 export function getCommandSuggestions(input: string): string[] {
   const commands = [
+    '/list',
+    '/export',
     '/fiyat',
     '/rapor',
     '/alert',
-    '/export',
     '/metrik',
     '/help'
   ];

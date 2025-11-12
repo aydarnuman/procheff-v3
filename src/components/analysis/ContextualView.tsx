@@ -14,24 +14,26 @@ import {
   Activity
 } from 'lucide-react';
 import type { ContextualAnalysis } from '@/lib/tender-analysis/types';
+import { getRiskColor, getConfidenceColor } from '@/lib/utils/color-helpers';
+import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 
 interface ContextualViewProps {
   analysis: ContextualAnalysis;
 }
 
 export function ContextualView({ analysis }: ContextualViewProps) {
-  // Risk level colors
-  const getRiskColor = (level: string) => {
-    switch (level) {
-      case 'dusuk':
-        return 'text-green-400 bg-green-500/20 border-green-500/30';
-      case 'orta':
-        return 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
-      case 'yuksek':
-        return 'text-red-400 bg-red-500/20 border-red-500/30';
-      default:
-        return 'text-gray-400 bg-gray-500/20 border-gray-500/30';
-    }
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    risks: true,
+    cost: true,
+    time: true
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
   };
 
   const getRiskIcon = (level: string) => {
@@ -352,6 +354,78 @@ export function ContextualView({ analysis }: ContextualViewProps) {
               </div>
             )}
           </div>
+        </motion.div>
+      )}
+
+      {/* 2025 Uyumluluk Kontrolü */}
+      {analysis.uyumluluk_2025 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="glass-card rounded-xl p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30"
+        >
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Shield className="w-5 h-5 text-blue-400" />
+            🆕 2025 Uyumluluk Kontrolü
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div className={`p-4 rounded-lg ${
+              analysis.uyumluluk_2025.r_katsayisi_uygun 
+                ? 'bg-green-500/20 border border-green-500/30' 
+                : 'bg-red-500/20 border border-red-500/30'
+            }`}>
+              <div className="text-sm text-slate-300 mb-2 font-medium">R Katsayısı:</div>
+              <div className={`text-lg font-bold ${
+                analysis.uyumluluk_2025.r_katsayisi_uygun ? 'text-green-400' : 'text-red-400'
+              }`}>
+                {analysis.uyumluluk_2025.r_katsayisi_uygun ? '✓ Uygun' : '✗ Uygun Değil'}
+              </div>
+            </div>
+
+            <div className={`p-4 rounded-lg ${
+              analysis.uyumluluk_2025.ekap_e_imza_gerekli 
+                ? 'bg-yellow-500/20 border border-yellow-500/30' 
+                : 'bg-gray-500/20 border border-gray-500/30'
+            }`}>
+              <div className="text-sm text-slate-300 mb-2 font-medium">EKAP E-İmza:</div>
+              <div className="text-white font-bold text-lg">
+                {analysis.uyumluluk_2025.ekap_e_imza_gerekli ? 'Gerekli' : 'Gerekli Değil'}
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-slate-700/30 border border-slate-600/30">
+              <div className="text-sm text-slate-300 mb-2 font-medium">Fiyat Fark Rejimi:</div>
+              <div className="text-white font-bold text-lg capitalize">
+                {analysis.uyumluluk_2025.fiyat_fark_rejimi.replace(/_/g, ' ')}
+              </div>
+            </div>
+
+            <div className={`p-4 rounded-lg ${
+              analysis.uyumluluk_2025.adt_ek_h4 
+                ? 'bg-green-500/20 border border-green-500/30' 
+                : 'bg-gray-500/20 border border-gray-500/30'
+            }`}>
+              <div className="text-sm text-slate-300 mb-2 font-medium">ADT Ek H.4:</div>
+              <div className="text-white font-bold text-lg">
+                {analysis.uyumluluk_2025.adt_ek_h4 ? 'Var' : 'Yok'}
+              </div>
+            </div>
+          </div>
+
+          {analysis.uyumluluk_2025.uyarilar && analysis.uyumluluk_2025.uyarilar.length > 0 && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+              <h4 className="text-red-400 font-semibold text-sm mb-3">⚠️ Önemli Uyarılar:</h4>
+              <ul className="space-y-2">
+                {analysis.uyumluluk_2025.uyarilar.map((uyari, idx) => (
+                  <li key={idx} className="text-red-300 text-sm leading-relaxed">
+                    • {uyari}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </motion.div>
       )}
     </div>

@@ -6,7 +6,8 @@
 import { AILogger } from "@/lib/ai/logger";
 import { DECISION_PROMPT } from "@/lib/ai/prompts";
 import { AIProviderFactory } from "@/lib/ai/provider-factory";
-import { cleanClaudeJSON, estimateTokens } from "@/lib/ai/utils";
+import { DECISION_ANALYSIS_SCHEMA, type DecisionAnalysisResponse } from "@/lib/ai/schemas";
+import { AnalysisRepository } from "@/lib/db/analysis-repository";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -32,8 +33,6 @@ const DecisionRequestSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const startTime = Date.now();
-
   try {
     // Parse and validate request
     const body = await req.json();
@@ -46,9 +45,6 @@ export async function POST(req: NextRequest) {
       menu_var: !!menu_data,
       ihale_var: !!ihale_bilgileri,
     });
-
-    // Get Claude client
-    const client = AIProviderFactory.getClaude();
 
     // Construct the analysis prompt
     const prompt = `
@@ -66,59 +62,81 @@ ${ihale_bilgileri ? JSON.stringify(ihale_bilgileri, null, 2) : "İhale bilgisi m
 GÖREV: Yukarıdaki verileri analiz et ve net bir teklif kararı ver.
 `;
 
-    const estimatedTokens = estimateTokens(prompt);
-    AILogger.info(`📊 Token tahmini: ~${estimatedTokens} tokens`);
-
-    // Call Claude API
-    const result = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
-      temperature: 0.5,
-      max_tokens: 8000,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    // Extract and clean response
-    const contentBlock = result.content?.[0];
-    const rawResponse =
-      contentBlock && "text" in contentBlock ? contentBlock.text : "";
-    const cleanedJSON = cleanClaudeJSON(rawResponse);
-    const decisionData = JSON.parse(cleanedJSON);
-
-    const duration = Date.now() - startTime;
+    // 🎯 Use structured output for guaranteed valid JSON
+    const { data, metadata } = await AIProviderFactory.createStructuredMessage<DecisionAnalysisResponse>(
+      prompt,
+      DECISION_ANALYSIS_SCHEMA,
+      {
+        temperature: 0.5,
+        max_tokens: 8000,
+      }
+    );
 
     // Log success
-    AILogger.success(`✅ Karar analizi tamamlandı (${duration}ms)`, {
-      karar: decisionData.karar,
-      risk_orani: decisionData.risk_orani,
-      kar_orani: decisionData.tahmini_kar_orani,
+    AILogger.success("✅ Karar analizi tamamlandı", {
+      duration_ms: metadata.duration_ms,
+      karar: data.karar,
+      risk_orani: data.risk_orani,
+      kar_orani: data.tahmini_kar_orani,
+      input_tokens: metadata.input_tokens,
+      output_tokens: metadata.output_tokens,
+      cost_usd: metadata.cost_usd,
     });
+
+    // Save API metrics (non-blocking)
+    try {
+      AnalysisRepository.saveAPIMetric({
+        endpoint: "/api/ai/decision",
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        input_tokens: metadata.input_tokens,
+        output_tokens: metadata.output_tokens,
+        total_tokens: metadata.total_tokens,
+        cost_usd: metadata.cost_usd,
+        duration_ms: metadata.duration_ms,
+        success: true,
+      });
+    } catch (metricError) {
+      AILogger.warn("Failed to save API metric", { error: metricError });
+    }
 
     // Return response
     return NextResponse.json({
       success: true,
-      data: decisionData,
+      data,
       meta: {
-        duration_ms: duration,
+        duration_ms: metadata.duration_ms,
         model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
-        estimated_tokens: estimatedTokens,
+        input_tokens: metadata.input_tokens,
+        output_tokens: metadata.output_tokens,
+        total_tokens: metadata.total_tokens,
+        cost_usd: metadata.cost_usd,
         timestamp: new Date().toISOString(),
       },
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : "Bilinmeyen hata";
 
     AILogger.error("❌ Karar analizi hatası", {
       error: errorMessage,
-      duration,
     });
+
+    // Save error metric (non-blocking)
+    try {
+      AnalysisRepository.saveAPIMetric({
+        endpoint: "/api/ai/decision",
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        success: false,
+        error_message: errorMessage,
+      });
+    } catch (metricError) {
+      // Ignore metric errors
+    }
 
     return NextResponse.json(
       {
         success: false,
         error: errorMessage || "Karar analizi sırasında bir hata oluştu",
         meta: {
-          duration_ms: duration,
           timestamp: new Date().toISOString(),
         },
       },

@@ -9,6 +9,9 @@ import { AILogger } from '@/lib/ai/logger';
 import { MemoryManager } from '@/lib/chat/memory-manager';
 import { LearningEngine } from '@/lib/chat/learning-engine';
 import { isCommand, executeCommand } from '@/lib/chat/commands';
+import { estimateTokens } from '@/lib/ai/utils';
+import { chatAnalytics } from '@/lib/chat/analytics-tracker';
+import { domainKnowledge, type DomainContext } from '@/lib/chat/domain-knowledge';
 
 const CHAT_ASSISTANT_PROMPT = `
 SYSTEM TALİMATI:
@@ -52,12 +55,26 @@ export async function POST(req: NextRequest) {
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
-        { error: 'Message is required' },
+        { error: 'Mesaj gereklidir' },
         { status: 400 }
       );
     }
 
     AILogger.info('Chat request received', { message: message.substring(0, 100) });
+
+    // Generate IDs for tracking
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Track user message
+    await chatAnalytics.trackMessage({
+      messageId,
+      conversationId,
+      timestamp: new Date().toISOString(),
+      messageType: 'user',
+      content: message,
+      command: isCommand(message) ? message.split(' ')[0] : undefined
+    });
 
     // Check if message is a command
     if (isCommand(message)) {
@@ -107,8 +124,10 @@ export async function POST(req: NextRequest) {
 
     // Get relevant context from memory
     let contextInfo = '';
+    let retrievedContext: any = null;
     try {
       const context = await memoryManager.getRelevantContext(message);
+      retrievedContext = context;
 
       if (context.similarTenders.length > 0) {
         contextInfo += '\n\n## BENZER İHALELER (Geçmiş Deneyimler):\n';
@@ -140,6 +159,36 @@ export async function POST(req: NextRequest) {
       // Continue without context - not critical
     }
 
+    // Get domain expertise insights
+    try {
+      // Extract context from message for domain knowledge
+      const domainContext: DomainContext = extractDomainContext(message, conversationHistory);
+
+      const domainInsights = await domainKnowledge.getInsights(message, domainContext);
+
+      if (domainInsights.length > 0) {
+        contextInfo += '\n\n## UZMAN BİLGİSİ:\n';
+        domainInsights.forEach(insight => {
+          contextInfo += `\n### ${insight.title}\n${insight.content}\n`;
+
+          if (insight.recommendations && insight.recommendations.length > 0) {
+            contextInfo += '\n**Tavsiyeler:**\n';
+            insight.recommendations.slice(0, 3).forEach(rec => {
+              contextInfo += `- ${rec}\n`;
+            });
+          }
+        });
+
+        AILogger.info('Domain insights added', {
+          insightCount: domainInsights.length,
+          categories: domainInsights.map(i => i.category)
+        });
+      }
+    } catch (error) {
+      AILogger.warn('Failed to get domain insights', { error });
+      // Non-critical, continue without domain knowledge
+    }
+
     // Build conversation messages
     const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
@@ -163,6 +212,87 @@ export async function POST(req: NextRequest) {
     messages.push({
       role: 'user',
       content: message
+    });
+
+    // Calculate total input tokens
+    const totalInputTokens = messages.reduce((sum, msg) => {
+      return sum + estimateTokens(msg.content);
+    }, 0);
+
+    // Claude Sonnet 4 context window: 200K tokens
+    // Reserve 4K for output, so max input is ~196K
+    const MAX_INPUT_TOKENS = 196000;
+    const WARNING_THRESHOLD = 180000; // Warn at 90% usage
+
+    if (totalInputTokens > MAX_INPUT_TOKENS) {
+      AILogger.warn('Context window exceeded', {
+        inputTokens: totalInputTokens,
+        maxTokens: MAX_INPUT_TOKENS,
+        excess: totalInputTokens - MAX_INPUT_TOKENS
+      });
+
+      // Truncate conversation history if needed
+      const systemPromptTokens = estimateTokens(CHAT_ASSISTANT_PROMPT + contextInfo);
+      const currentMessageTokens = estimateTokens(message);
+      const availableTokens = MAX_INPUT_TOKENS - systemPromptTokens - currentMessageTokens - 1000; // Safety margin
+
+      // Rebuild messages with limited history
+      const limitedMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+      limitedMessages.push({
+        role: 'user',
+        content: CHAT_ASSISTANT_PROMPT + contextInfo
+      });
+
+      // Add conversation history with token limit
+      if (conversationHistory && Array.isArray(conversationHistory)) {
+        let historyTokens = 0;
+        const limitedHistory = [];
+        
+        // Add messages from newest to oldest until limit
+        for (let i = conversationHistory.length - 1; i >= 0; i--) {
+          const msg = conversationHistory[i];
+          const msgTokens = estimateTokens(msg.content);
+          if (historyTokens + msgTokens <= availableTokens) {
+            limitedHistory.unshift(msg);
+            historyTokens += msgTokens;
+          } else {
+            break;
+          }
+        }
+
+        limitedHistory.forEach((msg: { role: string; content: string }) => {
+          limitedMessages.push({
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          });
+        });
+
+        AILogger.info('Conversation history truncated', {
+          original: conversationHistory.length,
+          limited: limitedHistory.length,
+          savedTokens: totalInputTokens - (systemPromptTokens + currentMessageTokens + historyTokens)
+        });
+      }
+
+      limitedMessages.push({
+        role: 'user',
+        content: message
+      });
+
+      messages.length = 0;
+      messages.push(...limitedMessages);
+    } else if (totalInputTokens > WARNING_THRESHOLD) {
+      AILogger.warn('Context window approaching limit', {
+        inputTokens: totalInputTokens,
+        maxTokens: MAX_INPUT_TOKENS,
+        usagePercent: Math.round((totalInputTokens / MAX_INPUT_TOKENS) * 100)
+      });
+    }
+
+    AILogger.info('Chat request prepared', {
+      messageCount: messages.length,
+      estimatedInputTokens: totalInputTokens,
+      contextInfoLength: contextInfo.length
     });
 
     // Create Claude client
@@ -193,10 +323,38 @@ export async function POST(req: NextRequest) {
 
           // Log completion
           const duration = Date.now() - startTime;
+          const tokensUsed = estimateTokens(fullResponse);
+
           AILogger.success('Chat response completed', {
             duration,
-            responseLength: fullResponse.length
+            responseLength: fullResponse.length,
+            tokensUsed
           });
+
+          // Track assistant response
+          await chatAnalytics.trackMessage({
+            messageId: `${messageId}_response`,
+            conversationId,
+            timestamp: new Date().toISOString(),
+            messageType: 'assistant',
+            content: fullResponse,
+            responseTime: duration,
+            tokensUsed,
+            success: true
+          });
+
+          // Save conversation to memory for learning
+          try {
+            await saveConversationToMemory(
+              message,
+              fullResponse,
+              retrievedContext,
+              memoryManager
+            );
+          } catch (error) {
+            AILogger.warn('Failed to save conversation to memory', { error });
+            // Non-critical, don't block response
+          }
 
           controller.close();
         } catch (error) {
@@ -221,10 +379,178 @@ export async function POST(req: NextRequest) {
     AILogger.error('Chat API error', { error: errorMessage, duration });
 
     return NextResponse.json(
-      { error: 'Failed to process chat request', details: errorMessage },
+      { error: 'Chat isteği işlenemedi', details: errorMessage },
       { status: 500 }
     );
   }
+}
+
+/**
+ * Helper function to save conversation to memory
+ */
+async function saveConversationToMemory(
+  userMessage: string,
+  assistantResponse: string,
+  context: any,
+  memoryManager: MemoryManager
+) {
+  try {
+    const timestamp = new Date().toISOString();
+    const conversationId = `conv_${Date.now()}`;
+
+    // Create conversation entity
+    const conversationEntity = {
+      name: `conversation_${conversationId}`,
+      entityType: 'konusma',
+      observations: [
+        `User: ${userMessage.substring(0, 200)}`,
+        `Assistant: ${assistantResponse.substring(0, 200)}`,
+        `Timestamp: ${timestamp}`,
+        `Context Used: ${context ? 'Yes' : 'No'}`,
+        `Similar Tenders Found: ${context?.similarTenders?.length || 0}`,
+        `Learned Rules Applied: ${context?.learnedRules?.length || 0}`
+      ]
+    };
+
+    // Extract keywords from conversation
+    const keywords = extractKeywordsFromConversation(userMessage, assistantResponse);
+
+    // Create keyword entities
+    const keywordEntities = keywords.slice(0, 5).map(keyword => ({
+      name: `keyword_${keyword.toLowerCase().replace(/\s+/g, '_')}`,
+      entityType: 'anahtar_kelime',
+      observations: [`Keyword: ${keyword}`, `From Conversation: ${conversationId}`]
+    }));
+
+    // Save all entities
+    await memoryManager['createEntities']([conversationEntity, ...keywordEntities]);
+
+    // Create relations
+    const relations = keywordEntities.map(entity => ({
+      from: conversationEntity.name,
+      to: entity.name,
+      relationType: 'icerir_kelime'
+    }));
+
+    if (relations.length > 0) {
+      await memoryManager['createRelations'](relations);
+    }
+
+    AILogger.info('Conversation saved to memory', {
+      conversationId,
+      keywordCount: keywords.length
+    });
+  } catch (error) {
+    AILogger.warn('Failed to save conversation', { error });
+    // Don't throw - this is non-critical
+  }
+}
+
+/**
+ * Extract domain context from message and conversation history
+ */
+function extractDomainContext(message: string, conversationHistory?: any[]): DomainContext {
+  const context: DomainContext = {};
+  const text = message.toLowerCase();
+
+  // Extract institution
+  const institutionKeywords = ['hastane', 'okul', 'üniversite', 'belediye', 'bakanlık', 'sağlık', 'eğitim'];
+  for (const keyword of institutionKeywords) {
+    if (text.includes(keyword)) {
+      context.institution = keyword;
+      break;
+    }
+  }
+
+  // Extract budget
+  const budgetMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:milyon|bin)?\s*(?:tl|lira)/i);
+  if (budgetMatch) {
+    let amount = parseFloat(budgetMatch[1]);
+    if (text.includes('milyon')) amount *= 1000000;
+    else if (text.includes('bin')) amount *= 1000;
+    context.budget = amount;
+  }
+
+  // Extract person count
+  const personMatch = text.match(/(\d+)\s*kişi/i);
+  if (personMatch) {
+    context.personCount = parseInt(personMatch[1]);
+  }
+
+  // Extract menu items
+  const menuKeywords = ['çorba', 'pilav', 'tavuk', 'et', 'sebze', 'salata', 'tatlı'];
+  const foundMenuItems: string[] = [];
+  menuKeywords.forEach(item => {
+    if (text.includes(item)) foundMenuItems.push(item);
+  });
+  if (foundMenuItems.length > 0) {
+    context.menuItems = foundMenuItems;
+  }
+
+  // Extract from conversation history if available
+  if (conversationHistory && Array.isArray(conversationHistory)) {
+    conversationHistory.forEach(msg => {
+      const historyText = msg.content.toLowerCase();
+
+      // Look for institution mentions
+      if (!context.institution) {
+        for (const keyword of institutionKeywords) {
+          if (historyText.includes(keyword)) {
+            context.institution = keyword;
+            break;
+          }
+        }
+      }
+
+      // Look for budget mentions
+      if (!context.budget) {
+        const budgetHistoryMatch = historyText.match(/(\d+(?:\.\d+)?)\s*(?:milyon|bin)?\s*(?:tl|lira)/i);
+        if (budgetHistoryMatch) {
+          let amount = parseFloat(budgetHistoryMatch[1]);
+          if (historyText.includes('milyon')) amount *= 1000000;
+          else if (historyText.includes('bin')) amount *= 1000;
+          context.budget = amount;
+        }
+      }
+    });
+  }
+
+  return context;
+}
+
+/**
+ * Extract keywords from conversation
+ */
+function extractKeywordsFromConversation(userMessage: string, assistantResponse: string): string[] {
+  const text = `${userMessage} ${assistantResponse}`.toLowerCase();
+
+  // Important keywords for tender domain
+  const domainKeywords = [
+    'ihale', 'maliyet', 'bütçe', 'analiz', 'karar', 'risk',
+    'teklif', 'katıl', 'fiyat', 'menü', 'yemek', 'personel',
+    'tedarik', 'kar', 'zarar', 'puan', 'değerlendirme'
+  ];
+
+  const foundKeywords: string[] = [];
+
+  // Check for domain keywords
+  domainKeywords.forEach(keyword => {
+    if (text.includes(keyword)) {
+      foundKeywords.push(keyword);
+    }
+  });
+
+  // Extract institution names (words starting with capital letters)
+  const institutionPattern = /\b[A-ZÇĞİÖŞÜ][a-zçğıöşü]+(\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+)*/g;
+  const institutions = text.match(institutionPattern) || [];
+  foundKeywords.push(...institutions.slice(0, 3));
+
+  // Extract numbers with context (e.g., "5000 kişi", "10 milyon TL")
+  const numberPattern = /\d+(\.\d+)?\s*(kişi|tl|milyon|bin|gün|ay|yıl)/gi;
+  const numbers = text.match(numberPattern) || [];
+  foundKeywords.push(...numbers.slice(0, 3));
+
+  return [...new Set(foundKeywords)]; // Remove duplicates
 }
 
 /**
