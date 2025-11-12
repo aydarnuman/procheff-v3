@@ -15,12 +15,9 @@ const pathNameMap: Record<string, string> = {
   "/auto": "Oto Analiz",
   "/auto/history": "Geçmiş",
   "/ihale": "İhale",
-  "/ihale/workspace": "Workspace",
   "/ihale/history": "Geçmiş",
   "/decision": "Karar Analizi",
   "/reports": "Raporlar",
-  "/batch": "Toplu İşlem",
-  "/batch/jobs": "İşler",
   "/menu-parser": "Menü Parser",
   "/cost-analysis": "Maliyet Analizi",
   "/monitor": "Monitoring",
@@ -60,10 +57,12 @@ export function Breadcrumb() {
       animate={{ opacity: 1, y: 0 }}
       className="flex items-center gap-2 py-3 text-sm border-b border-white/5 
                  bg-linear-to-r from-white/2 to-transparent
-                 px-6 md:px-6 lg:px-6
-                 fixed top-16 left-0 md:left-20 lg:left-[280px] right-0 z-30
-                 w-full md:w-[calc(100%-80px)] lg:w-[calc(100%-280px)]
+                 pl-8 pr-4 md:pr-6
+                 fixed top-16 right-0 z-[55]
                  backdrop-blur-sm"
+      style={{
+        left: 'var(--sidebar-width, 0px)',
+      }}
     >
       {breadcrumbs.map((crumb, index) => {
         const isLast = index === breadcrumbs.length - 1;

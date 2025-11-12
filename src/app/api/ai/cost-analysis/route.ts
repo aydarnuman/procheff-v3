@@ -1,7 +1,8 @@
 import { AILogger } from "@/lib/ai/logger";
 import { COST_ANALYSIS_PROMPT } from "@/lib/ai/prompts";
 import { AIProviderFactory } from "@/lib/ai/provider-factory";
-import { cleanClaudeJSON, estimateTokens } from "@/lib/ai/utils";
+import { COST_ANALYSIS_SCHEMA, type CostAnalysisResponse } from "@/lib/ai/schemas";
+import { AnalysisRepository } from "@/lib/db/analysis-repository";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -24,62 +25,79 @@ export async function POST(req: NextRequest) {
       kisilik: extracted_data.kisilik,
     });
 
-    const startTime = Date.now();
-    const client = AIProviderFactory.getClaude();
-
+    // Build prompt with extracted data
     const prompt = `${COST_ANALYSIS_PROMPT}
 
 İhale Verisi:
 ${JSON.stringify(extracted_data, null, 2)}
 `;
 
-    const modelName = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
-    const result = await client.messages.create({
-      model: modelName,
-      temperature: 0.4,
-      max_tokens: 8000,
-      messages: [{ role: "user", content: prompt }],
+    // 🎯 Use structured output for guaranteed valid JSON
+    const { data, metadata } = await AIProviderFactory.createStructuredMessage<CostAnalysisResponse>(
+      prompt,
+      COST_ANALYSIS_SCHEMA,
+      {
+        temperature: 0.4,
+        max_tokens: 8000,
+      }
+    );
+
+    AILogger.success("💵 Maliyet analizi tamamlandı", {
+      duration_ms: metadata.duration_ms,
+      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+      input_tokens: metadata.input_tokens,
+      output_tokens: metadata.output_tokens,
+      total_tokens: metadata.total_tokens,
+      cost_usd: metadata.cost_usd,
+      gunluk_maliyet: data.gunluk_kisi_maliyeti,
+      toplam_gider: data.tahmini_toplam_gider,
     });
 
-    const elapsedMs = Date.now() - startTime;
-    const rawText = result.content?.[0]?.type === "text" ? result.content[0].text.trim() : "";
-    const cleanedText = cleanClaudeJSON(rawText);
-    
-    const inputTokens = estimateTokens(prompt);
-    const outputTokens = estimateTokens(rawText);
-
-    let data;
+    // Save API metrics (non-blocking)
     try {
-      data = JSON.parse(cleanedText);
-      AILogger.success("💵 Maliyet analizi tamamlandı", {
-        duration_ms: elapsedMs,
-        model: modelName,
-        estimated_input_tokens: inputTokens,
-        estimated_output_tokens: outputTokens,
-        total_estimated_tokens: inputTokens + outputTokens,
-        gunluk_maliyet: data.gunluk_kisi_maliyeti,
-        toplam_gider: data.tahmini_toplam_gider,
+      AnalysisRepository.saveAPIMetric({
+        endpoint: "/api/ai/cost-analysis",
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        input_tokens: metadata.input_tokens,
+        output_tokens: metadata.output_tokens,
+        total_tokens: metadata.total_tokens,
+        cost_usd: metadata.cost_usd,
+        duration_ms: metadata.duration_ms,
+        success: true,
       });
-    } catch (parseErr) {
-      AILogger.warn("⚠️  JSON parse hatası (maliyet analizi)", {
-        duration_ms: elapsedMs,
-        error: parseErr instanceof Error ? parseErr.message : String(parseErr),
-      });
-      data = { raw_output: cleanedText, parse_error: true };
+    } catch (metricError) {
+      // Non-critical, don't fail the request
+      AILogger.warn("Failed to save API metric", { error: metricError });
     }
 
     return NextResponse.json({
       success: true,
       data,
       meta: {
-        duration_ms: elapsedMs,
-        model: modelName,
-        estimated_tokens: inputTokens + outputTokens,
+        duration_ms: metadata.duration_ms,
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        input_tokens: metadata.input_tokens,
+        output_tokens: metadata.output_tokens,
+        total_tokens: metadata.total_tokens,
+        cost_usd: metadata.cost_usd,
       },
     });
   } catch (err) {
     const error = err instanceof Error ? err.message : "Unknown error occurred";
     AILogger.error("💥 Maliyet analizi hatası", err);
+    
+    // Save error metric (non-blocking)
+    try {
+      AnalysisRepository.saveAPIMetric({
+        endpoint: "/api/ai/cost-analysis",
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        success: false,
+        error_message: error,
+      });
+    } catch (metricError) {
+      // Ignore metric errors
+    }
+    
     return NextResponse.json({ success: false, error }, { status: 500 });
   }
 }

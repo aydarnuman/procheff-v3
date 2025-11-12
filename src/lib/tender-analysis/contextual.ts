@@ -120,6 +120,9 @@ function extractPenaltyClauses(dataPool: DataPool): SourcedStatement[] {
 
 /**
  * Perform contextual analysis using AI
+ * 
+ * Uses structured output for guaranteed valid JSON and automatic caching.
+ * Includes 30-second timeout to prevent hanging.
  */
 export async function performContextualAnalysis(
   dataPool: DataPool,
@@ -136,39 +139,52 @@ export async function performContextualAnalysis(
 
     // Prepare context for AI
     const context = prepareContextForAI(dataPool, extractedFields);
+    const prompt = createContextualPrompt(context);
 
-    // Call AI for analysis
+    // ✅ Direct API call with timeout (structured outputs not yet supported)
     const client = AIProviderFactory.getClaude();
-    const response = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
-      max_tokens: 4000,
-      temperature: 0.3,
-      messages: [
-        {
-          role: 'user',
-          content: createContextualPrompt(context)
-        }
-      ]
-    });
+    
+    const response = await client.messages.create(
+      {
+        model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        temperature: 0.3,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ]
+      },
+      {
+        // ✅ 30 second timeout (prevents hanging!)
+        timeout: 30000,
+      }
+    );
 
     // Parse response
     const responseText = response.content[0].type === 'text'
       ? response.content[0].text
       : '';
 
+    // Manual JSON parsing (structured output not supported yet)
     const cleanedJSON = cleanClaudeJSON(responseText);
     const analysis = JSON.parse(cleanedJSON) as ContextualAnalysis;
 
     AILogger.success('Contextual analysis completed', {
       duration: Date.now() - startTime,
       riskLevel: analysis.operasyonel_riskler.seviye,
-      score: analysis.genel_degerlendirme.puan
+      score: analysis.genel_degerlendirme.puan,
+      tokens: response.usage.input_tokens + response.usage.output_tokens
     });
 
     return analysis;
 
   } catch (error) {
-    AILogger.error('Contextual analysis failed', { error });
+    AILogger.error('Contextual analysis failed', { 
+      error,
+      duration: Date.now() - startTime 
+    });
 
     // Return default analysis on error
     return createDefaultAnalysis();

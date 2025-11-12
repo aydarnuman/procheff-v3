@@ -141,11 +141,11 @@ export function CommandPalette() {
               </Command.Item>
 
               <Command.Item
-                onSelect={() => navigate("/ihale/workspace")}
+                onSelect={() => navigate("/ihale")}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-800/50 text-gray-300 transition-colors"
               >
-                <UploadCloud className="w-4 h-4 text-indigo-400" />
-                <span>Yeni İhale Analizi</span>
+                <FileText className="w-4 h-4 text-indigo-400" />
+                <span>İhale Listesi</span>
               </Command.Item>
 
               <Command.Item

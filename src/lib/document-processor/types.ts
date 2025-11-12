@@ -4,12 +4,19 @@
  */
 
 // Document types
-export type DocumentType = 'idari' | 'teknik' | 'ilan' | 'sozlesme' | 'ek' | 'menu' | 'gramaj' | 'bilinmeyen';
+export type DocumentType = 'idari' | 'teknik' | 'ilan' | 'sozlesme' | 'ek' | 'menu' | 'gramaj' | 'ihale_detay' | 'bilinmeyen';
+
+// Document type guess with confidence
+export interface DocumentTypeGuess {
+  type: DocumentType;
+  confidence: number;        // 0.0 - 1.0 (confidence score)
+}
 
 // Document metadata
 export interface DocumentInfo {
   doc_id: string;           // Unique identifier (e.g., "A", "B", "C")
   type_guess: DocumentType;
+  type_confidence?: number; // 0.0 - 1.0 (confidence score for type guess)
   hash: string;             // SHA-256 hash for deduplication
   name: string;             // Original filename
   size: number;             // File size in bytes
@@ -182,5 +189,5 @@ export interface ProcessingError {
   doc_id?: string;
   stage: 'upload' | 'extract' | 'parse' | 'classify' | 'validate';
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }

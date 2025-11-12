@@ -1,20 +1,20 @@
 "use client";
 
 import {
-    Bell,
-    Brain,
-    Database,
-    FileText,
-    Globe,
-    Key,
-    Palette,
-    Save,
-    ScrollText,
-    Settings,
-    Shield,
-    Sparkles,
-    User,
-    Zap,
+  Bell,
+  Brain,
+  Database,
+  FileText,
+  Globe,
+  Key,
+  Palette,
+  Save,
+  ScrollText,
+  Settings,
+  Shield,
+  Sparkles,
+  User,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -90,6 +90,13 @@ const CATEGORIES: SettingCategory[] = [
     icon: ScrollText,
     description: "AI analiz logları ve performans metrikleri",
     href: "/settings/logs",
+  },
+  {
+    id: "performance",
+    name: "Performans",
+    icon: Zap,
+    description: "Rate limiting, caching ve Redis ayarları",
+    href: "/settings/performance",
   },
   {
     id: "api",

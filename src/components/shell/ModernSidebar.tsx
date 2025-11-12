@@ -6,6 +6,8 @@ import {
   BarChart4,
   Bell,
   Brain,
+  Calculator,
+  ChevronRight,
   Database,
   FileBarChart,
   FileSpreadsheet,
@@ -14,7 +16,6 @@ import {
   LayoutDashboard,
   Menu,
   MessageSquare,
-  Package,
   Palette,
   ScrollText,
   Settings,
@@ -26,7 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 
 /**
@@ -69,11 +70,10 @@ type Item = {
 // Data
 const primary: Item[] = [
   { id: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { id: "chat", label: "AI Asistan", href: "/chat", icon: MessageSquare, badge: "NEW" },
   { id: "analysis", label: "Analiz Merkezi", href: "/analysis", icon: TrendingUp },
-  { id: "piyasa", label: "Piyasa Robotu", href: "/piyasa-robotu", icon: TrendingUp },
-  { id: "batch", label: "Toplu İşlem", href: "/batch/jobs", icon: Package },
+  { id: "ihale", label: "İhale Listesi", href: "/ihale", icon: FileText },
   { id: "reports", label: "Raporlar", href: "/reports", icon: FileBarChart },
+  { id: "admin", label: "Admin Panel", href: "/admin", icon: Shield },
 ];
 
 const tasksChildren: Item[] = [
@@ -83,7 +83,15 @@ const tasksChildren: Item[] = [
   { id: "done", label: "Done", href: "/decision", icon: Star, colorIndex: 3 },
 ];
 
+const tools: Item[] = [
+  { id: "menu-parser", label: "Menü Parser", href: "/menu-parser", icon: FileText },
+  { id: "cost-analysis", label: "Maliyet Analizi", href: "/cost-analysis", icon: Calculator },
+  { id: "decision", label: "Karar Motoru", href: "/decision", icon: Brain },
+  { id: "market", label: "Piyasa Robotu", href: "/piyasa-robotu", icon: TrendingUp },
+];
+
 const secondary: Item[] = [
+  { id: "chat", label: "AI Asistan", href: "/chat", icon: MessageSquare, badge: "NEW" },
   { id: "notifications", label: "Bildirimler", href: "/notifications", icon: Bell, badge: "3" },
   { id: "monitoring", label: "Monitoring", href: "/monitor", icon: Activity },
   { id: "settings", label: "Ayarlar", href: "/settings", icon: Settings },
@@ -111,9 +119,38 @@ export function ModernSidebar() {
   const [hoverPanel, setHoverPanel] = useState<string | null>(null);
   const [hoverPanelY, setHoverPanelY] = useState<number>(180);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const toggleMenu = (menuId: string) => {
+    if (!open) return; // Collapsed modda accordion çalışmasın
+    setExpandedMenus(prev =>
+      prev.includes(menuId)
+        ? prev.filter(id => id !== menuId)
+        : [...prev, menuId]
+    );
+  };
+
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+
+  // Update CSS variable when sidebar width changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const updateWidth = () => {
+      // Mobile'da sidebar yok
+      if (window.innerWidth < 768) {
+        document.documentElement.style.setProperty('--sidebar-width', '0px');
+      } else {
+        const width = open ? 280 : 80;
+        document.documentElement.style.setProperty('--sidebar-width', `${width}px`);
+      }
+    };
+    
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, [open]);
 
   const SidebarContent = (
     <motion.aside
@@ -202,32 +239,90 @@ export function ModernSidebar() {
             />
           ))}
 
+          {/* Tools Section */}
+          {open && (
+            <div className="px-3 pt-4 pb-2">
+              <div className="text-[11px] font-semibold text-[#9AA1AE] px-2 mb-2 tracking-wide uppercase">
+                Araçlar
+              </div>
+              {tools.map((it) => (
+                <NavItem
+                  key={it.id}
+                  item={it}
+                  active={isActive(it.href)}
+                  open={open}
+                  small={true}
+                  onCollapsedHover={(id, y) => {
+                    if (closeTimeoutRef.current) {
+                      clearTimeout(closeTimeoutRef.current);
+                      closeTimeoutRef.current = null;
+                    }
+                    setHoverPanel("tools");
+                    setHoverPanelY(y);
+                  }}
+                  onCollapsedLeave={() => {
+                    closeTimeoutRef.current = setTimeout(() => {
+                      setHoverPanel(null);
+                    }, 150);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
           {secondary.map((it) => (
-            <NavItem
-              key={it.id}
-              item={it}
-              active={isActive(it.href)}
-              open={open}
-              onCollapsedHover={(id, y) => {
-                // Clear any pending close timeout
-                if (closeTimeoutRef.current) {
-                  clearTimeout(closeTimeoutRef.current);
-                  closeTimeoutRef.current = null;
-                }
-                if (it.id === "settings") {
-                  setHoverPanel("settings");
-                } else {
-                  setHoverPanel(id);
-                }
-                setHoverPanelY(y);
-              }}
-              onCollapsedLeave={() => {
-                // Delay closing to allow mouse to move to panel
-                closeTimeoutRef.current = setTimeout(() => {
-                  setHoverPanel(null);
-                }, 150);
-              }}
-            />
+            <div key={it.id}>
+              <NavItem
+                item={it}
+                active={isActive(it.href)}
+                open={open}
+                hasChildren={it.id === "settings"}
+                isExpanded={expandedMenus.includes("settings")}
+                onToggle={() => toggleMenu("settings")}
+                onCollapsedHover={(id, y) => {
+                  // Clear any pending close timeout
+                  if (closeTimeoutRef.current) {
+                    clearTimeout(closeTimeoutRef.current);
+                    closeTimeoutRef.current = null;
+                  }
+                  if (it.id === "settings") {
+                    setHoverPanel("settings");
+                  } else {
+                    setHoverPanel(id);
+                  }
+                  setHoverPanelY(y);
+                }}
+                onCollapsedLeave={() => {
+                  // Delay closing to allow mouse to move to panel
+                  closeTimeoutRef.current = setTimeout(() => {
+                    setHoverPanel(null);
+                  }, 150);
+                }}
+              />
+
+              {/* Settings Submenu - Accordion */}
+              <AnimatePresence>
+                {open && it.id === "settings" && expandedMenus.includes("settings") && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                    className="ml-6 mt-1 mb-2 space-y-1 overflow-hidden"
+                  >
+                    {settingsChildren.map(child => (
+                      <NavItem
+                        key={child.id}
+                        item={child}
+                        active={isActive(child.href)}
+                        open={open}
+                        small={true}
+                      />
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           ))}
         </nav>
       </div>
@@ -331,6 +426,21 @@ export function ModernSidebar() {
               yPosition={hoverPanelY}
             />
           )}
+          {!open && hoverPanel === "tools" && (
+            <HoverPanel
+              items={tools}
+              pathname={path}
+              onEnter={() => {
+                if (closeTimeoutRef.current) {
+                  clearTimeout(closeTimeoutRef.current);
+                  closeTimeoutRef.current = null;
+                }
+              }}
+              onLeave={() => setHoverPanel(null)}
+              title="Araçlar"
+              yPosition={hoverPanelY}
+            />
+          )}
           {!open && hoverPanel === "settings" && (
             <HoverPanel
               items={settingsChildren}
@@ -358,6 +468,9 @@ function NavItem({
   active,
   open,
   small,
+  hasChildren,
+  isExpanded,
+  onToggle,
   onCollapsedHover,
   onCollapsedLeave,
 }: {
@@ -365,6 +478,9 @@ function NavItem({
   active?: boolean;
   open: boolean;
   small?: boolean;
+  hasChildren?: boolean;
+  isExpanded?: boolean;
+  onToggle?: () => void;
   onCollapsedHover?: (id: string, y: number) => void;
   onCollapsedLeave?: () => void;
 }) {
@@ -405,15 +521,31 @@ function NavItem({
                 {item.badge}
               </span>
             )}
+            {hasChildren && (
+              <ChevronRight
+                className={cn(
+                  "w-4 h-4 transition-transform duration-200 shrink-0",
+                  isExpanded && "rotate-90"
+                )}
+              />
+            )}
           </motion.div>
         )}
       </AnimatePresence>
     </>
   );
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (hasChildren && open) {
+      e.preventDefault();
+      onToggle?.();
+    }
+  };
+
   return (
     <Link
       href={item.href}
+      onClick={handleClick}
       className={cn(
         "group flex items-center gap-3 rounded-xl px-3.5 py-2.5",
         "transition-all duration-150 ease-out no-underline",
@@ -425,7 +557,8 @@ function NavItem({
         // Active state with surface-2
         active && ACTIVE,
         active && "border border-[rgba(255,255,255,0.08)] shadow-[0_2px_8px_rgba(0,0,0,0.2)]",
-        small && "text-[14px]"
+        small && "text-[14px]",
+        hasChildren && open && "cursor-pointer"
       )}
       title={!open ? item.label : undefined}
       onMouseEnter={!open ? (e) => {

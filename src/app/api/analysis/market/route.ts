@@ -8,20 +8,21 @@ import { performMarketAnalysis, extractMenuItems } from '@/lib/tender-analysis/m
 import type { DataPool } from '@/lib/document-processor/types';
 import { AILogger } from '@/lib/ai/logger';
 import { getDB } from '@/lib/db/sqlite-client';
+import { errorHandler } from '@/lib/middleware/error-handler';
+import { createErrorResponse } from '@/lib/utils/error-codes';
 
-export async function POST(request: NextRequest) {
+async function handleMarketAnalysis(request: NextRequest) {
   const startTime = Date.now();
 
-  try {
-    const body = await request.json();
-    const { analysisId, dataPool, menuItems } = body;
+  const body = await request.json();
+  const { analysisId, dataPool, menuItems } = body;
 
-    if (!analysisId || !dataPool) {
-      return NextResponse.json(
-        { error: 'Missing required fields: analysisId, dataPool' },
-        { status: 400 }
-      );
-    }
+  if (!analysisId || !dataPool) {
+    return NextResponse.json(
+      createErrorResponse('INVALID_REQUEST', 'Missing required fields: analysisId, dataPool'),
+      { status: 400 }
+    );
+  }
 
     AILogger.info('Starting market analysis', {
       analysisId,
@@ -105,16 +106,6 @@ export async function POST(request: NextRequest) {
         item_count: marketAnalysis.cost_items.length
       }
     });
-
-  } catch (error) {
-    AILogger.error('Market analysis endpoint error', { error });
-
-    return NextResponse.json(
-      {
-        error: 'Market analysis failed',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = errorHandler(handleMarketAnalysis);

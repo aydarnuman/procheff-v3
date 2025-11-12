@@ -86,6 +86,15 @@ export interface ContextualAnalysis {
     ozet: string;
     oneriler: string[];
   };
+
+  // 2025 Uyumluluk Kontrolü (optional - from old system)
+  uyumluluk_2025?: {
+    r_katsayisi_uygun: boolean;
+    ekap_e_imza_gerekli: boolean;
+    fiyat_fark_rejimi: string; // 'otomatik' | 'manuel' | 'hibrit'
+    adt_ek_h4: boolean;
+    uyarilar?: string[];
+  };
 }
 
 // Menu item structure

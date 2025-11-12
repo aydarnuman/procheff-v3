@@ -1,0 +1,317 @@
+{
+  "project": "Procheff-v3",
+  "analysisDate": "2025-11-12",
+  "summary": {
+    "totalFiles": 2184,
+    "totalFolders": 421,
+    "issuesFound": 25,
+    "estimatedSavings": "~800MB disk space, 15-20% cleaner codebase",
+    "criticalIssues": 4,
+    "highPriorityIssues": 6,
+    "mediumPriorityIssues": 8,
+    "lowPriorityIssues": 7
+  },
+  "klasorFazlaliklari": [
+    {
+      "path": "./.next",
+      "size": "766MB",
+      "reason": "Next.js build cache klasörü, production'da gerekli değil",
+      "action": "Kaldır",
+      "command": "rm -rf .next",
+      "impact": "High - 766MB disk alanı kazanç",
+      "gitignoreStatus": "Zaten .gitignore'da"
+    },
+    {
+      "path": "./.cursor",
+      "size": "8KB",
+      "reason": "Cursor editor geçici dosyaları",
+      "action": "Kaldır",
+      "command": "rm -rf .cursor",
+      "impact": "Low",
+      "gitignoreStatus": "Eklenmiş durumda"
+    },
+    {
+      "path": "./procheff-v3",
+      "size": "Variable",
+      "reason": "Alt klasör olarak aynı proje tekrarı",
+      "action": "Kaldır",
+      "command": "rm -rf procheff-v3",
+      "impact": "High - Gereksiz duplicate",
+      "note": "Root zaten procheff-v3"
+    },
+    {
+      "path": "./procheff-v3-enterprise",
+      "size": "Variable",
+      "reason": "Enterprise versiyonu ayrı repo'da olmalı",
+      "action": "Taşı",
+      "command": "mv procheff-v3-enterprise ../",
+      "impact": "Medium - Kod organizasyonu",
+      "note": "Ayrı repository oluşturulabilir"
+    },
+    {
+      "path": "./.workflow",
+      "size": "20KB",
+      "reason": "workflow klasörü ile duplicate (workflow klasörü mevcut)",
+      "action": "Birleştir",
+      "command": "cp -r .workflow/* workflow/ && rm -rf .workflow",
+      "impact": "Low - Organizasyon iyileştirme",
+      "note": "İki ayrı workflow klasörü karmaşa yaratıyor"
+    },
+    {
+      "path": "./logs",
+      "size": "Variable",
+      "reason": "Log dosyaları versiyon kontrolünde olmamalı",
+      "action": "Gitignore'a ekle",
+      "command": "echo 'logs/' >> .gitignore",
+      "impact": "Medium - Güvenlik ve temizlik"
+    },
+    {
+      "path": "./tests",
+      "size": "Variable",
+      "reason": "Boş test klasörü, kullanılmıyor",
+      "action": "Kaldır veya test ekle",
+      "command": "rm -rf tests",
+      "impact": "Low",
+      "note": "Test'ler src içinde __tests__ klasöründe olmalı"
+    }
+  ],
+  "kullanilanmayanDosyalar": [
+    {
+      "path": "/src/lib/ai/provider-factory-enhanced.ts",
+      "reason": "Hiçbir yerde import edilmiyor, deneysel kod",
+      "action": "Kaldır",
+      "impact": "Medium - Dead code temizliği",
+      "relatedTo": "provider-factory.ts kullanılıyor"
+    },
+    {
+      "path": "/src/lib/utils/smart-text-formatter.tsx",
+      "reason": ".ts versiyonu ile tamamen aynı, duplicate",
+      "action": "Kaldır",
+      "impact": "High - Duplicate kod",
+      "note": "smart-text-formatter.ts kullanılıyor"
+    },
+    {
+      "path": "/src/store/usePipelineStore.ts",
+      "reason": "Hiçbir yerde import edilmiyor",
+      "action": "Kaldır veya entegre et",
+      "impact": "Medium",
+      "note": "analysisStore.ts ile işlevi çakışıyor olabilir"
+    },
+    {
+      "path": "/src/store/chatStore.ts",
+      "reason": "Hiçbir yerde kullanılmıyor",
+      "action": "Kaldır",
+      "impact": "Medium",
+      "note": "Chat özelliği implement edilmemiş"
+    },
+    {
+      "path": "/src/app/ihale/[id]/.gitkeep",
+      "reason": "Boş placeholder dosya",
+      "action": "Kaldır",
+      "impact": "Low"
+    },
+    {
+      "path": "/src/app/ihale/[id]/analyze/page.tsx",
+      "reason": "Boş dosya, içerik yok",
+      "action": "Kaldır veya implement et",
+      "impact": "Medium - 404 sayfaya yönlendirir"
+    },
+    {
+      "functions": [
+        "formatCurrency() in /src/lib/utils/report-builder.ts",
+        "formatPercentage() in /src/lib/utils/report-builder.ts"
+      ],
+      "reason": "Tanımlı ama hiç çağrılmayan fonksiyonlar",
+      "action": "Kaldır",
+      "impact": "Low - Code cleanup"
+    }
+  ],
+  "cakisanDosyalar": [
+    {
+      "files": [
+        "/src/lib/utils.ts",
+        "/src/lib/utils/"
+      ],
+      "reason": "utils.ts dosyası ve utils/ klasörü aynı anda var",
+      "action": "utils.ts içeriğini utils/index.ts'e taşı",
+      "impact": "Medium - Import karmaşası",
+      "solution": "mv src/lib/utils.ts src/lib/utils/index.ts"
+    },
+    {
+      "files": [
+        "/src/lib/ai/utils.ts",
+        "/src/lib/utils/"
+      ],
+      "reason": "AI utils ayrı, genel utils ayrı",
+      "action": "Tutarlı organizasyon",
+      "impact": "Low - Organizasyon",
+      "note": "Bu normal, domain-specific utils olabilir"
+    },
+    {
+      "files": [
+        "/src/lib/analysis/helpers.tsx",
+        "/src/lib/utils/color-helpers.ts"
+      ],
+      "reason": "Helper fonksiyonlar farklı yerlerde",
+      "action": "helpers/ klasörüne topla",
+      "impact": "Low",
+      "suggestion": "src/lib/helpers/ altında organize et"
+    },
+    {
+      "files": [
+        "/src/components/",
+        "/src/app/analysis/components/"
+      ],
+      "reason": "Component'ler iki farklı yerde",
+      "action": "App-specific component'ler app içinde kalabilir",
+      "impact": "Low",
+      "note": "Next.js 13+ App Router pattern'i, normal"
+    }
+  ],
+  "gereksizScriptler": [
+    {
+      "script": "scripts/menu.sh",
+      "size": "15KB",
+      "reason": "Çok büyük ve karmaşık, muhtemelen kullanılmıyor",
+      "action": "İncele ve sadeleştir",
+      "impact": "Low"
+    },
+    {
+      "script": "scripts/terminal-setup.sh",
+      "size": "10KB",
+      "reason": "Kişisel terminal setup, proje ile ilgisiz",
+      "action": "Personal setup klasörüne taşı",
+      "impact": "Low"
+    },
+    {
+      "script": "scripts/setup-ohmyzsh.sh",
+      "reason": "Oh-my-zsh kurulumu, proje ile ilgisiz",
+      "action": "Kaldır veya docs'a taşı",
+      "impact": "Low"
+    },
+    {
+      "script": "scripts/keyboard-shortcuts.sh",
+      "reason": "Kişisel kısayollar, proje ile ilgisiz",
+      "action": "Kaldır",
+      "impact": "Low"
+    },
+    {
+      "script": "scripts/global-setup.sh",
+      "reason": "Global sistem setup'ı, proje spesifik değil",
+      "action": "Kaldır veya docs'a taşı",
+      "impact": "Low"
+    }
+  ],
+  "yapisalOneriler": [
+    {
+      "category": "Kaldırılabilir",
+      "items": [
+        ".next/ (766MB)",
+        ".cursor/ (8KB)",
+        "procheff-v3/ (duplicate)",
+        ".workflow/ (duplicate with workflow/)",
+        "tests/ (empty)",
+        "/src/lib/ai/provider-factory-enhanced.ts",
+        "/src/lib/utils/smart-text-formatter.tsx",
+        "/src/store/chatStore.ts",
+        "Batch processing UI referansları"
+      ],
+      "benefit": "~800MB disk alanı, %20 daha temiz kod",
+      "priority": "HIGH"
+    },
+    {
+      "category": "Birleştirilebilir",
+      "items": [
+        ".workflow/ → workflow/",
+        "/src/lib/utils.ts → /src/lib/utils/index.ts",
+        "Helper fonksiyonları → /src/lib/helpers/",
+        "Duplicate store logic → tek analysisStore.ts"
+      ],
+      "benefit": "Daha organize klasör yapısı, import kolaylığı",
+      "priority": "MEDIUM"
+    },
+    {
+      "category": "Taşınabilir",
+      "items": [
+        "procheff-v3-enterprise/ → ayrı repository",
+        "Personal setup scripts → ~/.dotfiles/",
+        "logs/ → .gitignore",
+        "ihale-worker/ → microservice olarak ayrılabilir"
+      ],
+      "benefit": "Modüler yapı, güvenlik, maintainability",
+      "priority": "LOW"
+    }
+  ],
+  "batchProcessingKalintilari": [
+    {
+      "file": "/src/app/page.tsx",
+      "line": 101,
+      "code": "href: '/batch'",
+      "issue": "Silinen batch route'una link var",
+      "action": "Link'i kaldır",
+      "impact": "HIGH - 404 hatası"
+    },
+    {
+      "file": "/src/components/ui/Breadcrumb.tsx",
+      "lines": "21-22",
+      "code": "{ label: 'Toplu İşlem', href: '/batch' }",
+      "issue": "Breadcrumb'da batch referansı",
+      "action": "Entry'leri kaldır",
+      "impact": "HIGH - 404 hatası"
+    }
+  ],
+  "securityIssues": [
+    {
+      "issue": "API anahtarları deploy script'te olabilir",
+      "file": "scripts/deploy-digitalocean.sh",
+      "action": "Environment variable kullan",
+      "priority": "CRITICAL"
+    },
+    {
+      "issue": "Log klasörü track ediliyor olabilir",
+      "path": "./logs/",
+      "action": ".gitignore'a ekle",
+      "priority": "HIGH"
+    }
+  ],
+  "performanceImprovements": [
+    {
+      "issue": ".next build cache çok büyük",
+      "size": "766MB",
+      "solution": "Regular cleanup: rm -rf .next && npm run build",
+      "benefit": "Daha hızlı build, daha az disk kullanımı"
+    },
+    {
+      "issue": "node_modules içinde duplicate paketler olabilir",
+      "solution": "npm dedupe && npm prune",
+      "benefit": "Daha küçük node_modules"
+    }
+  ],
+  "recommendations": {
+    "immediate": [
+      "1. Batch processing UI referanslarını kaldır (2 dosya)",
+      "2. .next klasörünü temizle (766MB kazanç)",
+      "3. Duplicate smart-text-formatter.tsx dosyasını sil",
+      "4. Kullanılmayan store dosyalarını kaldır (chatStore, usePipelineStore)"
+    ],
+    "shortTerm": [
+      "1. .workflow ve workflow klasörlerini birleştir",
+      "2. utils.ts'yi utils/index.ts'e taşı",
+      "3. Personal setup scriptlerini projeden çıkar",
+      "4. Log klasörünü .gitignore'a ekle"
+    ],
+    "longTerm": [
+      "1. procheff-v3-enterprise'ı ayrı repo'ya taşı",
+      "2. ihale-worker'ı microservice olarak ayır",
+      "3. Test stratejisi belirle ve implement et",
+      "4. Component organizasyonunu Next.js 13+ best practices'e göre düzenle"
+    ]
+  },
+  "metrics": {
+    "totalCleanupSize": "~800MB",
+    "filesAffected": 25,
+    "estimatedTime": "2-3 saat",
+    "riskLevel": "LOW",
+    "breakingChanges": 0
+  }
+}

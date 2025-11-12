@@ -32,11 +32,9 @@ export function AppShell({ children }: AppShellProps) {
       
       {/* Main Content Area - Responsive to sidebar state */}
       <main className="transition-all duration-300 ease-out min-h-screen">
-        {/* TopBar - Independent from sidebar */}
-        <div className="relative z-30">
-          <TopBar />
-          <Breadcrumb />
-        </div>
+        {/* TopBar - Independent from sidebar (fixed positioning) */}
+        <TopBar />
+        <Breadcrumb />
         
         {/* Content Area */}
         <div className="relative z-10 pt-28 px-4 md:px-8 pb-6 

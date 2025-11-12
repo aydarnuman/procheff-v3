@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, FileText, ChevronRight } from "lucide-react";
-import { usePipelineStore, PIPELINE_STEPS } from "@/store/usePipelineStore";
 import { PipelineNavigator } from "@/components/ui/PipelineNavigator";
+import { PIPELINE_STEPS, usePipelineStore } from "@/store/usePipelineStore";
+import { ArrowLeft, ArrowRight, ChevronRight, FileText } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface MenuItem {
   yemek: string;
@@ -86,7 +86,7 @@ export default function MenuParserPage() {
       <div className="max-w-6xl mx-auto">
         {/* Selected Tender Info */}
         {selectedTender && (
-          <div className="glass-card p-4 mb-6 bg-gradient-to-r from-indigo-500/10 to-transparent border-indigo-500/30">
+          <div className="glass-card p-4 mb-6 bg-linear-to-r from-indigo-500/10 to-transparent border-indigo-500/30">
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-indigo-400" />
               <div className="flex-1">
@@ -106,9 +106,10 @@ export default function MenuParserPage() {
             <span>{getProgress()}%</span>
           </div>
           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            { }
             <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
-              style={{ width: `${getProgress()}%` }}
+              className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+              style={{ width: `${getProgress()}%` } as React.CSSProperties}
             />
           </div>
         </div>
@@ -190,14 +191,16 @@ export default function MenuParserPage() {
           </h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
+              <label htmlFor="menu-file-upload" className="block text-sm text-gray-400 mb-2">
                 Menü Dosyası Seçin (CSV, TXT, PDF)
               </label>
               <input
+                id="menu-file-upload"
                 type="file"
                 accept=".csv,.txt,.pdf"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-500/20 file:text-emerald-300 hover:file:bg-emerald-500/30 cursor-pointer border border-white/10 rounded-lg bg-slate-900/50 px-3 py-2"
+                aria-label="Menü dosyası yükle"
               />
               {file && (
                 <p className="mt-2 text-sm text-gray-500">

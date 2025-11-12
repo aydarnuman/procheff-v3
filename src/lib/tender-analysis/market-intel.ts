@@ -8,9 +8,8 @@ import type {
   CostItem,
   MenuItem,
   ExtractedFields,
-  PriceData
 } from './types';
-import type { DataPool, ExtractedTable } from '@/lib/document-processor/types';
+import type { DataPool } from '@/lib/document-processor/types';
 import { parseMenuFromTable } from '@/lib/document-processor/parser';
 import { AILogger } from '@/lib/ai/logger';
 
@@ -331,7 +330,7 @@ function estimatePortionSize(category: string): number {
  */
 function calculateCostBreakdown(
   foodCost: number,
-  extractedFields: ExtractedFields
+  _extractedFields: ExtractedFields
 ): MarketAnalysis['cost_breakdown'] {
   // Estimate other costs as percentages of food cost
   const laborCost = foodCost * 0.35; // 35% for labor

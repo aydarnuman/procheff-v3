@@ -4,22 +4,23 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/db/sqlite-client';
+import { errorHandler } from '@/lib/middleware/error-handler';
+import { createErrorResponse } from '@/lib/utils/error-codes';
 
-export async function GET(
+async function handleGetResults(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params;
-    const { searchParams } = new URL(request.url);
-    const stage = searchParams.get('stage');
+  const { id } = await params;
+  const { searchParams } = new URL(request.url);
+  const stage = searchParams.get('stage');
 
-    if (!stage) {
-      return NextResponse.json(
-        { error: 'Stage parameter is required' },
-        { status: 400 }
-      );
-    }
+  if (!stage) {
+    return NextResponse.json(
+      createErrorResponse('INVALID_REQUEST', 'Stage parameter is required'),
+      { status: 400 }
+    );
+  }
 
     const db = getDB();
 
@@ -58,12 +59,6 @@ export async function GET(
         created_at: row.created_at
       });
     }
-
-  } catch (error) {
-    console.error('Failed to fetch analysis results:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch results' },
-      { status: 500 }
-    );
-  }
 }
+
+export const GET = errorHandler(handleGetResults);

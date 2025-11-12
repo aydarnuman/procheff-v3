@@ -142,11 +142,11 @@ export function getMarketStats(): {
 
   try {
     // Toplam kayıt
-    const totalRow = db.prepare('SELECT COUNT(*) as count FROM market_prices').get() as any;
+    const totalRow = db.prepare('SELECT COUNT(*) as count FROM market_prices').get() as { count: number } | undefined;
     const totalRecords = totalRow?.count || 0;
 
     // Benzersiz ürün sayısı
-    const productRow = db.prepare('SELECT COUNT(DISTINCT product_key) as count FROM market_prices').get() as any;
+    const productRow = db.prepare('SELECT COUNT(DISTINCT product_key) as count FROM market_prices').get() as { count: number } | undefined;
     const uniqueProducts = productRow?.count || 0;
 
     // Tarih aralığı
@@ -157,7 +157,7 @@ export function getMarketStats(): {
           MIN(created_at) as oldest,
           MAX(created_at) as newest
         FROM market_prices
-      `).get() as any;
+      `).get() as { oldest: string; newest: string } | undefined;
 
       dateRange = {
         oldest: dateRow?.oldest || '',
@@ -171,7 +171,7 @@ export function getMarketStats(): {
       FROM market_prices
       GROUP BY source
       ORDER BY count DESC
-    `).all() as any[];
+    `).all() as Array<{ category: string; count: number }>;
 
     return {
       totalRecords,

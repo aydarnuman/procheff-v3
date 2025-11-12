@@ -315,7 +315,7 @@ function calculateDataQualityScore(
   ];
 
   for (const field of requiredFields) {
-    if (!(field in fields) || (fields as any)[field] === undefined) {
+    if (!(field in fields) || (fields as Record<string, unknown>)[field] === undefined) {
       score -= 10;
     }
   }

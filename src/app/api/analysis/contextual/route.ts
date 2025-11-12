@@ -7,20 +7,21 @@ import { extractBasicFields, performContextualAnalysis } from '@/lib/tender-anal
 import type { DataPool } from '@/lib/document-processor/types';
 import { AILogger } from '@/lib/ai/logger';
 import { getDB } from '@/lib/db/sqlite-client';
+import { errorHandler } from '@/lib/middleware/error-handler';
+import { createErrorResponse } from '@/lib/utils/error-codes';
 
-export async function POST(request: NextRequest) {
+async function handleContextualAnalysis(request: NextRequest) {
   const startTime = Date.now();
 
-  try {
-    const body = await request.json();
-    const { analysisId, dataPool } = body;
+  const body = await request.json();
+  const { analysisId, dataPool } = body;
 
-    if (!analysisId || !dataPool) {
-      return NextResponse.json(
-        { error: 'Missing required fields: analysisId, dataPool' },
-        { status: 400 }
-      );
-    }
+  if (!analysisId || !dataPool) {
+    return NextResponse.json(
+      createErrorResponse('INVALID_REQUEST', 'Missing required fields: analysisId, dataPool'),
+      { status: 400 }
+    );
+  }
 
     AILogger.info('Starting contextual analysis', {
       analysisId,
@@ -78,16 +79,6 @@ export async function POST(request: NextRequest) {
         overall_score: contextualAnalysis.genel_degerlendirme.puan
       }
     });
-
-  } catch (error) {
-    AILogger.error('Contextual analysis endpoint error', { error });
-
-    return NextResponse.json(
-      {
-        error: 'Contextual analysis failed',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = errorHandler(handleContextualAnalysis);

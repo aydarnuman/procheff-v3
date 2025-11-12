@@ -1,6 +1,7 @@
 'use client';
 
 import { FileText, Info, Calendar, Building2, MapPin, Hash, Clock } from 'lucide-react';
+import { sanitizeHtml } from '@/lib/ihale/html-sanitize';
 
 interface TenderDetailSection {
   title: string;
@@ -217,7 +218,7 @@ export function TenderDetailDisplay({ html, fallbackSections, aiParsedData }: Te
       return (
         <div
           className="tender-detail-formatted space-y-6"
-          dangerouslySetInnerHTML={{ __html: html }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
         />
       );
     }
@@ -456,7 +457,7 @@ export function TenderDetailDisplay({ html, fallbackSections, aiParsedData }: Te
           color: #334155;
         }
       `}</style>
-      <div dangerouslySetInnerHTML={{ __html: String(html || '') }} />
+      <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(String(html || '')) }} />
     </div>
   );
 }

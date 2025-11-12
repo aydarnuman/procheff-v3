@@ -13,19 +13,19 @@ const memoryCache = new Map<string, { data: MarketFusion; expiry: number }>();
 /**
  * Redis client (varsa)
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let redisClient: any = null;
 
-// Redis'i başlat (Upstash)
-try {
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    const { Redis } = require('@upstash/redis');
+// Redis'i başlat (Upstash) - dynamic import to avoid issues if package not installed
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  import('@upstash/redis').then(({ Redis }) => {
     redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
     });
-  }
-} catch (error) {
-  console.warn('[Market Cache] Redis bağlantısı başarısız, memory cache kullanılacak:', error);
+  }).catch((error) => {
+    console.warn('[Market Cache] Redis bağlantısı başarısız, memory cache kullanılacak:', error);
+  });
 }
 
 /**

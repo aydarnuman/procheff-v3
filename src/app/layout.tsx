@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { Inter } from "next/font/google";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { QuickPipelineAction } from "@/components/ui/QuickPipelineAction";
+import { ErrorSuppressor } from "@/components/ErrorSuppressor";
 import "./globals.css";
 
 const inter = Inter({
@@ -56,6 +57,7 @@ export default function RootLayout({
         />
 
         {/* Main content wrapper */}
+        <ErrorSuppressor />
         <SessionProvider>
           <ToastProvider>
             <div className="relative z-10">

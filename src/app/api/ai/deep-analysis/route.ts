@@ -1,6 +1,7 @@
 import { AILogger } from "@/lib/ai/logger";
 import { AIProviderFactory } from "@/lib/ai/provider-factory";
-import { cleanClaudeJSON, estimateTokens } from "@/lib/ai/utils";
+import { DEEP_ANALYSIS_SCHEMA, type DeepAnalysisResponse } from "@/lib/ai/schemas";
+import { AnalysisRepository } from "@/lib/db/analysis-repository";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -30,9 +31,7 @@ export async function POST(req: NextRequest) {
       ihale_turu: extracted_data.ihale_turu,
     });
 
-    const startTime = Date.now();
-    const client = AIProviderFactory.getClaude();
-
+    // Build prompt
     const prompt = `
       SYSTEM TALİMATI:
       Sen bir kamu ihalesi danışmanısın.
@@ -41,45 +40,73 @@ export async function POST(req: NextRequest) {
       ${JSON.stringify(contextual_analysis || {})}
     `;
 
-    const modelName = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
-    const result = await client.messages.create({
-      model: modelName,
-      temperature: 0.4,
-      max_tokens: 8000,
-      messages: [{ role: "user", content: prompt }],
+    // 🎯 Use structured output for guaranteed valid JSON
+    const { data, metadata } = await AIProviderFactory.createStructuredMessage<DeepAnalysisResponse>(
+      prompt,
+      DEEP_ANALYSIS_SCHEMA,
+      {
+        temperature: 0.4,
+        max_tokens: 8000,
+      }
+    );
+
+    AILogger.success("✨ Analiz başarıyla tamamlandı", {
+      duration_ms: metadata.duration_ms,
+      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+      input_tokens: metadata.input_tokens,
+      output_tokens: metadata.output_tokens,
+      total_tokens: metadata.total_tokens,
+      cost_usd: metadata.cost_usd,
+      kurum: data.kurum,
+      ihale_turu: data.ihale_turu,
     });
 
-    const elapsedMs = Date.now() - startTime;
-    const rawText = result.content?.[0]?.type === "text" ? result.content[0].text.trim() : "";
-    const cleanedText = cleanClaudeJSON(rawText);
-    
-    const inputTokens = estimateTokens(prompt);
-    const outputTokens = estimateTokens(rawText);
-
-    let data;
+    // Save API metrics (non-blocking)
     try {
-      data = JSON.parse(cleanedText);
-      AILogger.success("✨ Analiz başarıyla tamamlandı", {
-        duration_ms: elapsedMs,
-        model: modelName,
-        estimated_input_tokens: inputTokens,
-        estimated_output_tokens: outputTokens,
-        total_estimated_tokens: inputTokens + outputTokens,
+      AnalysisRepository.saveAPIMetric({
+        endpoint: "/api/ai/deep-analysis",
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        input_tokens: metadata.input_tokens,
+        output_tokens: metadata.output_tokens,
+        total_tokens: metadata.total_tokens,
+        cost_usd: metadata.cost_usd,
+        duration_ms: metadata.duration_ms,
+        success: true,
       });
-    } catch (parseErr) {
-      AILogger.warn("⚠️  JSON parse hatası, ham çıktı döndürülüyor", {
-        duration_ms: elapsedMs,
-        error: parseErr instanceof Error ? parseErr.message : String(parseErr),
-      });
-      data = { raw_output: cleanedText, parse_error: true };
+    } catch (metricError) {
+      AILogger.warn("Failed to save API metric", { error: metricError });
     }
 
-    const response = NextResponse.json({ success: true, data });
+    const response = NextResponse.json({
+      success: true,
+      data,
+      meta: {
+        duration_ms: metadata.duration_ms,
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        input_tokens: metadata.input_tokens,
+        output_tokens: metadata.output_tokens,
+        total_tokens: metadata.total_tokens,
+        cost_usd: metadata.cost_usd,
+      },
+    });
     return addRateLimitHeaders(response, limitResult);
   } catch (err) {
     const error =
       err instanceof Error ? err.message : "Unknown error occurred";
     AILogger.error("💥 Claude analiz hatası", err);
+    
+    // Save error metric (non-blocking)
+    try {
+      AnalysisRepository.saveAPIMetric({
+        endpoint: "/api/ai/deep-analysis",
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+        success: false,
+        error_message: error,
+      });
+    } catch (metricError) {
+      // Ignore metric errors
+    }
+    
     return NextResponse.json({ success: false, error }, { status: 500 });
   }
 }

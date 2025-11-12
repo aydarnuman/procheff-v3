@@ -13,7 +13,10 @@ app.get('/health', (_req, res) => {
 mountIhalebul(app);
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`🚀 Ihale Worker running on port :${PORT}`);
+const HOST = '0.0.0.0'; // Bind to all interfaces (IPv4 and IPv6)
+
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Ihale Worker running on ${HOST}:${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
+  console.log(`📍 Also available at: http://127.0.0.1:${PORT}/health`);
 });

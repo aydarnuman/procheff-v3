@@ -60,7 +60,7 @@ export function QuickPipelineAction() {
   }
 
   const progress = getProgress();
-  const CurrentIcon = stepIcons[currentStep as number];
+  const CurrentIcon = stepIcons[currentStep as number] || FileText; // Fallback to FileText if icon not found
 
   const handleStepClick = (step: string) => {
     const stepNumber = Number(step);
@@ -199,8 +199,10 @@ export function QuickPipelineAction() {
         <div className="relative z-10">
           {isExpanded ? (
             <ChevronRight className="w-6 h-6 text-white rotate-90" />
-          ) : (
+          ) : CurrentIcon ? (
             <CurrentIcon className="w-6 h-6 text-white" />
+          ) : (
+            <FileText className="w-6 h-6 text-white" />
           )}
         </div>
 

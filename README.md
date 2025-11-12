@@ -46,6 +46,53 @@ npm run dev
 # http://localhost:3001
 ```
 
+## 📜 NPM Scripts
+
+Procheff-v3 includes several npm scripts for development, building, testing, and linting:
+
+### Development Scripts
+
+| Script | Command | Description |
+|--------|---------|-------------|
+| **dev** | `npm run dev` | Start Next.js development server with webpack (port 3001) |
+| **build** | `npm run build` | Build production-ready Next.js application with webpack |
+| **start** | `npm start` | Start production server (run after `npm run build`) |
+
+### Code Quality Scripts
+
+| Script | Command | Description |
+|--------|---------|-------------|
+| **lint** | `npm run lint` | Run ESLint to check code quality and find issues |
+| **test** | `npm test` | Run Vitest test suite (single run) |
+| **test:watch** | `npm run test:watch` | Run Vitest in watch mode (auto-rerun on file changes) |
+| **test:coverage** | `npm run test:coverage` | Run tests with coverage report (generates coverage/ folder) |
+
+### Usage Examples
+
+```bash
+# Development
+npm run dev              # Start dev server at http://localhost:3001
+
+# Production Build
+npm run build           # Create optimized production build
+npm start               # Serve production build
+
+# Testing
+npm test                # Run all tests once
+npm run test:watch      # Watch mode for TDD workflow
+npm run test:coverage  # Generate coverage report
+
+# Code Quality
+npm run lint            # Check for linting errors
+```
+
+### Script Details
+
+- **Webpack Mode**: All scripts use `--webpack` flag for Next.js 16 compatibility
+- **Port**: Development server runs on port 3001 (configured in `.env.local`)
+- **Test Framework**: Uses Vitest with coverage support via `@vitest/coverage-v8`
+- **Linter**: ESLint with Next.js configuration (`eslint-config-next`)
+
 ### Required API Keys
 
 - **Anthropic Claude API**: [Get key](https://console.anthropic.com/) - For AI analysis
@@ -597,6 +644,17 @@ Detaylı bilgi için: [COMMAND-PALETTE.md](./COMMAND-PALETTE.md)
 | **[🚀 Setup Guide](./docs/SETUP.md)**         | Complete installation and configuration (15 min) |
 | **[🏗️ Architecture](./docs/ARCHITECTURE.md)** | System design, AI integration, API reference     |
 | **[🗄️ Database Schema](./docs/DATABASE.md)**  | Tables, relationships, queries, best practices   |
+| **[🔧 Utility Functions](./docs/UTILITIES.md)** | Utility functions reference guide                |
+| **[📡 API Reference](./docs/API_REFERENCE.md)** | Complete API documentation (48+ endpoints) (NEW!) |
+| **[⚛️ Component Guide](./docs/COMPONENT_GUIDE.md)** | React component library reference (40+ components) (NEW!) |
+| **[🌍 Environment Variables](./docs/ENVIRONMENT.md)** | Environment configuration guide (45+ variables) (NEW!) |
+| **[🚀 Advanced Features](./docs/ADVANCED_FEATURES.md)** | Chat, Market Intelligence, Memory Graph (NEW!) |
+| **[⚙️ Configuration](./docs/CONFIG.md)** | Configuration files guide (NEW!) |
+| **[🚩 Feature Flags](./docs/FEATURE_FLAGS.md)** | Feature flag system documentation (NEW!) |
+| **[🧪 Testing](./docs/TESTING.md)** | Testing strategy and guide (NEW!) |
+| **[📦 Deployment](./docs/DEPLOYMENT.md)** | Deployment guide for all platforms (NEW!) |
+| **[🔧 Troubleshooting](./docs/TROUBLESHOOTING.md)** | Common issues and solutions (NEW!) |
+| **[👷 Worker Service](./docs/WORKER_SERVICE.md)** | İhale worker service documentation (NEW!) |
 
 ### Feature Documentation
 

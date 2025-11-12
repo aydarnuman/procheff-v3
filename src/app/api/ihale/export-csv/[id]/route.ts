@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ihbDetail, ihbLogin } from '@/lib/ihale/client';
 import { getDB } from '@/lib/db/sqlite-client';
-import { parseTenderHTMLWithAI } from '@/lib/ai/parse-tender-html';
-import { convertToTXT, convertTablesToCSV, convertToJSON, generateFilename } from '@/lib/utils/export-csv';
+import { generateFilename } from '@/lib/utils/export-csv';
+import { tablesToCSV } from '@/lib/utils/format-extractors';
+import {
+  extractTXTWithAI,
+  extractCSVWithAI,
+  extractJSONWithAI
+} from '@/lib/ai/export-formats';
 
 export async function GET(
   req: NextRequest,
@@ -45,40 +50,87 @@ export async function GET(
       return new Response('İhale detayları bulunamadı', { status: 404 });
     }
 
-    // Parse HTML with AI
-    const aiParsed = await parseTenderHTMLWithAI(detail.html);
-
-    if (!aiParsed) {
-      return new Response('İhale verileri parse edilemedi', { status: 500 });
-    }
-
-    // Generate content based on format
+    // Generate content based on format - using direct HTML extraction, not AI parsing
     let content: string;
     let contentType: string;
     let filename: string;
 
-    switch (format) {
-      case 'txt':
-        content = convertToTXT(aiParsed, tenderTitle);
-        contentType = 'text/plain; charset=utf-8';
-        filename = generateFilename(tenderNumber, 'txt', tenderTitle);
-        break;
+    try {
+      switch (format) {
+        case 'txt':
+          // Use AI to extract clean TXT format
+          try {
+            content = await extractTXTWithAI(detail.html);
+          } catch (aiError: any) {
+            console.error('[Export] AI TXT extraction failed:', aiError.message);
+            // Fallback: Use raw HTML text (minimal cleaning)
+            content = detail.html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+          }
+          contentType = 'text/plain; charset=utf-8';
+          filename = generateFilename(tenderNumber, 'txt', tenderTitle);
+          break;
 
-      case 'csv':
-        const BOM = '\uFEFF'; // Excel UTF-8 compatibility
-        content = BOM + convertTablesToCSV(aiParsed, tenderTitle);
-        contentType = 'text/csv; charset=utf-8';
-        filename = generateFilename(tenderNumber, 'csv', tenderTitle);
-        break;
+        case 'csv':
+          // Use AI to extract clean CSV tables
+          let tables: Array<{ title: string; headers: string[]; rows: string[][] }> = [];
+          try {
+            tables = await extractCSVWithAI(detail.html);
+          } catch (aiError: any) {
+            console.error('[Export] AI CSV extraction failed:', aiError.message);
+            // Fallback: Use AI-parsed tables if available
+            if (detail.ai_parsed && detail.ai_parsed.tables && detail.ai_parsed.tables.length > 0) {
+              tables = detail.ai_parsed.tables.map((table: any) => ({
+                title: table.title || 'Mal/Hizmet Listesi',
+                headers: table.headers || [],
+                rows: table.rows || []
+              }));
+            }
+          }
+          
+          const BOM = '\uFEFF'; // Excel UTF-8 compatibility
+          content = BOM + tablesToCSV(tables);
+          contentType = 'text/csv; charset=utf-8';
+          filename = generateFilename(tenderNumber, 'csv', tenderTitle);
+          break;
 
-      case 'json':
-        content = convertToJSON(aiParsed, tenderTitle);
-        contentType = 'application/json; charset=utf-8';
-        filename = generateFilename(tenderNumber, 'json', tenderTitle);
-        break;
+        case 'json':
+          // Use AI to extract structured JSON
+          let jsonData: any;
+          try {
+            jsonData = await extractJSONWithAI(detail.html);
+            jsonData.exportedAt = new Date().toISOString();
+            jsonData.source = 'ai_extraction';
+          } catch (aiError: any) {
+            console.error('[Export] AI JSON extraction failed:', aiError.message);
+            // Fallback: Use API data or basic structure
+            if (detail.apiData && typeof detail.apiData === 'object' && Object.keys(detail.apiData).length > 0) {
+              jsonData = {
+                title: tenderTitle,
+                source: 'api',
+                apiData: detail.apiData,
+                exportedAt: new Date().toISOString()
+              };
+            } else {
+              jsonData = {
+                title: tenderTitle,
+                source: 'fallback',
+                error: 'AI extraction failed',
+                exportedAt: new Date().toISOString()
+              };
+            }
+          }
+          
+          content = JSON.stringify(jsonData, null, 2);
+          contentType = 'application/json; charset=utf-8';
+          filename = generateFilename(tenderNumber, 'json', tenderTitle);
+          break;
 
-      default:
-        return new Response('Geçersiz format. Desteklenen: txt, csv, json', { status: 400 });
+        default:
+          return new Response('Geçersiz format. Desteklenen: txt, csv, json', { status: 400 });
+      }
+    } catch (formatError: any) {
+      console.error('[Export] Format processing error:', formatError);
+      return new Response(`Format işleme hatası: ${formatError.message}`, { status: 500 });
     }
 
     // Return file
