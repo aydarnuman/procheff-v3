@@ -29,6 +29,7 @@ import {
   type GroupedDocument,
   type ExtractedDetails
 } from '@/lib/analysis/helpers';
+import { PaginatedTextViewer } from './PaginatedTextViewer';
 
 interface RawDataViewProps {
   dataPool: DataPool;
@@ -37,6 +38,7 @@ interface RawDataViewProps {
 
 export function RawDataView({ dataPool, searchTerm }: RawDataViewProps) {
   const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set());
+  const [showRawText, setShowRawText] = useState<Record<string, boolean>>({});
 
   // Group data logically
   const groupedData = useMemo(() => {
@@ -116,44 +118,44 @@ export function RawDataView({ dataPool, searchTerm }: RawDataViewProps) {
 
       {/* Critical Dates */}
       {groupedData.criticalDates.length > 0 && (
-        <div className="glass-card rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-purple-400" />
-            Kritik Tarihler (Kronolojik)
-          </h3>
+        <div className="glass-card rounded-2xl p-5 border border-purple-500/15 bg-gradient-to-br from-purple-500/10 to-transparent">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold text-white flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-purple-400" />
+              Kritik Tarihler
+            </h3>
+            <span className="text-xs text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-full">
+              Kronolojik
+            </span>
+          </div>
 
-          <div className="relative">
-            {/* Timeline line */}
-            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-purple-400/30"></div>
-
-            <div className="space-y-4">
-              {groupedData.criticalDates.map((date: CriticalDate, index: number) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex gap-4"
-                >
-                  <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center relative z-10">
-                    <Calendar className="w-6 h-6 text-purple-400" />
+          <div className="space-y-3">
+            {groupedData.criticalDates.map((date: CriticalDate, index: number) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.08 }}
+                className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/40 border border-slate-800/60 hover:border-purple-500/30 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-full bg-purple-500/15 flex items-center justify-center flex-shrink-0">
+                  <Calendar className="w-4 h-4 text-purple-300" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-white">
+                    {date.label}
                   </div>
-                  <div className="flex-1 p-4 bg-slate-800/30 rounded-lg border border-slate-700/50">
-                    <div className="font-medium text-white mb-1">
-                      {date.label}
-                    </div>
-                    <div className="text-lg text-slate-300">
-                      {formatDate(date.value)}
-                    </div>
-                    <div className="text-xs text-slate-400 mt-2 flex items-center gap-1">
-                      <FileText className="w-3 h-3" />
-                      {date.source}
-                      {date.page && ` • Sayfa ${date.page}`}
-                    </div>
+                  <div className="text-sm text-slate-300">
+                    {formatDate(date.value)}
                   </div>
-                </motion.div>
-              ))}
-            </div>
+                  <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5">
+                    <FileText className="w-3 h-3" />
+                    {date.source}
+                    {date.page && ` • Sayfa ${date.page}`}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       )}
@@ -195,28 +197,62 @@ export function RawDataView({ dataPool, searchTerm }: RawDataViewProps) {
 
               {/* Expanded content */}
               {expandedDocs.has(doc.doc_id) && (
-                <div className="p-4 bg-slate-900/50 border-t border-slate-700/50 max-h-96 overflow-y-auto">
-                  <div className="space-y-3">
-                    {doc.textBlocks
-                      .filter(block => filterBySearch(block.text))
-                      .map(block => (
-                        <div key={block.block_id} className="p-3 bg-slate-800/30 rounded">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
-                              {block.block_id}
-                            </span>
-                            {(block as any).page_number && (
-                              <span className="text-xs text-slate-500">
-                                Sayfa: {(block as any).page_number}
-                              </span>
-                            )}
-                          </div>
-                          <pre className="text-sm text-slate-300 whitespace-pre-wrap font-sans">
-                            {searchTerm ? highlightSearchTerm(block.text, searchTerm) : block.text}
-                          </pre>
-                        </div>
-                      ))}
+                <div className="p-4 bg-slate-900/50 border-t border-slate-700/50">
+                  {/* Toggle between blocks view and raw text view */}
+                  <div className="flex gap-2 mb-4">
+                    <button
+                      onClick={() => setShowRawText(prev => ({ ...prev, [doc.doc_id]: !prev[doc.doc_id] }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        showRawText[doc.doc_id]
+                          ? 'bg-cyan-500/20 text-cyan-400'
+                          : 'bg-slate-700/50 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {showRawText[doc.doc_id] ? '📄 Ham Metin' : '📋 Bloklar'}
+                    </button>
                   </div>
+
+                  {showRawText[doc.doc_id] ? (
+                    /* Paginated Raw Text View */
+                    <PaginatedTextViewer
+                      text={doc.textBlocks
+                        .filter(block => filterBySearch(block.text))
+                        .map(block => block.text)
+                        .join('\n\n')}
+                      linesPerPage={50}
+                    />
+                  ) : (
+                    /* Blocks View */
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {doc.textBlocks
+                        .filter(block => filterBySearch(block.text))
+                        .map(block => (
+                          <div key={block.block_id} className="p-3 bg-slate-800/30 rounded">
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
+                                {block.block_id}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                {block.page && (
+                                  <span className="text-xs text-slate-500">
+                                    Sayfa: {block.page}
+                                  </span>
+                                )}
+                                {block.source && (
+                                  <span className="text-xs text-cyan-400 flex items-center gap-1">
+                                    <FileText className="w-3 h-3" />
+                                    {block.source}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <pre className="text-sm text-slate-300 whitespace-pre-wrap font-sans">
+                              {searchTerm ? highlightSearchTerm(block.text, searchTerm) : block.text}
+                            </pre>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
