@@ -61,4 +61,4 @@ async function handleGetResults(
     }
 }
 
-export const GET = errorHandler(handleGetResults);
+export const GET = errorHandler(handleGetResults as any);

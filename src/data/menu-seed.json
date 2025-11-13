@@ -1,0 +1,776 @@
+{
+  "categories": [
+    {"id": 1, "name": "Soups", "name_tr": "Çorbalar", "institution_type": "all", "icon": "🍲", "display_order": 1},
+    {"id": 2, "name": "Breakfast", "name_tr": "Kahvaltı", "institution_type": "all", "icon": "🍳", "display_order": 2},
+    {"id": 3, "name": "Meat Dishes", "name_tr": "Et Yemekleri", "institution_type": "all", "icon": "🥩", "display_order": 3},
+    {"id": 4, "name": "Chicken Dishes", "name_tr": "Tavuk Yemekleri", "institution_type": "all", "icon": "🍗", "display_order": 4},
+    {"id": 5, "name": "Vegetable Dishes", "name_tr": "Sebze Yemekleri", "institution_type": "all", "icon": "🥬", "display_order": 5},
+    {"id": 6, "name": "Olive Oil Dishes", "name_tr": "Zeytinyağlılar", "institution_type": "all", "icon": "🫒", "display_order": 6},
+    {"id": 7, "name": "Side Dishes", "name_tr": "Garnitürler", "institution_type": "all", "icon": "🍚", "display_order": 7},
+    {"id": 8, "name": "Salads", "name_tr": "Salatalar", "institution_type": "all", "icon": "🥗", "display_order": 8},
+    {"id": 9, "name": "Desserts", "name_tr": "Tatlılar", "institution_type": "all", "icon": "🍰", "display_order": 9},
+    {"id": 10, "name": "Beverages", "name_tr": "İçecekler", "institution_type": "all", "icon": "🥤", "display_order": 10}
+  ],
+  "gramaj_standards": [
+    {"institution_type": "hastane", "meal_type": "ogle", "category": "çorba", "recommended_gramaj": 250, "min_gramaj": 200, "max_gramaj": 300, "notes": "Az tuzlu, yağsız"},
+    {"institution_type": "hastane", "meal_type": "ogle", "category": "ana_yemek", "recommended_gramaj": 150, "min_gramaj": 120, "max_gramaj": 180, "notes": "Haşlama veya ızgara"},
+    {"institution_type": "hastane", "meal_type": "ogle", "category": "pilav", "recommended_gramaj": 150, "min_gramaj": 100, "max_gramaj": 200, "notes": "Az yağlı"},
+    {"institution_type": "hastane", "meal_type": "ogle", "category": "salata", "recommended_gramaj": 100, "min_gramaj": 80, "max_gramaj": 120, "notes": "Taze sebze"},
+
+    {"institution_type": "universite", "meal_type": "ogle", "category": "çorba", "recommended_gramaj": 250, "min_gramaj": 200, "max_gramaj": 300, "notes": "Standart porsiyon"},
+    {"institution_type": "universite", "meal_type": "ogle", "category": "ana_yemek", "recommended_gramaj": 200, "min_gramaj": 150, "max_gramaj": 250, "notes": "Doyurucu porsiyon"},
+    {"institution_type": "universite", "meal_type": "ogle", "category": "pilav", "recommended_gramaj": 200, "min_gramaj": 150, "max_gramaj": 250, "notes": "Standart"},
+    {"institution_type": "universite", "meal_type": "ogle", "category": "salata", "recommended_gramaj": 100, "min_gramaj": 80, "max_gramaj": 150, "notes": "Mevsim salatası"},
+
+    {"institution_type": "okul", "meal_type": "ogle", "category": "çorba", "recommended_gramaj": 200, "min_gramaj": 150, "max_gramaj": 250, "notes": "Yaş grubuna göre"},
+    {"institution_type": "okul", "meal_type": "ogle", "category": "ana_yemek", "recommended_gramaj": 150, "min_gramaj": 100, "max_gramaj": 200, "notes": "Çocuk porsiyonu"},
+    {"institution_type": "okul", "meal_type": "ogle", "category": "pilav", "recommended_gramaj": 150, "min_gramaj": 100, "max_gramaj": 200, "notes": "Makarna veya bulgur"},
+    {"institution_type": "okul", "meal_type": "ogle", "category": "salata", "recommended_gramaj": 80, "min_gramaj": 50, "max_gramaj": 100, "notes": "Sebze çeşidi"},
+
+    {"institution_type": "resmi", "meal_type": "ogle", "category": "çorba", "recommended_gramaj": 250, "min_gramaj": 200, "max_gramaj": 300, "notes": "Standart"},
+    {"institution_type": "resmi", "meal_type": "ogle", "category": "ana_yemek", "recommended_gramaj": 180, "min_gramaj": 150, "max_gramaj": 220, "notes": "Standart"},
+    {"institution_type": "resmi", "meal_type": "ogle", "category": "pilav", "recommended_gramaj": 180, "min_gramaj": 150, "max_gramaj": 220, "notes": "Bulgur pilavı dahil"},
+    {"institution_type": "resmi", "meal_type": "ogle", "category": "salata", "recommended_gramaj": 100, "min_gramaj": 80, "max_gramaj": 120, "notes": "Mevsim"},
+
+    {"institution_type": "ozel", "meal_type": "ogle", "category": "çorba", "recommended_gramaj": 250, "min_gramaj": 200, "max_gramaj": 300, "notes": "Premium kalite"},
+    {"institution_type": "ozel", "meal_type": "ogle", "category": "ana_yemek", "recommended_gramaj": 200, "min_gramaj": 150, "max_gramaj": 250, "notes": "Çeşitlilik"},
+    {"institution_type": "ozel", "meal_type": "ogle", "category": "pilav", "recommended_gramaj": 200, "min_gramaj": 150, "max_gramaj": 250, "notes": "Özel tarifler"},
+    {"institution_type": "ozel", "meal_type": "ogle", "category": "salata", "recommended_gramaj": 120, "min_gramaj": 100, "max_gramaj": 150, "notes": "Özel soslar"}
+  ],
+  "items": [
+    {
+      "name": "Mercimek Çorbası",
+      "category_id": 1,
+      "meal_type": "ogle",
+      "default_gramaj": 250,
+      "unit_cost": 8.5,
+      "calories": 180,
+      "protein": 8,
+      "carbs": 28,
+      "fat": 4,
+      "season": "all",
+      "tags": "[\"vegan\", \"ekonomik\", \"klasik\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Mercimekleri yıkayın ve süzün\\n2. Soğanları küp doğrayıp tereyağında kavurun\\n3. Mercimekleri ve suyu ekleyin\\n4. Yumuşayana kadar pişirin\\n5. Blenderdan geçirin\\n6. Kavrulmuş un ile kıvam verin",
+        "prep_time": 10,
+        "cook_time": 25,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Kırmızı mercimek", "quantity": 50, "unit": "g", "cost_per_unit": 0.85},
+          {"ingredient_name": "Un", "quantity": 10, "unit": "g", "cost_per_unit": 0.15},
+          {"ingredient_name": "Tereyağı", "quantity": 15, "unit": "g", "cost_per_unit": 0.75},
+          {"ingredient_name": "Soğan", "quantity": 20, "unit": "g", "cost_per_unit": 0.10},
+          {"ingredient_name": "Tuz", "quantity": 3, "unit": "g", "cost_per_unit": 0.01}
+        ]
+      }
+    },
+    {
+      "name": "Ezogelin Çorbası",
+      "category_id": 1,
+      "meal_type": "ogle",
+      "default_gramaj": 250,
+      "unit_cost": 9.2,
+      "calories": 195,
+      "protein": 9,
+      "carbs": 30,
+      "fat": 5,
+      "season": "all",
+      "tags": "[\"vegan\", \"klasik\", \"geleneksel\"]",
+      "institution_types": "[\"universite\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Bulgur ve mercimekleri yıkayın\\n2. Soğan ve salçayı kavurun\\n3. Bulgur ve mercimeği ekleyip pişirin\\n4. Blenderdan geçirin\\n5. Nane ve biberle tatlandırın",
+        "prep_time": 10,
+        "cook_time": 30,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Kırmızı mercimek", "quantity": 40, "unit": "g", "cost_per_unit": 0.85},
+          {"ingredient_name": "Bulgur", "quantity": 30, "unit": "g", "cost_per_unit": 0.45},
+          {"ingredient_name": "Salça", "quantity": 10, "unit": "g", "cost_per_unit": 0.20},
+          {"ingredient_name": "Soğan", "quantity": 20, "unit": "g", "cost_per_unit": 0.10},
+          {"ingredient_name": "Nane", "quantity": 2, "unit": "g", "cost_per_unit": 0.15}
+        ]
+      }
+    },
+    {
+      "name": "Yayla Çorbası",
+      "category_id": 1,
+      "meal_type": "ogle",
+      "default_gramaj": 250,
+      "unit_cost": 10.5,
+      "calories": 210,
+      "protein": 7,
+      "carbs": 22,
+      "fat": 8,
+      "season": "all",
+      "tags": "[\"yogurtlu\", \"klasik\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Pirinç ve nohutları haşlayın\\n2. Yoğurt, yumurta ve un karışımı hazırlayın\\n3. Haşlama suyuna yavaşça ekleyin\\n4. Nane ve tereyağı ile servis yapın",
+        "prep_time": 15,
+        "cook_time": 25,
+        "difficulty": "orta",
+        "ingredients": [
+          {"ingredient_name": "Pirinç", "quantity": 30, "unit": "g", "cost_per_unit": 0.50},
+          {"ingredient_name": "Yoğurt", "quantity": 50, "unit": "g", "cost_per_unit": 0.40},
+          {"ingredient_name": "Yumurta", "quantity": 20, "unit": "g", "cost_per_unit": 0.30},
+          {"ingredient_name": "Un", "quantity": 10, "unit": "g", "cost_per_unit": 0.15},
+          {"ingredient_name": "Nane", "quantity": 2, "unit": "g", "cost_per_unit": 0.15}
+        ]
+      }
+    },
+    {
+      "name": "Tarhana Çorbası",
+      "category_id": 1,
+      "meal_type": "ogle",
+      "default_gramaj": 250,
+      "unit_cost": 11.0,
+      "calories": 220,
+      "protein": 8,
+      "carbs": 32,
+      "fat": 6,
+      "season": "kis",
+      "tags": "[\"geleneksel\", \"kis\"]",
+      "institution_types": "[\"universite\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Tarhana tozunu sıcak suda bekletin\\n2. Sürekli karıştırarak kaynatın\\n3. Domates salçasını ekleyin\\n4. Tereyağı ile servis yapın",
+        "prep_time": 5,
+        "cook_time": 15,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Tarhana tozu", "quantity": 40, "unit": "g", "cost_per_unit": 1.20},
+          {"ingredient_name": "Domates salçası", "quantity": 10, "unit": "g", "cost_per_unit": 0.20},
+          {"ingredient_name": "Tereyağı", "quantity": 15, "unit": "g", "cost_per_unit": 0.75}
+        ]
+      }
+    },
+    {
+      "name": "Domates Çorbası",
+      "category_id": 1,
+      "meal_type": "ogle",
+      "default_gramaj": 250,
+      "unit_cost": 9.8,
+      "calories": 185,
+      "protein": 5,
+      "carbs": 25,
+      "fat": 7,
+      "season": "yaz",
+      "tags": "[\"vegan\", \"hafif\", \"yaz\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Domatesleri rendeleyin\\n2. Soğan ve salçayı kavurun\\n3. Domates püresini ekleyin\\n4. Şehriye ilave edip pişirin\\n5. Fesleğen ile servis yapın",
+        "prep_time": 10,
+        "cook_time": 20,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Domates", "quantity": 100, "unit": "g", "cost_per_unit": 0.50},
+          {"ingredient_name": "Şehriye", "quantity": 20, "unit": "g", "cost_per_unit": 0.30},
+          {"ingredient_name": "Soğan", "quantity": 15, "unit": "g", "cost_per_unit": 0.10},
+          {"ingredient_name": "Salça", "quantity": 10, "unit": "g", "cost_per_unit": 0.20}
+        ]
+      }
+    },
+    {
+      "name": "İzmir Köfte",
+      "category_id": 3,
+      "meal_type": "ogle",
+      "default_gramaj": 180,
+      "unit_cost": 45.0,
+      "calories": 320,
+      "protein": 28,
+      "carbs": 12,
+      "fat": 18,
+      "season": "all",
+      "tags": "[\"protein\", \"klasik\"]",
+      "institution_types": "[\"universite\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Kıymayı yoğurun\\n2. Köfte şekli verin\\n3. Fırında pişirin\\n4. Domates, biber ile servis yapın",
+        "prep_time": 20,
+        "cook_time": 30,
+        "difficulty": "orta",
+        "ingredients": [
+          {"ingredient_name": "Kıyma", "quantity": 120, "unit": "g", "cost_per_unit": 3.50},
+          {"ingredient_name": "Domates", "quantity": 40, "unit": "g", "cost_per_unit": 0.50},
+          {"ingredient_name": "Biber", "quantity": 30, "unit": "g", "cost_per_unit": 0.60},
+          {"ingredient_name": "Soğan", "quantity": 20, "unit": "g", "cost_per_unit": 0.10}
+        ]
+      }
+    },
+    {
+      "name": "Tas Kebap",
+      "category_id": 3,
+      "meal_type": "ogle",
+      "default_gramaj": 200,
+      "unit_cost": 55.0,
+      "calories": 380,
+      "protein": 32,
+      "carbs": 15,
+      "fat": 22,
+      "season": "all",
+      "tags": "[\"protein\", \"geleneksel\"]",
+      "institution_types": "[\"universite\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Eti küp doğrayın\\n2. Yağda kavurun\\n3. Domates, biber ekleyin\\n4. Haşlayın",
+        "prep_time": 15,
+        "cook_time": 60,
+        "difficulty": "orta",
+        "ingredients": [
+          {"ingredient_name": "Dana kuşbaşı", "quantity": 140, "unit": "g", "cost_per_unit": 4.00},
+          {"ingredient_name": "Domates", "quantity": 40, "unit": "g", "cost_per_unit": 0.50},
+          {"ingredient_name": "Soğan", "quantity": 30, "unit": "g", "cost_per_unit": 0.10}
+        ]
+      }
+    },
+    {
+      "name": "Etli Kuru Fasulye",
+      "category_id": 3,
+      "meal_type": "ogle",
+      "default_gramaj": 220,
+      "unit_cost": 38.0,
+      "calories": 350,
+      "protein": 25,
+      "carbs": 35,
+      "fat": 12,
+      "season": "all",
+      "tags": "[\"protein\", \"klasik\", \"ekonomik\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Fasulyeyi ıslatın\\n2. Eti kavurun\\n3. Fasulye ve suyu ekleyin\\n4. Yumuşayana kadar pişirin",
+        "prep_time": 480,
+        "cook_time": 90,
+        "difficulty": "orta",
+        "ingredients": [
+          {"ingredient_name": "Kuru fasulye", "quantity": 80, "unit": "g", "cost_per_unit": 0.80},
+          {"ingredient_name": "Dana kuşbaşı", "quantity": 60, "unit": "g", "cost_per_unit": 4.00},
+          {"ingredient_name": "Domates salçası", "quantity": 15, "unit": "g", "cost_per_unit": 0.20}
+        ]
+      }
+    },
+    {
+      "name": "Haşlama Et",
+      "category_id": 3,
+      "meal_type": "ogle",
+      "default_gramaj": 150,
+      "unit_cost": 52.0,
+      "calories": 280,
+      "protein": 30,
+      "carbs": 8,
+      "fat": 15,
+      "season": "all",
+      "tags": "[\"protein\", \"hafif\", \"sağlıklı\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Eti haşlayın\\n2. Sebzelerle servis yapın",
+        "prep_time": 10,
+        "cook_time": 120,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Dana but", "quantity": 140, "unit": "g", "cost_per_unit": 3.80},
+          {"ingredient_name": "Havuç", "quantity": 30, "unit": "g", "cost_per_unit": 0.30},
+          {"ingredient_name": "Patates", "quantity": 40, "unit": "g", "cost_per_unit": 0.20}
+        ]
+      }
+    },
+    {
+      "name": "Tavuk Şinitzel",
+      "category_id": 4,
+      "meal_type": "ogle",
+      "default_gramaj": 150,
+      "unit_cost": 35.0,
+      "calories": 310,
+      "protein": 26,
+      "carbs": 18,
+      "fat": 14,
+      "season": "all",
+      "tags": "[\"protein\", \"çıtır\"]",
+      "institution_types": "[\"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Tavuğu çırpın\\n2. Galeta unu sürün\\n3. Kızartın",
+        "prep_time": 15,
+        "cook_time": 15,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Tavuk göğsü", "quantity": 120, "unit": "g", "cost_per_unit": 2.50},
+          {"ingredient_name": "Galeta unu", "quantity": 20, "unit": "g", "cost_per_unit": 0.30},
+          {"ingredient_name": "Yumurta", "quantity": 30, "unit": "g", "cost_per_unit": 0.30}
+        ]
+      }
+    },
+    {
+      "name": "Fırında Tavuk",
+      "category_id": 4,
+      "meal_type": "ogle",
+      "default_gramaj": 180,
+      "unit_cost": 32.0,
+      "calories": 290,
+      "protein": 28,
+      "carbs": 10,
+      "fat": 16,
+      "season": "all",
+      "tags": "[\"protein\", \"sağlıklı\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Tavuğu marine edin\\n2. Fırında pişirin\\n3. Sebzelerle servis yapın",
+        "prep_time": 20,
+        "cook_time": 40,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Tavuk but", "quantity": 150, "unit": "g", "cost_per_unit": 2.20},
+          {"ingredient_name": "Patates", "quantity": 50, "unit": "g", "cost_per_unit": 0.20},
+          {"ingredient_name": "Havuç", "quantity": 30, "unit": "g", "cost_per_unit": 0.30}
+        ]
+      }
+    },
+    {
+      "name": "Tavuklu Pilav",
+      "category_id": 4,
+      "meal_type": "ogle",
+      "default_gramaj": 250,
+      "unit_cost": 28.0,
+      "calories": 380,
+      "protein": 22,
+      "carbs": 45,
+      "fat": 12,
+      "season": "all",
+      "tags": "[\"protein\", \"doyurucu\"]",
+      "institution_types": "[\"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Tavuğu haşlayın\\n2. Pirinci kavurun\\n3. Tavuk suyu ile pişirin",
+        "prep_time": 15,
+        "cook_time": 30,
+        "difficulty": "orta",
+        "ingredients": [
+          {"ingredient_name": "Tavuk göğsü", "quantity": 80, "unit": "g", "cost_per_unit": 2.50},
+          {"ingredient_name": "Pirinç", "quantity": 100, "unit": "g", "cost_per_unit": 0.50},
+          {"ingredient_name": "Tereyağı", "quantity": 15, "unit": "g", "cost_per_unit": 0.75}
+        ]
+      }
+    },
+    {
+      "name": "Karnıyarık",
+      "category_id": 5,
+      "meal_type": "ogle",
+      "default_gramaj": 200,
+      "unit_cost": 32.0,
+      "calories": 280,
+      "protein": 12,
+      "carbs": 22,
+      "fat": 16,
+      "season": "yaz",
+      "tags": "[\"geleneksel\", \"yaz\"]",
+      "institution_types": "[\"universite\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Patlıcanları kızartın\\n2. İç harcı hazırlayın\\n3. Fırında pişirin",
+        "prep_time": 30,
+        "cook_time": 40,
+        "difficulty": "zor",
+        "ingredients": [
+          {"ingredient_name": "Patlıcan", "quantity": 150, "unit": "g", "cost_per_unit": 0.80},
+          {"ingredient_name": "Kıyma", "quantity": 60, "unit": "g", "cost_per_unit": 3.50},
+          {"ingredient_name": "Domates", "quantity": 40, "unit": "g", "cost_per_unit": 0.50}
+        ]
+      }
+    },
+    {
+      "name": "İmam Bayıldı",
+      "category_id": 6,
+      "meal_type": "ogle",
+      "default_gramaj": 180,
+      "unit_cost": 25.0,
+      "calories": 220,
+      "protein": 4,
+      "carbs": 18,
+      "fat": 14,
+      "season": "yaz",
+      "tags": "[\"vegan\", \"zeytinyağlı\", \"yaz\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Patlıcanları kızartın\\n2. İç harcı hazırlayın\\n3. Zeytinyağı ile pişirin",
+        "prep_time": 30,
+        "cook_time": 45,
+        "difficulty": "orta",
+        "ingredients": [
+          {"ingredient_name": "Patlıcan", "quantity": 140, "unit": "g", "cost_per_unit": 0.80},
+          {"ingredient_name": "Soğan", "quantity": 50, "unit": "g", "cost_per_unit": 0.10},
+          {"ingredient_name": "Zeytinyağı", "quantity": 20, "unit": "ml", "cost_per_unit": 1.50}
+        ]
+      }
+    },
+    {
+      "name": "Türlü",
+      "category_id": 5,
+      "meal_type": "ogle",
+      "default_gramaj": 200,
+      "unit_cost": 22.0,
+      "calories": 180,
+      "protein": 6,
+      "carbs": 24,
+      "fat": 8,
+      "season": "yaz",
+      "tags": "[\"vegan\", \"hafif\", \"yaz\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Sebzeleri doğrayın\\n2. Tencerede pişirin\\n3. Baharatlarla tatlandırın",
+        "prep_time": 20,
+        "cook_time": 40,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Patlıcan", "quantity": 60, "unit": "g", "cost_per_unit": 0.80},
+          {"ingredient_name": "Kabak", "quantity": 60, "unit": "g", "cost_per_unit": 0.50},
+          {"ingredient_name": "Biber", "quantity": 40, "unit": "g", "cost_per_unit": 0.60},
+          {"ingredient_name": "Domates", "quantity": 50, "unit": "g", "cost_per_unit": 0.50}
+        ]
+      }
+    },
+    {
+      "name": "Pirinç Pilavı",
+      "category_id": 7,
+      "meal_type": "ogle",
+      "default_gramaj": 180,
+      "unit_cost": 12.0,
+      "calories": 250,
+      "protein": 5,
+      "carbs": 48,
+      "fat": 6,
+      "season": "all",
+      "tags": "[\"klasik\", \"ekonomik\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Pirinci yıkayın\\n2. Tereyağında kavurun\\n3. Su ekleyip pişirin",
+        "prep_time": 5,
+        "cook_time": 20,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Pirinç", "quantity": 100, "unit": "g", "cost_per_unit": 0.50},
+          {"ingredient_name": "Tereyağı", "quantity": 15, "unit": "g", "cost_per_unit": 0.75},
+          {"ingredient_name": "Tuz", "quantity": 2, "unit": "g", "cost_per_unit": 0.01}
+        ]
+      }
+    },
+    {
+      "name": "Bulgur Pilavı",
+      "category_id": 7,
+      "meal_type": "ogle",
+      "default_gramaj": 180,
+      "unit_cost": 10.0,
+      "calories": 230,
+      "protein": 7,
+      "carbs": 42,
+      "fat": 5,
+      "season": "all",
+      "tags": "[\"ekonomik\", \"sağlıklı\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Bulguru yıkayın\\n2. Soğan ve salça ile kavurun\\n3. Su ekleyip pişirin",
+        "prep_time": 5,
+        "cook_time": 15,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Bulgur", "quantity": 100, "unit": "g", "cost_per_unit": 0.45},
+          {"ingredient_name": "Salça", "quantity": 10, "unit": "g", "cost_per_unit": 0.20},
+          {"ingredient_name": "Soğan", "quantity": 20, "unit": "g", "cost_per_unit": 0.10}
+        ]
+      }
+    },
+    {
+      "name": "Makarna",
+      "category_id": 7,
+      "meal_type": "ogle",
+      "default_gramaj": 200,
+      "unit_cost": 11.0,
+      "calories": 280,
+      "protein": 9,
+      "carbs": 52,
+      "fat": 4,
+      "season": "all",
+      "tags": "[\"ekonomik\", \"çocuk\"]",
+      "institution_types": "[\"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Makarnayı haşlayın\\n2. Salça veya sos ile karıştırın",
+        "prep_time": 5,
+        "cook_time": 12,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Makarna", "quantity": 120, "unit": "g", "cost_per_unit": 0.40},
+          {"ingredient_name": "Domates sosu", "quantity": 50, "unit": "g", "cost_per_unit": 0.30},
+          {"ingredient_name": "Tereyağı", "quantity": 10, "unit": "g", "cost_per_unit": 0.75}
+        ]
+      }
+    },
+    {
+      "name": "Patates Kızartması",
+      "category_id": 7,
+      "meal_type": "ogle",
+      "default_gramaj": 150,
+      "unit_cost": 15.0,
+      "calories": 220,
+      "protein": 3,
+      "carbs": 30,
+      "fat": 10,
+      "season": "all",
+      "tags": "[\"çıtır\", \"ekonomik\"]",
+      "institution_types": "[\"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Patatesleri doğrayın\\n2. Kızartın\\n3. Tuzlayın",
+        "prep_time": 10,
+        "cook_time": 15,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Patates", "quantity": 140, "unit": "g", "cost_per_unit": 0.20},
+          {"ingredient_name": "Ayçiçek yağı", "quantity": 30, "unit": "ml", "cost_per_unit": 0.40},
+          {"ingredient_name": "Tuz", "quantity": 2, "unit": "g", "cost_per_unit": 0.01}
+        ]
+      }
+    },
+    {
+      "name": "Zeytinyağlı Fasulye",
+      "category_id": 6,
+      "meal_type": "ogle",
+      "default_gramaj": 180,
+      "unit_cost": 18.0,
+      "calories": 160,
+      "protein": 6,
+      "carbs": 20,
+      "fat": 7,
+      "season": "all",
+      "tags": "[\"vegan\", \"zeytinyağlı\", \"hafif\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Fasulyeyi haşlayın\\n2. Domates, soğan ile zeytinyağında pişirin",
+        "prep_time": 10,
+        "cook_time": 40,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Taze fasulye", "quantity": 140, "unit": "g", "cost_per_unit": 0.60},
+          {"ingredient_name": "Zeytinyağı", "quantity": 15, "unit": "ml", "cost_per_unit": 1.50},
+          {"ingredient_name": "Domates", "quantity": 40, "unit": "g", "cost_per_unit": 0.50}
+        ]
+      }
+    },
+    {
+      "name": "Çoban Salata",
+      "category_id": 8,
+      "meal_type": "ogle",
+      "default_gramaj": 120,
+      "unit_cost": 12.0,
+      "calories": 80,
+      "protein": 2,
+      "carbs": 10,
+      "fat": 4,
+      "season": "yaz",
+      "tags": "[\"vegan\", \"hafif\", \"taze\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Sebzeleri doğrayın\\n2. Limon, zeytinyağı, tuz ile karıştırın",
+        "prep_time": 10,
+        "cook_time": 0,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Domates", "quantity": 40, "unit": "g", "cost_per_unit": 0.50},
+          {"ingredient_name": "Salatalık", "quantity": 40, "unit": "g", "cost_per_unit": 0.40},
+          {"ingredient_name": "Soğan", "quantity": 15, "unit": "g", "cost_per_unit": 0.10},
+          {"ingredient_name": "Zeytinyağı", "quantity": 10, "unit": "ml", "cost_per_unit": 1.50}
+        ]
+      }
+    },
+    {
+      "name": "Mevsim Salata",
+      "category_id": 8,
+      "meal_type": "ogle",
+      "default_gramaj": 100,
+      "unit_cost": 10.0,
+      "calories": 60,
+      "protein": 2,
+      "carbs": 8,
+      "fat": 3,
+      "season": "all",
+      "tags": "[\"vegan\", \"hafif\", \"taze\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Yeşillikleri yıkayın\\n2. Limon, zeytinyağı ile servis yapın",
+        "prep_time": 5,
+        "cook_time": 0,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Marul", "quantity": 50, "unit": "g", "cost_per_unit": 0.40},
+          {"ingredient_name": "Roka", "quantity": 30, "unit": "g", "cost_per_unit": 0.60},
+          {"ingredient_name": "Zeytinyağı", "quantity": 10, "unit": "ml", "cost_per_unit": 1.50}
+        ]
+      }
+    },
+    {
+      "name": "Cacık",
+      "category_id": 8,
+      "meal_type": "ogle",
+      "default_gramaj": 150,
+      "unit_cost": 8.0,
+      "calories": 90,
+      "protein": 5,
+      "carbs": 8,
+      "fat": 4,
+      "season": "yaz",
+      "tags": "[\"yoğurtlu\", \"serinletici\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Yoğurdu çırpın\\n2. Salatalık rendeleyin\\n3. Sarımsak, nane ekleyin",
+        "prep_time": 10,
+        "cook_time": 0,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Yoğurt", "quantity": 120, "unit": "g", "cost_per_unit": 0.40},
+          {"ingredient_name": "Salatalık", "quantity": 40, "unit": "g", "cost_per_unit": 0.40},
+          {"ingredient_name": "Nane", "quantity": 2, "unit": "g", "cost_per_unit": 0.15}
+        ]
+      }
+    },
+    {
+      "name": "Sütlaç",
+      "category_id": 9,
+      "meal_type": "ogle",
+      "default_gramaj": 150,
+      "unit_cost": 15.0,
+      "calories": 210,
+      "protein": 6,
+      "carbs": 32,
+      "fat": 7,
+      "season": "all",
+      "tags": "[\"tatlı\", \"sütlü\"]",
+      "institution_types": "[\"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Pirinci haşlayın\\n2. Süt ve şeker ekleyin\\n3. Kıvam alana kadar pişirin",
+        "prep_time": 10,
+        "cook_time": 40,
+        "difficulty": "orta",
+        "ingredients": [
+          {"ingredient_name": "Pirinç", "quantity": 30, "unit": "g", "cost_per_unit": 0.50},
+          {"ingredient_name": "Süt", "quantity": 120, "unit": "ml", "cost_per_unit": 0.50},
+          {"ingredient_name": "Şeker", "quantity": 20, "unit": "g", "cost_per_unit": 0.20}
+        ]
+      }
+    },
+    {
+      "name": "Kazandibi",
+      "category_id": 9,
+      "meal_type": "ogle",
+      "default_gramaj": 120,
+      "unit_cost": 18.0,
+      "calories": 240,
+      "protein": 5,
+      "carbs": 35,
+      "fat": 9,
+      "season": "all",
+      "tags": "[\"tatlı\", \"geleneksel\"]",
+      "institution_types": "[\"universite\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Sütü kaynatın\\n2. Un, şeker ekleyin\\n3. Tavada dibe tutturun",
+        "prep_time": 15,
+        "cook_time": 45,
+        "difficulty": "zor",
+        "ingredients": [
+          {"ingredient_name": "Süt", "quantity": 100, "unit": "ml", "cost_per_unit": 0.50},
+          {"ingredient_name": "Şeker", "quantity": 25, "unit": "g", "cost_per_unit": 0.20},
+          {"ingredient_name": "Un", "quantity": 20, "unit": "g", "cost_per_unit": 0.15}
+        ]
+      }
+    },
+    {
+      "name": "Revani",
+      "category_id": 9,
+      "meal_type": "ogle",
+      "default_gramaj": 100,
+      "unit_cost": 12.0,
+      "calories": 280,
+      "protein": 4,
+      "carbs": 45,
+      "fat": 10,
+      "season": "all",
+      "tags": "[\"tatlı\", \"şerbetli\"]",
+      "institution_types": "[\"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Hamuru hazırlayın\\n2. Fırında pişirin\\n3. Şerbet dökün",
+        "prep_time": 20,
+        "cook_time": 35,
+        "difficulty": "orta",
+        "ingredients": [
+          {"ingredient_name": "İrmik", "quantity": 40, "unit": "g", "cost_per_unit": 0.30},
+          {"ingredient_name": "Yumurta", "quantity": 30, "unit": "g", "cost_per_unit": 0.30},
+          {"ingredient_name": "Şeker", "quantity": 35, "unit": "g", "cost_per_unit": 0.20}
+        ]
+      }
+    },
+    {
+      "name": "Meyveli Komposto",
+      "category_id": 9,
+      "meal_type": "ogle",
+      "default_gramaj": 150,
+      "unit_cost": 10.0,
+      "calories": 120,
+      "protein": 1,
+      "carbs": 28,
+      "fat": 0,
+      "season": "all",
+      "tags": "[\"hafif\", \"meyveli\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Meyveleri doğrayın\\n2. Şekerli suda kaynatın\\n3. Soğuk servis yapın",
+        "prep_time": 10,
+        "cook_time": 20,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Kuru meyve karışımı", "quantity": 80, "unit": "g", "cost_per_unit": 0.80},
+          {"ingredient_name": "Şeker", "quantity": 20, "unit": "g", "cost_per_unit": 0.20}
+        ]
+      }
+    },
+    {
+      "name": "Ayran",
+      "category_id": 10,
+      "meal_type": "ogle",
+      "default_gramaj": 200,
+      "unit_cost": 6.0,
+      "calories": 80,
+      "protein": 4,
+      "carbs": 8,
+      "fat": 3,
+      "season": "all",
+      "tags": "[\"içecek\", \"yoğurtlu\"]",
+      "institution_types": "[\"hastane\", \"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Yoğurdu çırpın\\n2. Su ve tuz ekleyin\\n3. Karıştırın",
+        "prep_time": 5,
+        "cook_time": 0,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Yoğurt", "quantity": 100, "unit": "g", "cost_per_unit": 0.40},
+          {"ingredient_name": "Su", "quantity": 100, "unit": "ml", "cost_per_unit": 0.01},
+          {"ingredient_name": "Tuz", "quantity": 2, "unit": "g", "cost_per_unit": 0.01}
+        ]
+      }
+    },
+    {
+      "name": "Limonata",
+      "category_id": 10,
+      "meal_type": "ogle",
+      "default_gramaj": 200,
+      "unit_cost": 5.0,
+      "calories": 90,
+      "protein": 0,
+      "carbs": 22,
+      "fat": 0,
+      "season": "yaz",
+      "tags": "[\"içecek\", \"serinletici\"]",
+      "institution_types": "[\"universite\", \"okul\", \"resmi\", \"ozel\"]",
+      "recipe": {
+        "instructions": "1. Limon sıkın\\n2. Şeker ve su ekleyin\\n3. Karıştırın",
+        "prep_time": 5,
+        "cook_time": 0,
+        "difficulty": "kolay",
+        "ingredients": [
+          {"ingredient_name": "Limon", "quantity": 30, "unit": "g", "cost_per_unit": 0.80},
+          {"ingredient_name": "Şeker", "quantity": 20, "unit": "g", "cost_per_unit": 0.20},
+          {"ingredient_name": "Su", "quantity": 180, "unit": "ml", "cost_per_unit": 0.01}
+        ]
+      }
+    }
+  ]
+}

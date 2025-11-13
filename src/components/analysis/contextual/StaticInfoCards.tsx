@@ -186,7 +186,7 @@ export function StaticInfoCards({
           <div className="space-y-2">
             <CheckRow label="Teknik Şartname" checked={belgeler.teknik_sartname} />
             <CheckRow label="İdari Şartname" checked={belgeler.idari_sartname} />
-            <CheckRow label="Sözleşme Taslağı" checked={belgeler.sozlesme_taslağı} />
+            <CheckRow label="Sözleşme Taslağı" checked={belgeler.sozlesme_taslaği} />
             <CheckRow label="Menü Listesi" checked={belgeler.menu_listesi} />
           </div>
         </motion.div>

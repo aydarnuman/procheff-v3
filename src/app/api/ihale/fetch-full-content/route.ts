@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
           type: 'base64',
           media_type: 'image/png',
           data: screenshot,
-        },
+        } as any,
       },
       {
         type: 'text',
@@ -373,7 +373,7 @@ ${innerText.slice(0, 300000)}
       messages: [
         {
           role: 'user',
-          content: contentBlocks,
+          content: contentBlocks as any,
         },
       ],
     });
@@ -406,9 +406,9 @@ ${innerText.slice(0, 300000)}
     async function extractDetailsFromHTML(html: string): Promise<Record<string, string>> {
       const $ = cheerio.load(html);
       const details: Record<string, string> = {};
-      $('#tender .row').each((i: number, row: Element) => {
-        const key = $(row).find('.fw-bold').text().replace(/\s+/g, ' ').trim();
-        const value = $(row).find('.text-dark-emphasis').text().replace(/\s+/g, ' ').trim();
+      $('#tender .row').each((i: number, row: any) => {
+        const key = $(row as any).find('.fw-bold').text().replace(/\s+/g, ' ').trim();
+        const value = $(row as any).find('.text-dark-emphasis').text().replace(/\s+/g, ' ').trim();
         if (key && value) details[key] = value;
       });
       return details;
@@ -470,9 +470,9 @@ ${innerText.slice(0, 300000)}
           });
         }
       } catch (dbError: unknown) {
-        AILogger.error('Failed to save to database', { 
-          tenderId, 
-          error: dbError.message 
+        AILogger.error('Failed to save to database', {
+          tenderId,
+          error: dbError instanceof Error ? dbError.message : 'Unknown error'
         });
         // Database hatası olsa bile response döndür (kritik değil)
       }

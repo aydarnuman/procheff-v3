@@ -51,7 +51,7 @@ export function FeedbackWidget({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/chat/feedback', {
+      const apiResponse = await fetch('/api/chat/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -62,12 +62,12 @@ export function FeedbackWidget({
           improvements: selectedImprovements,
           context: {
             query: message,
-            response: response
+            response: message
           }
         })
       });
 
-      if (response.ok) {
+      if (apiResponse.ok) {
         setIsSubmitted(true);
         setTimeout(() => {
           if (onClose) onClose();

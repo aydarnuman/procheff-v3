@@ -20,7 +20,11 @@ export function UserMenu() {
         <div className="font-medium">{user?.name || user?.email}</div>
         <div className="text-gray-400 text-xs">{user?.activeOrgId ? "Aktif Workspace" : "—"}</div>
       </div>
-      <button className="rounded-lg p-2 bg-slate-900/70 border border-slate-700 hover:border-slate-600 transition-colors">
+      <button
+        className="rounded-lg p-2 bg-slate-900/70 border border-slate-700 hover:border-slate-600 transition-colors"
+        aria-label="Kullanıcı profili"
+        title="Kullanıcı profili"
+      >
         <UserCircle2 className="h-5 w-5 text-gray-300" />
       </button>
       <button

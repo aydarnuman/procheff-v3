@@ -127,7 +127,6 @@ export const TR = {
     deleting: 'Siliniyor',
     deleted: 'Silindi',
     deleteFailed: 'Silinemedi',
-    loading: 'Yükleniyor',
     loaded: 'Yüklendi',
     loadFailed: 'Yüklenemedi',
     connecting: 'Bağlanıyor',

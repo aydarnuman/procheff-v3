@@ -10,7 +10,17 @@ import {
   Search,
   Settings,
   User,
-  XCircle
+  XCircle,
+  Brain,
+  Database,
+  Shield,
+  FileText,
+  Activity,
+  Palette,
+  Zap,
+  Globe,
+  ScrollText,
+  BarChart3
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
@@ -30,12 +40,73 @@ type SystemStatus = {
   database: "healthy" | "degraded" | "down";
 };
 
+// Settings categories for dropdown
+const SETTINGS_CATEGORIES = [
+  {
+    id: "profile",
+    name: "Profil & Hesap",
+    icon: User,
+    href: "/settings/profile",
+    description: "Kullanıcı bilgileri, şifre değiştirme"
+  },
+  {
+    id: "ai",
+    name: "AI Model Ayarları",
+    icon: Brain,
+    href: "/settings/ai",
+    description: "Claude ve Gemini model seçimi"
+  },
+  {
+    id: "pipeline",
+    name: "Pipeline Ayarları",
+    icon: Zap,
+    href: "/settings/pipeline",
+    description: "Auto-Pipeline konfigürasyonu"
+  },
+  {
+    id: "monitoring",
+    name: "Monitoring",
+    icon: Activity,
+    href: "/monitor",
+    description: "Sistem izleme ve performans"
+  },
+  {
+    id: "reports",
+    name: "Raporlar",
+    icon: BarChart3,
+    href: "/reports",
+    description: "Analiz raporları ve dışa aktarım"
+  },
+  {
+    id: "database",
+    name: "Veritabanı",
+    icon: Database,
+    href: "/settings/database",
+    description: "SQLite ayarları, backup"
+  },
+  {
+    id: "security",
+    name: "Güvenlik",
+    icon: Shield,
+    href: "/settings/security",
+    description: "API key yönetimi, erişim"
+  },
+  {
+    id: "appearance",
+    name: "Görünüm",
+    icon: Palette,
+    href: "/settings/appearance",
+    description: "Tema, renk şeması"
+  },
+];
+
 export function TopBar() {
   const { data: session } = useSession();
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({
     api: "healthy",
     ai: "healthy",
@@ -200,6 +271,75 @@ export function TopBar() {
           >
             <Search className="h-4 w-4" />
           </button>
+
+          {/* Settings */}
+          <div className="relative">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 hover:scale-105 transition-all duration-200"
+              title="Ayarlar"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+
+            {/* Settings Dropdown */}
+            <AnimatePresence>
+              {showSettings && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 shadow-2xl shadow-black/20 z-50"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="p-4">
+                    <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-purple-400" />
+                      Ayarlar & Yönetim
+                    </h3>
+                    
+                    <div className="space-y-1">
+                      {SETTINGS_CATEGORIES.map((category) => {
+                        const Icon = category.icon;
+                        return (
+                          <Link
+                            key={category.id}
+                            href={category.href}
+                            onClick={() => setShowSettings(false)}
+                            className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700/30 hover:border-slate-600/50 transition-all duration-200 group"
+                          >
+                            <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-lg flex items-center justify-center border border-purple-500/30 group-hover:border-purple-400/50 transition-colors">
+                              <Icon className="w-4 h-4 text-purple-400 group-hover:text-purple-300" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-white group-hover:text-purple-200 transition-colors">
+                                {category.name}
+                              </div>
+                              <div className="text-xs text-slate-400 mt-0.5 line-clamp-1">
+                                {category.description}
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className="border-t border-slate-700/30 mt-3 pt-3">
+                      <Link
+                        href="/settings"
+                        onClick={() => setShowSettings(false)}
+                        className="flex items-center gap-2 p-2 rounded-lg bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700/30 hover:border-purple-500/40 transition-all duration-200 text-sm text-slate-300 hover:text-white"
+                      >
+                        <Settings className="w-4 h-4" />
+                        Tüm Ayarlar
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Notifications */}
           <div className="relative">

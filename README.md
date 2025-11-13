@@ -40,58 +40,72 @@ cp .env.example .env.local
 # Add your API keys to .env.local
 
 # 3. Run development server
-npm run dev
+npm run basla          # Temiz başlangıç (Next.js)
+npm run worker         # İhale worker (Playwright scraper)
 
 # 4. Open browser
-# http://localhost:3001
+# http://localhost:3000  (Ana uygulama)
+# http://localhost:8080  (Worker health check)
 ```
 
-## 📜 NPM Scripts
+## 📊 Sistem Durumu
 
-Procheff-v3 includes several npm scripts for development, building, testing, and linting:
+| Bileşen | Durum | Notlar |
+|---------|-------|--------|
+| **Storage** | ✅ | IndexedDB (50-250MB) + LocalStorage (UI) |
+| **Cache** | ✅ | 30 gün TTL, LRU eviction, SSR uyumlu |
+| **OCR** | ✅ | Gemini Vision + Tesseract fallback |
+| **Worker** | ✅ | Graceful shutdown, browser cleanup |
+| **Export** | ✅ | JSON/CSV/TXT formatları |
 
-### Development Scripts
+**📖 Detaylı sistem durumu için:** [SYSTEM-STATUS-2025-01-14.md](./SYSTEM-STATUS-2025-01-14.md)
 
-| Script | Command | Description |
-|--------|---------|-------------|
-| **dev** | `npm run dev` | Start Next.js development server with webpack (port 3001) |
-| **build** | `npm run build` | Build production-ready Next.js application with webpack |
-| **start** | `npm start` | Start production server (run after `npm run build`) |
+## 📜 NPM Scripts (Türkçe)
 
-### Code Quality Scripts
+Basit ve anlaşılır komutlar ile çalışın! 🚀
 
-| Script | Command | Description |
-|--------|---------|-------------|
-| **lint** | `npm run lint` | Run ESLint to check code quality and find issues |
-| **test** | `npm test` | Run Vitest test suite (single run) |
-| **test:watch** | `npm run test:watch` | Run Vitest in watch mode (auto-rerun on file changes) |
-| **test:coverage** | `npm run test:coverage` | Run tests with coverage report (generates coverage/ folder) |
+### 🎯 Ana Komutlar
 
-### Usage Examples
+| Komut | Açıklama |
+|-------|----------|
+| `npm run basla` | 🚀 Temiz başlangıç (cache temizle + dev server) |
+| `npm run worker` | 🤖 İhale worker başlat (Playwright scraper) |
+| `npm run build` | 🏗️ Production build yap |
+| `npm run duzelt` | 🔧 Lint hatalarını otomatik düzelt |
+| `npm run temizle` | 🧹 .next cache'ini temizle |
+
+### 📖 Diğer Komutlar
+
+| Komut | Açıklama |
+|-------|----------|
+| `npm run dev` | Dev server başlat (cache temizlemeden) |
+| `npm run lint` | Lint kontrol et |
+| `npm run tip-kontrol` | TypeScript tip kontrolü |
+| `npm run duzenle` | Prettier ile kodu formatla |
+| `npm run test` | Testleri çalıştır |
+
+### 💡 Kullanım Örnekleri
 
 ```bash
-# Development
-npm run dev              # Start dev server at http://localhost:3001
+# 🚀 Geliştirme için temiz başla (ÖNERİLEN)
+npm run basla
 
-# Production Build
-npm run build           # Create optimized production build
-npm start               # Serve production build
+# 🤖 Worker'ı ayrı terminalde çalıştır
+npm run worker
 
-# Testing
-npm test                # Run all tests once
-npm run test:watch      # Watch mode for TDD workflow
-npm run test:coverage  # Generate coverage report
+# 🔧 Lint hatalarını düzelt
+npm run duzelt
 
-# Code Quality
-npm run lint            # Check for linting errors
+# 🧹 Sorun varsa cache temizle
+npm run temizle
+npm run basla
+
+# 🏗️ Production build
+npm run build
+npm start
 ```
 
-### Script Details
-
-- **Webpack Mode**: All scripts use `--webpack` flag for Next.js 16 compatibility
-- **Port**: Development server runs on port 3001 (configured in `.env.local`)
-- **Test Framework**: Uses Vitest with coverage support via `@vitest/coverage-v8`
-- **Linter**: ESLint with Next.js configuration (`eslint-config-next`)
+**📚 Detaylı kullanım kılavuzu:** [BASIT-KULLANIM.md](./BASIT-KULLANIM.md)
 
 ### Required API Keys
 

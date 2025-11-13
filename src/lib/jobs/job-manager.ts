@@ -5,7 +5,7 @@
 
 export interface JobData {
   id: string;
-  status: 'pending' | 'processing' | 'extract' | 'ocr' | 'analyze' | 'completed' | 'error';
+  status: 'pending' | 'processing' | 'extract' | 'ocr' | 'preprocess' | 'chunk' | 'analyze' | 'completed' | 'error';
   progress: number;
   result?: unknown;
   error?: string;
@@ -16,6 +16,7 @@ export interface JobData {
     filesize?: number;
     mime_type?: string;
     ocr_used?: boolean;
+    preprocessing_applied?: boolean;
   };
 }
 

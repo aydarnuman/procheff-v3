@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     // Save with real analysis ID
     await DataPoolManager.save(analysisId, dataPool, {
       status: 'ready',
-      inputFiles: dataPool.documents?.map(d => ({
+      inputFiles: dataPool.documents?.map((d: any) => ({
         filename: d.filename,
         type: d.type_guess
       }))

@@ -159,5 +159,5 @@ async function handleComplete(req: NextRequest) {
     );
 }
 
-export const POST = errorHandler(handleComplete);
+export const POST = errorHandler(handleComplete as any);
 

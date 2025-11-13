@@ -42,8 +42,8 @@ export function EnhancedPaginatedTextViewer({
     
     const query = searchQuery.toLowerCase();
     return textBlocks.filter(block => 
-      block.content.toLowerCase().includes(query) ||
-      block.source?.filename?.toLowerCase().includes(query)
+      block.text.toLowerCase().includes(query) ||
+      block.source?.toLowerCase().includes(query)
     );
   }, [textBlocks, searchQuery]);
 
@@ -93,8 +93,8 @@ export function EnhancedPaginatedTextViewer({
 
   const handleCopy = async (block: TextBlock) => {
     try {
-      await navigator.clipboard.writeText(block.content);
-      setCopiedId(block.id);
+      await navigator.clipboard.writeText(block.text);
+      setCopiedId(block.block_id);
       setTimeout(() => setCopiedId(null), 2000);
     } catch (error) {
       console.error('Failed to copy:', error);
@@ -124,11 +124,11 @@ export function EnhancedPaginatedTextViewer({
       <div className="space-y-3">
         {currentBlocks.map((block, index) => {
           const globalIndex = startIndex + index;
-          const isBookmarked = bookmarks.has(block.id);
+          const isBookmarked = bookmarks.has(block.block_id);
 
           return (
             <motion.div
-              key={block.id}
+              key={block.block_id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
@@ -147,11 +147,11 @@ export function EnhancedPaginatedTextViewer({
                     <>
                       <span>•</span>
                       <FileText className="w-3 h-3" />
-                      <span>{block.source.filename}</span>
-                      {block.source.page_number && (
+                      <span>{block.source}</span>
+                      {block.page_number && (
                         <>
                           <span>•</span>
-                          <span>Sayfa {block.source.page_number}</span>
+                          <span>Sayfa {block.page_number}</span>
                         </>
                       )}
                     </>
@@ -160,7 +160,7 @@ export function EnhancedPaginatedTextViewer({
 
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => onBookmarkToggle?.(block.id)}
+                    onClick={() => onBookmarkToggle?.(block.block_id)}
                     className={`p-1.5 rounded transition-colors ${
                       isBookmarked 
                         ? 'bg-yellow-500/20 text-yellow-400' 
@@ -176,7 +176,7 @@ export function EnhancedPaginatedTextViewer({
                     className="p-1.5 hover:bg-slate-700 rounded transition-colors"
                     title="Kopyala"
                   >
-                    {copiedId === block.id ? (
+                    {copiedId === block.block_id ? (
                       <CheckCircle className="w-3.5 h-3.5 text-green-400" />
                     ) : (
                       <Copy className="w-3.5 h-3.5 text-slate-400" />
@@ -188,22 +188,10 @@ export function EnhancedPaginatedTextViewer({
               {/* Content */}
               <div 
                 className="text-sm leading-relaxed whitespace-pre-wrap font-mono"
-                dangerouslySetInnerHTML={{ __html: processContent(block.content) }}
+                dangerouslySetInnerHTML={{ __html: processContent(block.text) }}
               />
 
-              {/* Metadata */}
-              {block.metadata && Object.keys(block.metadata).length > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-700/50 flex flex-wrap gap-2">
-                  {Object.entries(block.metadata).map(([key, value]) => (
-                    <span
-                      key={key}
-                      className="px-2 py-1 bg-slate-700/50 rounded text-xs"
-                    >
-                      {key}: {value}
-                    </span>
-                  ))}
-                </div>
-              )}
+              {/* Metadata - Removed, not in TextBlock type */}
             </motion.div>
           );
         })}
@@ -216,6 +204,7 @@ export function EnhancedPaginatedTextViewer({
             onClick={() => setCurrentPage(1)}
             disabled={currentPage === 1}
             className="p-2 rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            aria-label="İlk sayfaya git"
           >
             <ChevronsLeft className="w-4 h-4" />
           </button>
@@ -224,8 +213,9 @@ export function EnhancedPaginatedTextViewer({
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
             className="p-2 rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            aria-label="Önceki sayfa"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-4 h-4" aria-hidden="true" />
           </button>
 
           <div className="flex items-center gap-1 px-3">
@@ -244,7 +234,7 @@ export function EnhancedPaginatedTextViewer({
               return (
                 <button
                   key={pageNum}
-                  onClick={() => setCurrentPage(pageNum)}
+                  onClick={() => setCurrentPage(pageNum)} aria-label={`Go to page ${pageNum}`}
                   className={`
                     w-8 h-8 rounded-lg transition-all
                     ${currentPage === pageNum
@@ -263,12 +253,14 @@ export function EnhancedPaginatedTextViewer({
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
             className="p-2 rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            aria-label="Sonraki sayfa"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-4 h-4" aria-hidden="true" />
           </button>
 
           <button
             onClick={() => setCurrentPage(totalPages)}
+            aria-label="Son sayfaya git"
             disabled={currentPage === totalPages}
             className="p-2 rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >

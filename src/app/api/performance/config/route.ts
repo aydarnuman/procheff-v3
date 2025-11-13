@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           error: "Invalid configuration",
-          details: error.errors,
+          details: (error as any).errors,
         },
         { status: 400 }
       );

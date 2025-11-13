@@ -49,22 +49,25 @@ export class AILogger {
       db.prepare("INSERT INTO logs (level, message, data) VALUES (?, ?, ?)")
         .run(level, message, JSON.stringify(data || {}));
     } catch (err) {
-      console.error("❌ Failed to save log to DB:", err);
+      console.error("❌ Log veritabanına kaydedilemedi:", err);
     }
   }
 
   static info(msg: string, data?: unknown) {
-    console.log(`\x1b[36mℹ️  [INFO]\x1b[0m ${msg}`, data || "");
+    const zaman = new Date().toLocaleTimeString('tr-TR');
+    console.log(`\x1b[36mℹ️  [${zaman}] [BİLGİ]\x1b[0m ${msg}`, data || "");
     this.saveToDB("info", msg, data);
   }
 
   static success(msg: string, data?: unknown) {
-    console.log(`\x1b[32m✅ [SUCCESS]\x1b[0m ${msg}`, data || "");
+    const zaman = new Date().toLocaleTimeString('tr-TR');
+    console.log(`\x1b[32m✅ [${zaman}] [BAŞARI]\x1b[0m ${msg}`, data || "");
     this.saveToDB("success", msg, data);
   }
 
   static warn(msg: string, data?: unknown) {
-    console.warn(`\x1b[33m⚠️  [WARN]\x1b[0m ${msg}`, data || "");
+    const zaman = new Date().toLocaleTimeString('tr-TR');
+    console.warn(`\x1b[33m⚠️  [${zaman}] [UYARI]\x1b[0m ${msg}`, data || "");
     this.saveToDB("warn", msg, data);
   }
 
@@ -82,7 +85,8 @@ export class AILogger {
     } else {
       errorMsg = String(err || "");
     }
-    console.error(`\x1b[31m❌ [ERROR]\x1b[0m ${msg}`, err && typeof err === 'object' ? err : errorMsg);
+    const zaman = new Date().toLocaleTimeString('tr-TR');
+    console.error(`\x1b[31m❌ [${zaman}] [HATA]\x1b[0m ${msg}`, err && typeof err === 'object' ? err : errorMsg);
     this.saveToDB("error", msg, { error: errorMsg });
   }
 
@@ -96,7 +100,7 @@ export class AILogger {
       startTime: Date.now()
     };
     this.activeSessions.set(sessionId, session);
-    this.info(`Session started: ${sessionId}`, { sessionId });
+    this.info(`Oturum başlatıldı: ${sessionId}`, { sessionId });
   }
 
   /**

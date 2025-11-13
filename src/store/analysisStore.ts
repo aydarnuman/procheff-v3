@@ -8,38 +8,17 @@
  * UI sadece buradan okur, asla DB'ye gitmez!
  */
 
-import { create } from 'zustand';
-import { persist, devtools } from 'zustand/middleware';
 import type { DataPool } from '@/lib/document-processor/types';
+import type {
+  ContextualAnalysis,
+  MarketAnalysis
+} from '@/lib/tender-analysis/types';
+import type { StateCreator } from 'zustand';
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
 
-// ========================================
-// Types (Enterprise Format)
-// ========================================
-
-export interface ContextualAnalysis {
-  genel_degerlendirme?: {
-    puan: number;
-    kategori: string;
-    oneriler: string[];
-  };
-  riskler?: Array<{
-    kategori: string;
-    seviye: string;
-    aciklama: string;
-  }>;
-  firsatlar?: string[];
-}
-
-export interface MarketAnalysis {
-  comparison?: {
-    risk_level: 'low' | 'medium' | 'high';
-    market_position: string;
-  };
-  pricing?: {
-    estimated_cost: number;
-    market_average: number;
-  };
-}
+// Re-export for other modules
+export type { ContextualAnalysis, MarketAnalysis };
 
 export interface DeepAnalysis {
   maliyet_detay?: {
@@ -146,7 +125,7 @@ interface AnalysisStore {
 // Store with conditional persist (SSR-safe)
 // ========================================
 
-const storeConfig = (set: any, get: any) => ({
+const storeConfig: StateCreator<AnalysisStore> = (set, get) => ({
         // ========================================
         // Initial State
         // ========================================
@@ -163,17 +142,17 @@ const storeConfig = (set: any, get: any) => ({
          * Add new analysis to history
          * Called when API returns merged analysis
          */
-        addAnalysis: (analysis) => set((state) => {
+        addAnalysis: (analysis: AnalysisResult) => set((state: AnalysisStore) => {
           // Prevent duplicates
-          const exists = state.analysisHistory.some(a => a.id === analysis.id);
+          const exists = state.analysisHistory.some((a: AnalysisResult) => a.id === analysis.id);
           if (exists) {
             return {
-              analysisHistory: state.analysisHistory.map(a =>
+              analysisHistory: state.analysisHistory.map((a: AnalysisResult) =>
                 a.id === analysis.id ? analysis : a
               )
             };
           }
-          
+
           return {
             analysisHistory: [analysis, ...state.analysisHistory]
           };
@@ -183,10 +162,10 @@ const storeConfig = (set: any, get: any) => ({
          * Update existing analysis
          * Called when analysis progresses (contextual → market → deep)
          */
-        updateAnalysis: (id, updates) => set((state) => ({
-          analysisHistory: state.analysisHistory.map(a =>
-            a.id === id 
-              ? { ...a, ...updates, updated_at: new Date().toISOString() } 
+        updateAnalysis: (id: string, updates: Partial<AnalysisResult>) => set((state: AnalysisStore) => ({
+          analysisHistory: state.analysisHistory.map((a: AnalysisResult) =>
+            a.id === id
+              ? { ...a, ...updates, updated_at: new Date().toISOString() }
               : a
           ),
           currentAnalysis: state.currentAnalysis?.id === id
@@ -197,23 +176,23 @@ const storeConfig = (set: any, get: any) => ({
         /**
          * Delete analysis from history
          */
-        deleteAnalysis: (id) => set((state) => ({
-          analysisHistory: state.analysisHistory.filter(a => a.id !== id),
+        deleteAnalysis: (id: string) => set((state: AnalysisStore) => ({
+          analysisHistory: state.analysisHistory.filter((a: AnalysisResult) => a.id !== id),
           currentAnalysis: state.currentAnalysis?.id === id ? null : state.currentAnalysis
         })),
 
         /**
          * Set current analysis (for detail page)
          */
-        setCurrentAnalysis: (id) => set((state) => ({
-          currentAnalysis: state.analysisHistory.find(a => a.id === id) || null,
+        setCurrentAnalysis: (id: string) => set((state: AnalysisStore) => ({
+          currentAnalysis: state.analysisHistory.find((a: AnalysisResult) => a.id === id) || null,
           error: null
         })),
 
         /**
          * Clear current analysis
          */
-        clearCurrentAnalysis: () => set({ currentAnalysis: null }),
+        clearCurrentAnalysis: () => set(() => ({ currentAnalysis: null })),
 
         // ========================================
         // Analysis Results Actions
@@ -222,25 +201,25 @@ const storeConfig = (set: any, get: any) => ({
         /**
          * Set DataPool (from API merged response)
          */
-        setDataPool: (id, dataPool) => 
+        setDataPool: (id: string, dataPool: DataPool) =>
           get().updateAnalysis(id, { dataPool }),
 
         /**
          * Add contextual analysis result
          */
-        setContextualAnalysis: (id, analysis) => 
+        setContextualAnalysis: (id: string, analysis: ContextualAnalysis) =>
           get().updateAnalysis(id, { contextual_analysis: analysis }),
 
         /**
          * Add market analysis result
          */
-        setMarketAnalysis: (id, analysis) => 
+        setMarketAnalysis: (id: string, analysis: MarketAnalysis) =>
           get().updateAnalysis(id, { market_analysis: analysis }),
 
         /**
          * Add deep analysis result
          */
-        setDeepAnalysis: (id, analysis) => 
+        setDeepAnalysis: (id: string, analysis: DeepAnalysis) =>
           get().updateAnalysis(id, { deep_analysis: analysis }),
 
         // ========================================
@@ -250,36 +229,36 @@ const storeConfig = (set: any, get: any) => ({
         /**
          * Update analysis status
          */
-        setStatus: (id, status) => 
+        setStatus: (id: string, status: AnalysisResult['status']) =>
           get().updateAnalysis(id, { status }),
 
         /**
          * Set error message
          */
-        setError: (id, error) => 
+        setError: (id: string, error: string) =>
           get().updateAnalysis(id, { error, status: 'failed' }),
 
         // ========================================
         // Getters
         // ========================================
-        
+
         /**
          * Get analysis by ID
          */
-        getAnalysisById: (id) => 
-          get().analysisHistory.find(a => a.id === id),
+        getAnalysisById: (id: string) =>
+          get().analysisHistory.find((a: AnalysisResult) => a.id === id),
 
         /**
          * Get recent analyses (limit 20 by default)
          */
-        getRecentAnalyses: (limit = 20) => 
+        getRecentAnalyses: (limit: number = 20) =>
           get().analysisHistory.slice(0, limit),
 
         /**
          * Get only completed analyses
          */
-        getCompletedAnalyses: () => 
-          get().analysisHistory.filter(a => a.status === 'completed'),
+        getCompletedAnalyses: () =>
+          get().analysisHistory.filter((a: AnalysisResult) => a.status === 'completed'),
 
         // ========================================
         // Utilities
@@ -288,20 +267,20 @@ const storeConfig = (set: any, get: any) => ({
         /**
          * Reset entire store
          */
-        reset: () => set({
+        reset: () => set(() => ({
           analysisHistory: [],
           currentAnalysis: null,
           isLoading: false,
           error: null
-        }),
+        })),
 
         /**
          * Cleanup old analyses (older than 30 days)
          */
-        cleanupOldAnalyses: () => set((state) => {
+        cleanupOldAnalyses: () => set((state: AnalysisStore) => {
           const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
           return {
-            analysisHistory: state.analysisHistory.filter(a => 
+            analysisHistory: state.analysisHistory.filter((a: AnalysisResult) =>
               new Date(a.created_at).getTime() > thirtyDaysAgo
             )
           };
@@ -317,7 +296,7 @@ export const useAnalysisStore = typeof window !== 'undefined'
           {
             name: 'analysis-storage',
             version: 2,
-            partialize: (state) => ({
+            partialize: (state: AnalysisStore) => ({
               // Only persist last 50 analyses (prevent localStorage bloat)
               analysisHistory: state.analysisHistory.slice(0, 50)
             })
@@ -421,4 +400,4 @@ export function useLoadAnalysis(id: string) {
 export type { DataPool };
 
 // React import for hooks
-import React from 'react';
+  import React from 'react';

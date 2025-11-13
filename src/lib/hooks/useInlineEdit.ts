@@ -11,7 +11,7 @@ interface UseInlineEditOptions {
 interface UseInlineEditReturn {
   isEditing: boolean;
   value: string;
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
   startEditing: () => void;
   stopEditing: () => void;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;

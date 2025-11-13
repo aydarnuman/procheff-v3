@@ -140,14 +140,14 @@ export class ChatAnalyticsTracker {
       const totalMessagesStmt = this.db.prepare(`
         SELECT COUNT(*) as count FROM chat_analytics ${whereClause}
       `);
-      const totalMessages = totalMessagesStmt.get(...params).count;
+      const totalMessages = (totalMessagesStmt.get(...params) as { count: number }).count;
 
       // Total conversations
       const totalConversationsStmt = this.db.prepare(`
         SELECT COUNT(DISTINCT conversation_id) as count
         FROM chat_analytics ${whereClause}
       `);
-      const totalConversations = totalConversationsStmt.get(...params).count;
+      const totalConversations = (totalConversationsStmt.get(...params) as { count: number }).count;
 
       // Average response time
       const avgResponseTimeStmt = this.db.prepare(`
@@ -155,7 +155,7 @@ export class ChatAnalyticsTracker {
         FROM chat_analytics
         WHERE response_time IS NOT NULL ${whereClause ? 'AND ' + whereClause.substring(6) : ''}
       `);
-      const avgResponseTime = avgResponseTimeStmt.get(...params).avg || 0;
+      const avgResponseTime = (avgResponseTimeStmt.get(...params) as { avg: number | null }).avg || 0;
 
       // Average tokens per message
       const avgTokensStmt = this.db.prepare(`
@@ -163,7 +163,7 @@ export class ChatAnalyticsTracker {
         FROM chat_analytics
         WHERE tokens_used IS NOT NULL ${whereClause ? 'AND ' + whereClause.substring(6) : ''}
       `);
-      const avgTokensPerMessage = avgTokensStmt.get(...params).avg || 0;
+      const avgTokensPerMessage = (avgTokensStmt.get(...params) as { avg: number | null }).avg || 0;
 
       // Command usage
       const commandUsageStmt = this.db.prepare(`
@@ -207,7 +207,7 @@ export class ChatAnalyticsTracker {
         WHERE message_type = 'assistant'
         ${whereClause ? 'AND ' + whereClause.substring(6) : ''}
       `);
-      const successData = successStmt.get(...params);
+      const successData = successStmt.get(...params) as { success_count: number; total: number };
       const successRate = successData.total > 0
         ? (successData.success_count / successData.total) * 100
         : 100;
@@ -283,7 +283,7 @@ export class ChatAnalyticsTracker {
         SELECT COUNT(*) as count FROM chat_analytics
         WHERE user_id = ? AND message_type = 'user'
       `);
-      stats.totalMessages = totalStmt.get(userId).count;
+      stats.totalMessages = (totalStmt.get(userId) as { count: number }).count;
 
       // Total conversations
       const convStmt = this.db.prepare(`
@@ -291,7 +291,7 @@ export class ChatAnalyticsTracker {
         FROM chat_analytics
         WHERE user_id = ?
       `);
-      stats.totalConversations = convStmt.get(userId).count;
+      stats.totalConversations = (convStmt.get(userId) as { count: number }).count;
 
       // Favorite commands
       const cmdStmt = this.db.prepare(`
@@ -310,7 +310,7 @@ export class ChatAnalyticsTracker {
         FROM chat_analytics
         WHERE user_id = ?
       `);
-      stats.lastActive = lastStmt.get(userId).last_active;
+      stats.lastActive = (lastStmt.get(userId) as { last_active: string }).last_active;
 
       return stats;
     } catch (error) {
@@ -353,16 +353,16 @@ export class ChatAnalyticsTracker {
         ORDER BY timestamp DESC
       `);
 
-      const data = stmt.all();
+      const data = stmt.all() as Record<string, any>[];
 
       if (format === 'json') {
         return JSON.stringify(data, null, 2);
       } else {
         // CSV format
         const headers = Object.keys(data[0] || {}).join(',');
-        const rows = data.map(row =>
+        const rows = data.map((row: Record<string, any>) =>
           Object.values(row).map(v =>
-            typeof v === 'string' && v.includes(',') ? `"${v}"` : v
+            typeof v === 'string' && v.includes(',') ? `"${v}"` : String(v)
           ).join(',')
         );
         return [headers, ...rows].join('\n');
@@ -442,7 +442,14 @@ export class ChatAnalyticsTracker {
         WHERE conversation_id = ?
       `);
 
-      const metrics = stmt.get(conversationId);
+      const metrics = stmt.get(conversationId) as {
+        start_time: string;
+        end_time: string | null;
+        message_count: number;
+        avg_response_time: number | null;
+        duration_ms?: number;
+        duration_minutes?: number;
+      };
 
       if (metrics.start_time && metrics.end_time) {
         const duration = new Date(metrics.end_time).getTime() -

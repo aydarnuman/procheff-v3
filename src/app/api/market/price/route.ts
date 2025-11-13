@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PriceRequestSchema } from '@/lib/market/schema';
 import type { MarketQuote } from '@/lib/market/schema';
-import { normalizeProductName } from '@/lib/market/normalize';
+import { normalizeProductPipeline } from '@/lib/market/product-normalizer';
 import { tuikQuote } from '@/lib/market/provider/tuik';
 import { webQuote } from '@/lib/market/provider/web';
-import { dbQuote, last12Months } from '@/lib/market/provider/db';
+import { dbQuote, last12Months, seriesOf } from '@/lib/market/provider/db';
 import { aiQuote, shouldUseAI } from '@/lib/market/provider/ai';
 import { fuse } from '@/lib/market/fuse';
 import { forecastNextMonth } from '@/lib/market/forecast';
 import { cacheGet, cacheSet } from '@/lib/market/cache';
+import { analyzeVolatility } from '@/lib/market/volatility';
+import { AILogger } from '@/lib/ai/logger';
 
 /**
  * Tek ürün fiyat sorgulama
@@ -34,19 +36,29 @@ export async function POST(req: NextRequest) {
 
     const { product } = validation.data;
 
-    // Normalize product name
-    const { product_key, base } = normalizeProductName(product);
+    // YENİ: Advanced product normalization pipeline
+    const normalized = await normalizeProductPipeline(product);
 
-    if (!product_key) {
+    if (!normalized.productKey || normalized.confidence < 0.3) {
       return NextResponse.json(
         {
           ok: false,
           error: 'invalid_product',
-          message: 'Geçersiz ürün adı',
+          message: 'Ürün tanımlanamadı',
+          suggestions: normalized.suggestions
         },
         { status: 400 }
       );
     }
+    
+    const product_key = normalized.productKey;
+    
+    AILogger.info('[Market API] Product normalized', {
+      input: product,
+      canonical: normalized.canonical,
+      confidence: normalized.confidence,
+      method: normalized.method
+    });
 
     // Check cache
     const cacheKey = product_key;
@@ -57,7 +69,7 @@ export async function POST(req: NextRequest) {
         ok: true,
         data: cached,
         cached: true,
-        normalized: { product_key, base },
+        normalized: { product_key, canonical: normalized.canonical },
       });
     }
 
@@ -87,41 +99,73 @@ export async function POST(req: NextRequest) {
           error: 'no_data',
           message: 'Bu ürün için fiyat bilgisi bulunamadı',
           product_key,
+          suggestions: normalized.suggestions
         },
         { status: 404 }
       );
     }
 
-    const fusion = fuse(quotes);
+    // YENİ: Gelişmiş füzyon (validation, brand prices, dynamic trust)
+    const history = await last12Months(product_key);
+    const fusion = await fuse(quotes, {
+      enableValidation: true,
+      enableBrandPrices: true,
+      useDynamicTrust: true,
+      priceHistory: history
+    });
 
     if (!fusion) {
       return NextResponse.json(
         {
           ok: false,
           error: 'fusion_failed',
-          message: 'Fiyat füzyonu başarısız',
+          message: 'Fiyat füzyonu başarısız (validasyondan geçemedi)',
         },
         { status: 500 }
       );
     }
 
-    // Add forecast
-    const history = await last12Months(product_key);
+    // YENİ: Forecast ekle
     if (history && history.length >= 3) {
       const forecast = forecastNextMonth(history);
       if (forecast) {
-        fusion.forecast = forecast;
+        fusion.forecast = {
+          ...forecast,
+          trend: fusion.volatility?.trend
+        };
       }
+    }
+    
+    // YENİ: Volatility analizi ekle
+    const priceHistory = await seriesOf(product_key, 90); // Son 90 gün
+    if (priceHistory && priceHistory.length >= 7) {
+      const volatility = analyzeVolatility(priceHistory);
+      fusion.volatility = volatility;
     }
 
     // Cache the result
     await cacheSet(cacheKey, fusion);
+    
+    AILogger.info('[Market API] Fusion completed', {
+      product_key,
+      price: fusion.price,
+      confidence: fusion.conf,
+      sources: fusion.sources.length,
+      brands: fusion.priceByBrand?.length || 0
+    });
 
     return NextResponse.json({
       ok: true,
       data: fusion,
       cached: false,
-      normalized: { product_key, base },
+      normalized: {
+        product_key,
+        canonical: normalized.canonical,
+        confidence: normalized.confidence,
+        method: normalized.method,
+        category: normalized.category,
+        variant: normalized.variant
+      },
     });
   } catch (error: unknown) {
     console.error('[Market API] Price endpoint error:', error);

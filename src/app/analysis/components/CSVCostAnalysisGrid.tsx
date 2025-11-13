@@ -6,17 +6,13 @@ import {
   FileSpreadsheet,
   TrendingUp,
   TrendingDown,
-  DollarSign,
   Users,
   Calendar,
-  AlertTriangle,
   Check,
-  X,
   Maximize2,
-  GitCompare,
-  Info
+  GitCompare
 } from 'lucide-react';
-import type { DataPool, DocumentInfo, ExtractedTable } from '@/lib/document-processor/types';
+import type { DataPool, DocumentInfo } from '@/lib/document-processor/types';
 import type { ContextualAnalysis } from '@/lib/tender-analysis/types';
 
 interface CSVCostAnalysisGridProps {
@@ -54,8 +50,8 @@ export function CSVCostAnalysisGrid({
   const csvAnalyses = useMemo(() => {
     return csvFiles.map(file => {
       // Find related tables
-      const relatedTables = dataPool.tables.filter(table => 
-        table.source?.filename === file.filename
+      const relatedTables = dataPool.tables.filter(table =>
+        table.doc_id === file.doc_id
       );
 
       // Extract cost data from tables
@@ -96,19 +92,20 @@ export function CSVCostAnalysisGrid({
       });
 
       // Calculate metrics
-      const duration = contextualAnalysis?.ihale_bilgileri?.sure || 12; // months
+      const duration = 12; // Default 12 months if not specified
       dailyCost = totalCost / (duration * 30);
-      
-      // Mock data for demo
-      const confidence = 75 + Math.random() * 20;
-      const trend = Math.random() > 0.5 ? 'up' : Math.random() > 0.5 ? 'down' : 'stable';
+
+      // Calculate confidence based on data availability
+      const hasData = totalCost > 0 || personCount > 0;
+      const confidence = hasData ? 85 : 50;
+      const trend = totalCost > 2000000 ? 'up' : totalCost < 1000000 ? 'down' : 'stable';
       const riskLevel = totalCost > 5000000 ? 'high' : totalCost > 1000000 ? 'medium' : 'low';
 
       return {
-        filename: file.filename,
-        totalCost: totalCost || Math.random() * 10000000, // Mock if no data
-        dailyCost: dailyCost || Math.random() * 50000,
-        personCount: personCount || Math.floor(Math.random() * 200),
+        filename: file.name || file.doc_id,
+        totalCost: totalCost || 0,
+        dailyCost: dailyCost || 0,
+        personCount: personCount || 0,
         duration,
         confidence,
         trend,
@@ -249,6 +246,7 @@ export function CSVCostAnalysisGrid({
                       );
                     }}
                     className="p-1 hover:bg-slate-700 rounded transition-colors"
+                    aria-label={expandedCard === analysis.filename ? "Küçült" : "Genişlet"}
                   >
                     <Maximize2 className="w-3 h-3" />
                   </button>

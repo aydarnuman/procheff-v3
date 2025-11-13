@@ -33,6 +33,8 @@ export function PriceCard({ data, productName }: PriceCardProps) {
         return <CheckCircle2 className="w-4 h-4 text-blue-400" />;
       case 'WEB':
         return <AlertCircle className="w-4 h-4 text-yellow-400" />;
+      case 'AI':
+        return <span className="text-lg">🤖</span>;
       default:
         return <Info className="w-4 h-4 text-slate-400" />;
     }
@@ -66,22 +68,59 @@ export function PriceCard({ data, productName }: PriceCardProps) {
         </div>
       </div>
 
+      {/* Confidence Breakdown */}
+      {data.confidenceBreakdown && (
+        <div className="mb-6 p-4 rounded-lg bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20">
+          <h4 className="text-xs font-semibold text-indigo-300 mb-3 uppercase tracking-wider flex items-center gap-2">
+            <Info className="w-4 h-4" />
+            Güven Skoru Detayı
+          </h4>
+          <div className="grid grid-cols-2 gap-3 mb-2">
+            <div>
+              <p className="text-xs text-slate-400">Kategori Tespiti</p>
+              <p className="text-lg font-bold text-white">{(data.confidenceBreakdown.category * 100).toFixed(0)}%</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">Varyant Eşleşmesi</p>
+              <p className="text-lg font-bold text-white">{(data.confidenceBreakdown.variant * 100).toFixed(0)}%</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">Piyasa Fiyat</p>
+              <p className="text-lg font-bold text-white">{(data.confidenceBreakdown.marketPrice * 100).toFixed(0)}%</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">Toplam Güven</p>
+              <p className="text-lg font-bold text-indigo-300">{(data.confidenceBreakdown.weighted * 100).toFixed(0)}%</p>
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 mt-2">{data.confidenceBreakdown.explanation}</p>
+        </div>
+      )}
+
       {/* Kaynak Katkıları */}
       <div className="mb-6">
         <h4 className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider">
-          Kaynak Katkısı
+          Kaynak Katkısı ({data.sources.length})
         </h4>
         <div className="space-y-2">
           {data.sources.map((source, idx) => (
             <div
               key={idx}
-              className="flex items-center justify-between p-2 rounded-lg bg-slate-800/40 border border-slate-700/40"
+              className="flex items-center justify-between p-3 rounded-lg bg-slate-800/40 border border-slate-700/40 hover:border-slate-600/50 transition-colors"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 {getSourceIcon(source.source)}
-                <span className="text-sm text-slate-300">{source.source}</span>
+                <div>
+                  <span className="text-sm font-medium text-slate-300">{source.source}</span>
+                  {source.sourceTrust && (
+                    <p className="text-xs text-slate-500">Trust: {(source.sourceTrust * 100).toFixed(0)}%</p>
+                  )}
+                  {source.meta?.provider !== undefined && (
+                    <p className="text-xs text-slate-500">{String(source.meta.provider)}</p>
+                  )}
+                </div>
               </div>
-              <span className="text-sm font-medium text-white">
+              <span className="text-lg font-bold text-white">
                 {source.unit_price.toFixed(2)} ₺
               </span>
             </div>
@@ -92,25 +131,46 @@ export function PriceCard({ data, productName }: PriceCardProps) {
       {/* Tahmin (varsa) */}
       {data.forecast && (
         <div className="pt-4 border-t border-slate-700/50">
-          <div className="flex items-center justify-between">
+          <h4 className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider">
+            📈 Fiyat Tahmini
+          </h4>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
             <div>
-              <p className="text-xs text-slate-400 mb-1">Gelecek Ay Tahmini</p>
+              <p className="text-xs text-slate-400 mb-1">Gelecek Ay Beklentisi</p>
               <div className="flex items-center gap-2">
-                <span className="text-lg font-bold text-indigo-300">
+                <span className="text-2xl font-bold text-purple-300">
                   {data.forecast.nextMonth.toFixed(2)} ₺
                 </span>
                 {data.forecast.nextMonth > data.price ? (
-                  <TrendingUp className="w-4 h-4 text-red-400" />
+                  <div className="flex items-center gap-1 text-red-400">
+                    <TrendingUp className="w-5 h-5" />
+                    <span className="text-sm font-medium">
+                      +{((data.forecast.nextMonth - data.price) / data.price * 100).toFixed(1)}%
+                    </span>
+                  </div>
                 ) : data.forecast.nextMonth < data.price ? (
-                  <TrendingDown className="w-4 h-4 text-green-400" />
+                  <div className="flex items-center gap-1 text-green-400">
+                    <TrendingDown className="w-5 h-5" />
+                    <span className="text-sm font-medium">
+                      {((data.forecast.nextMonth - data.price) / data.price * 100).toFixed(1)}%
+                    </span>
+                  </div>
                 ) : (
-                  <Minus className="w-4 h-4 text-slate-400" />
+                  <div className="flex items-center gap-1 text-slate-400">
+                    <Minus className="w-5 h-5" />
+                    <span className="text-sm">Stabil</span>
+                  </div>
                 )}
               </div>
+              {data.forecast.trend && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Trend: <span className="capitalize">{data.forecast.trend}</span>
+                </p>
+              )}
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-500">Güven</p>
-              <span className={`text-sm font-medium ${getConfidenceColor(data.forecast.conf)}`}>
+              <p className="text-xs text-slate-500 mb-1">Tahmin Güveni</p>
+              <span className={`text-lg font-bold ${getConfidenceColor(data.forecast.conf)}`}>
                 {(data.forecast.conf * 100).toFixed(0)}%
               </span>
             </div>

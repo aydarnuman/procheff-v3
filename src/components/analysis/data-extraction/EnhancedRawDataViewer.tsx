@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Copy, Check, FileText, Calendar, Hash, Users } from 'lucide-react';
+import { Search, Copy, Check, FileText, Calendar, Hash, Users, type LucideIcon } from 'lucide-react';
 import type { DataPool } from '@/lib/document-processor/types';
 import { Badge } from '@/components/shared/ui/Badge';
 import { staggerContainer, staggerItem } from '@/lib/utils/animation-variants';
@@ -25,7 +25,7 @@ export function EnhancedRawDataViewer({ dataPool, searchTerm = '' }: EnhancedRaw
   const basicInfo = dataPool.basicInfo || {};
 
   // Group text blocks by document
-  const groupedBlocks = dataPool.textBlocks.reduce((acc, block) => {
+  const groupedBlocks = dataPool.textBlocks.reduce((acc, block: any) => {
     const source = block.source || block.doc_id;
     if (!acc[source]) acc[source] = [];
     acc[source].push(block);
@@ -108,9 +108,9 @@ export function EnhancedRawDataViewer({ dataPool, searchTerm = '' }: EnhancedRaw
                 variants={staggerItem}
               >
                 <div className="w-2 h-2 rounded-full bg-purple-400" />
-                <span className="text-white font-medium">{date.formatted || date.value}</span>
-                {date.label && (
-                  <span className="text-slate-400 text-sm">• {date.label}</span>
+                <span className="text-white font-medium">{(date as any).formatted || (date as any).value}</span>
+                {(date as any).label && (
+                  <span className="text-slate-400 text-sm">• {(date as any).label}</span>
                 )}
               </motion.div>
             ))}
@@ -133,7 +133,7 @@ export function EnhancedRawDataViewer({ dataPool, searchTerm = '' }: EnhancedRaw
               </p>
             </div>
             <button
-              onClick={() => handleCopy(blocks.map(b => b.text).join('\n\n'), source)}
+              onClick={() => handleCopy(blocks.map((b: any) => b.text).join('\n\n'), source)}
               className="px-3 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-slate-300 text-sm transition-colors flex items-center gap-2"
             >
               {copiedSection === source ? (
@@ -156,10 +156,10 @@ export function EnhancedRawDataViewer({ dataPool, searchTerm = '' }: EnhancedRaw
                 key={i}
                 className="text-slate-300 text-sm leading-relaxed p-3 rounded-lg bg-slate-800/30"
               >
-                {highlightText(block.text)}
-                {block.page && (
+                {highlightText((block as any).text)}
+                {(block as any).page && (
                   <span className="text-xs text-slate-500 ml-2">
-                    (Sayfa {block.page})
+                    (Sayfa {(block as any).page})
                   </span>
                 )}
               </div>
@@ -181,7 +181,7 @@ export function EnhancedRawDataViewer({ dataPool, searchTerm = '' }: EnhancedRaw
             <Badge variant="info" size="sm">{dataPool.entities.length}</Badge>
           </div>
           <div className="flex flex-wrap gap-2">
-            {dataPool.entities.slice(0, 20).map((entity, i) => (
+            {dataPool.entities.slice(0, 20).map((entity: any, i) => (
               <Badge key={i} variant="default" size="sm">
                 {entity.text}
                 {entity.type && (

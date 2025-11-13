@@ -171,7 +171,7 @@ export function getMarketStats(): {
       FROM market_prices
       GROUP BY source
       ORDER BY count DESC
-    `).all() as Array<{ category: string; count: number }>;
+    `).all() as Array<{ source: string; count: number }>;
 
     return {
       totalRecords,

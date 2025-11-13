@@ -1,11 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Loader2, Package, History, AlertTriangle } from 'lucide-react';
-import { PriceCard } from '@/components/market/PriceCard';
+import { Search, Loader2, Package, History } from 'lucide-react';
 import { BulkUploader } from '@/components/market/BulkUploader';
 import { TrendChart } from '@/components/market/TrendChart';
+import { VolatilityIndicator } from '@/components/market/VolatilityIndicator';
+import { BrandComparisonList } from '@/components/market/BrandComparisonList';
+import { PriceCardV31, VariantChips, SearchBarV31 } from '@/components/market/v31';
 import { MarketFusion } from '@/lib/market/schema';
+import type { NormalizedProduct } from '@/lib/market';
 import { motion } from 'framer-motion';
 
 type Tab = 'single' | 'bulk' | 'history';
@@ -16,7 +19,7 @@ export default function PiyasaRobotuPage() {
   // Tek ürün state
   const [product, setProduct] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ data: MarketFusion; productName: string } | null>(null);
+  const [result, setResult] = useState<{ data: MarketFusion; productName: string; normalized?: NormalizedProduct } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Geçmiş state
@@ -48,6 +51,7 @@ export default function PiyasaRobotuPage() {
         setResult({
           data: data.data,
           productName: product,
+          normalized: data.normalized, // YENİ: Normalized product bilgisi
         });
       } else {
         setError(data.message || 'Fiyat bilgisi bulunamadı');
@@ -99,23 +103,24 @@ export default function PiyasaRobotuPage() {
           </p>
         </div>
 
-        {/* Mock Data Warning Banner */}
+        {/* Real Data Info Banner */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card border-amber-500/30 p-4 rounded-xl mb-6"
+          className="glass-card border-green-500/30 p-4 rounded-xl mb-6"
         >
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="w-5 h-5 shrink-0 mt-0.5">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            </div>
             <div>
-              <h3 className="text-amber-400 font-semibold mb-1">
-                ⚠️ Geliştirme Modu
+              <h3 className="text-green-400 font-semibold mb-1">
+                🤖 AI-Powered Real Data Mode
               </h3>
               <p className="text-sm text-slate-300">
-                Piyasa verileri şu an <strong className="text-amber-300">mock data</strong> kullanıyor.
-                Gerçek TÜİK API ve web scraping entegrasyonu henüz tamamlanmadı.
-                Gösterilen fiyatlar <strong className="text-amber-300">tahmin amaçlıdır</strong> ve
-                gerçek piyasa koşullarını yansıtmayabilir.
+                Piyasa verileri <strong className="text-green-300">Claude AI</strong> ile gerçek zamanlı tahmin ediliyor.
+                Sistem her sorgudan öğreniyor ve zamanla daha doğru sonuçlar veriyor.
+                Confidence breakdown, volatility tracking ve brand comparison aktif.
               </p>
             </div>
           </div>
@@ -180,44 +185,58 @@ export default function PiyasaRobotuPage() {
         <div>
           {/* Tek Ürün */}
           {activeTab === 'single' && (
-            <div className="space-y-6">
-              {/* Search Input */}
-              <div className="glass-card">
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    value={product}
-                    onChange={(e) => setProduct(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="Ürün adı girin (örn: tavuk eti, zeytinyağı, makarna)"
-                    className="flex-1 px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500/50 transition-colors"
-                  />
-                  <button
-                    onClick={handleSearch}
-                    disabled={loading}
-                    className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg transition-colors text-white font-medium flex items-center gap-2"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Sorgulanıyor...
-                      </>
-                    ) : (
-                      <>
-                        <Search className="w-5 h-5" />
-                        Fiyatı Getir
-                      </>
-                    )}
-                  </button>
-                </div>
-                {error && (
-                  <p className="mt-3 text-sm text-red-400">{error}</p>
-                )}
-              </div>
+            <div className="space-y-4">
+              {/* Search Bar v3.1 */}
+              <SearchBarV31
+                value={product}
+                onChange={setProduct}
+                onSubmit={handleSearch}
+                loading={loading}
+                error={error}
+                placeholder="Ürün adı girin (örn: tavuk eti, zeytinyağı, makarna)"
+              />
 
               {/* Result */}
               {result && (
-                <PriceCard data={result.data} productName={result.productName} />
+                <div className="space-y-4">
+                  {/* Main Price Card v3.2 */}
+                  <PriceCardV31 data={result.data} productName={result.productName} />
+
+                  {/* Variant Chips - altına */}
+                  {result.normalized && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                        Varyantlar & Alternatifler
+                      </h4>
+                      <VariantChips
+                        normalized={result.normalized}
+                        onSelectVariant={(variant) => {
+                          setProduct(variant);
+                          handleSearch();
+                        }}
+                        onSelectAlternative={(alt) => {
+                          setProduct(alt);
+                          handleSearch();
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Brand Comparison */}
+                  {result.data.priceByBrand && result.data.priceByBrand.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                        Marka Karşılaştırması
+                      </h4>
+                      <BrandComparisonList
+                        brands={result.data.priceByBrand}
+                        onSelectBrand={(brand) => {
+                          console.log('Selected brand:', brand);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}

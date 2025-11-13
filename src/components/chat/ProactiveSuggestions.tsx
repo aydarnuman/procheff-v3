@@ -14,6 +14,26 @@ import {
 } from 'lucide-react';
 import { proactiveAssistant, type ProactiveSuggestion } from '@/lib/chat/proactive-assistant';
 
+// Helper functions
+const getIcon = (type: string) => {
+  switch (type) {
+    case 'alert': return AlertCircle;
+    case 'tip': return Lightbulb;
+    case 'insight': return TrendingUp;
+    case 'reminder': return Clock;
+    default: return Info;
+  }
+};
+
+const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'high': return 'from-red-500 to-orange-500';
+    case 'medium': return 'from-yellow-500 to-amber-500';
+    case 'low': return 'from-blue-500 to-cyan-500';
+    default: return 'from-gray-500 to-slate-500';
+  }
+};
+
 interface ProactiveSuggestionsProps {
   context?: any;
   position?: 'top' | 'bottom' | 'floating';

@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { cleanClaudeJSON } from './utils';
 import { AILogger } from './logger';
+import { cleanClaudeJSON } from './utils';
 
 export interface GeminiClassificationResult {
   documentType: string;
@@ -140,9 +140,10 @@ export class GeminiDocumentClassifier {
         confidence: Math.min(Math.max(parsed.confidence ?? 0.5, 0), 1),
         tags: Array.isArray(parsed.tags) ? parsed.tags.slice(0, 8).map(tag => tag.toLowerCase()) : [],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       AILogger.warn('Gemini classification failed, falling back to heuristic detection', {
-        error: error?.message || String(error),
+        error: message,
       });
       return null;
     }

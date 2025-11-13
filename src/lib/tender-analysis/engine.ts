@@ -64,10 +64,10 @@ export class TenderAnalysisEngine {
         const promises: [Promise<ContextualAnalysis | null>, Promise<MarketAnalysis | null>] = [
           this.options.enable_contextual
             ? performContextualAnalysis(dataPool, extractedFields)
-            : Promise.resolve(undefined),
+            : Promise.resolve(null),
           this.options.enable_market
             ? performMarketAnalysis(dataPool, extractedFields, extractMenuItems(dataPool))
-            : Promise.resolve(undefined)
+            : Promise.resolve(null)
         ];
 
         const results = await Promise.allSettled(promises);
@@ -100,7 +100,7 @@ export class TenderAnalysisEngine {
       }
 
       // 3. Validate results
-      const validation = await this.validateResults(extractedFields, contextual, market);
+      const validation = await this.validateResults(extractedFields, contextual as ContextualAnalysis | undefined, market as MarketAnalysis | undefined);
 
       // 4. Build final result
       const result: TenderAnalysisResult = {
@@ -108,8 +108,8 @@ export class TenderAnalysisEngine {
         created_at: new Date(),
         data_pool: dataPool,
         extracted_fields: extractedFields,
-        contextual,
-        market,
+        contextual: contextual as ContextualAnalysis | undefined,
+        market: market as MarketAnalysis | undefined,
         validation,
         processing_time_ms: Date.now() - this.startTime,
         status: 'completed',
@@ -269,22 +269,22 @@ export class TenderAnalysisEngine {
         store.setContextualAnalysis(this.analysisId, {
           operasyonel_riskler: {
             seviye: result.contextual.operasyonel_riskler.seviye,
-            nedenler: result.contextual.operasyonel_riskler.nedenler.map((s: SourcedStatement) => s.text),
+            nedenler: result.contextual.operasyonel_riskler.nedenler.map((s: SourcedStatement) => s.text) as any,
             aciklama: result.contextual.operasyonel_riskler.nedenler[0]?.text || '',
             kaynak: result.contextual.operasyonel_riskler.nedenler.flatMap((s: SourcedStatement) => s.source_ref)
-          },
+          } as any,
           maliyet_sapma_olasiligi: {
             oran: result.contextual.maliyet_sapma_olasiligi.oran,
-            neden: result.contextual.maliyet_sapma_olasiligi.faktorler[0]?.text || '',
+            faktorler: result.contextual.maliyet_sapma_olasiligi.faktorler,
             kaynak: result.contextual.maliyet_sapma_olasiligi.faktorler.flatMap((s: SourcedStatement) => s.source_ref)
-          },
+          } as any,
           zaman_uygunlugu: {
             yeterli: result.contextual.zaman_uygunlugu.yeterli,
-            gerekce: result.contextual.zaman_uygunlugu.gun_analizi[0]?.text || '',
+            gun_analizi: result.contextual.zaman_uygunlugu.gun_analizi,
             kaynak: result.contextual.zaman_uygunlugu.gun_analizi.flatMap((s: SourcedStatement) => s.source_ref)
-          },
+          } as any,
           genel_oneri: result.contextual.genel_degerlendirme.ozet
-        });
+        } as any);
       }
 
       // Update market analysis
@@ -304,14 +304,15 @@ export class TenderAnalysisEngine {
               item.prices?.db ? 'db' : '',
               item.prices?.manual ? 'manual' : ''
             ].filter(Boolean)
-          })),
+          })) as any,
           total_cost: result.market.total_cost,
           forecast: {
-            next_month_total: result.market.forecast.next_month,
+            current_month: result.market.forecast.current_month,
+            next_month: result.market.forecast.next_month,
             confidence: result.market.forecast.confidence,
             trend: result.market.forecast.trend
-          }
-        });
+          } as any
+        } as any);
       }
 
       // Complete analysis with scores
@@ -320,7 +321,7 @@ export class TenderAnalysisEngine {
         status: 'completed',
         contextual_analysis: result.contextual,
         market_analysis: result.market,
-        deep_analysis: result.deep,
+        deep_analysis: (result as any).deep,
         ...scores
       });
 

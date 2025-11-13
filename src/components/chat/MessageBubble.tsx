@@ -131,7 +131,7 @@ export function MessageBubble({ message, previousMessage }: Props) {
         {!isUser && !isStreaming && previousMessage && (
           <InlineFeedbackButtons
             messageId={message.id}
-            conversationId={message.conversationId || 'default'}
+            conversationId={'default'}
             message={previousMessage.content}
             response={message.content}
           />

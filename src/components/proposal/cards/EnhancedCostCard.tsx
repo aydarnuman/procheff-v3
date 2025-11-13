@@ -136,7 +136,11 @@ export function EnhancedCostCard({ items: initialItems, onChange }: EnhancedCost
                     />
                   </td>
                   <td className="p-2">
+                    <label htmlFor={`unit-${item.id}`} className="sr-only">Birim</label>
                     <input
+                      id={`unit-${item.id}`}
+                      name={`unit-${item.id}`}
+                      title="Birim"
                       type="text"
                       value={item.unit}
                       onChange={(e) => updateItem(item.id, 'unit', e.target.value)}
@@ -144,7 +148,11 @@ export function EnhancedCostCard({ items: initialItems, onChange }: EnhancedCost
                     />
                   </td>
                   <td className="p-2">
+                    <label htmlFor={`quantity-${item.id}`} className="sr-only">Miktar</label>
                     <input
+                      id={`quantity-${item.id}`}
+                      name={`quantity-${item.id}`}
+                      title="Miktar"
                       type="number"
                       value={item.quantity}
                       onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
@@ -152,7 +160,11 @@ export function EnhancedCostCard({ items: initialItems, onChange }: EnhancedCost
                     />
                   </td>
                   <td className="p-2">
+                    <label htmlFor={`unitPrice-${item.id}`} className="sr-only">Birim Fiyat</label>
                     <input
+                      id={`unitPrice-${item.id}`}
+                      name={`unitPrice-${item.id}`}
+                      title="Birim Fiyat"
                       type="number"
                       value={item.unitPrice}
                       onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}

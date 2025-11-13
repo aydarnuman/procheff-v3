@@ -30,37 +30,13 @@ const TUIK_MOCK_DATA: Record<string, { unit_price: number; unit: string; asOf: s
 
 /**
  * TÜİK'ten fiyat getir
+ * NOT: TÜİK public API yok, bu provider devre dışı
  */
 export async function tuikQuote(product_key: string): Promise<MarketQuote | null> {
-  try {
-    // TODO: Gerçek TÜİK API entegrasyonu
-    // const response = await fetch(`${TUIK_API_URL}/prices/${product_key}`);
-    // const data = await response.json();
-
-    // Mock data
-    const mockData = TUIK_MOCK_DATA[product_key];
-
-    if (!mockData) {
-      return null;
-    }
-
-    return {
-      product_key,
-      raw_query: product_key,
-      unit: mockData.unit,
-      unit_price: mockData.unit_price,
-      currency: 'TRY',
-      asOf: mockData.asOf,
-      source: 'TUIK',
-      meta: {
-        provider: 'TÜİK',
-        reliability: 'high',
-      },
-    };
-  } catch (error) {
-    console.error('[TUIK Provider] Hata:', error);
-    return null;
-  }
+  // TÜİK public API olmadığı için null dön
+  // AI provider devreye girecek
+  console.log('[TUIK] Public API yok, AI provider kullanılacak');
+  return null;
 }
 
 /**

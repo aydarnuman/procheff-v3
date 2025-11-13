@@ -68,7 +68,7 @@ export function PlanningWizard() {
     setIsSubmitting(true);
 
     try {
-      const result = submitCurrentStep(formData);
+      const result = await submitCurrentStep(formData) as any;
 
       if (result && !result.success && result.errors) {
         setValidationErrors(result.errors);
@@ -157,7 +157,7 @@ export function PlanningWizard() {
                   key={question.id}
                   question={question}
                   value={formData[question.id]}
-                  onChange={(value) => handleInputChange(question.id, value)}
+                  onChange={(value: any) => handleInputChange(question.id, value)}
                   error={validationErrors[question.id]}
                 />
               ))}

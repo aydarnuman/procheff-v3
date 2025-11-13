@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AnimatedCounter } from '@/components/shared/animations/AnimatedCounter';
 import { SparkLine } from '@/components/shared/charts/MiniChart';
 import { useInlineNumberEdit } from '@/lib/hooks/useInlineEdit';
-import { Edit3, Check, X } from 'lucide-react';
+import { Edit3, Check } from 'lucide-react';
 
 interface CostSummaryBoxProps {
   label: string;
@@ -94,10 +94,14 @@ export function CostSummaryBox({
                 onBlur={handleBlur}
                 className="w-full px-2 py-1 bg-slate-800 text-white text-2xl font-bold rounded border border-indigo-500 focus:outline-none"
                 step="0.01"
+                aria-label={`${label} değerini düzenle`}
+                title={`${label} değerini düzenle`}
               />
               <button
                 onClick={handleBlur}
                 className="p-1 text-green-400 hover:bg-green-500/20 rounded"
+                aria-label="Düzenlemeyi kaydet"
+                title="Düzenlemeyi kaydet"
               >
                 <Check className="w-4 h-4" />
               </button>

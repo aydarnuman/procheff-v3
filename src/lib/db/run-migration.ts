@@ -16,7 +16,9 @@ export function runMigrations() {
       'add-analysis-tables.sql',
       'add-storage-progress.sql',
       '003_analysis_repository.sql',
-      '004_add_missing_indexes.sql'
+      '004_add_missing_indexes.sql',
+      '006_market_prices.sql',
+      '007_market_prices_real.sql'
     ];
 
     for (const migrationFile of migrations) {

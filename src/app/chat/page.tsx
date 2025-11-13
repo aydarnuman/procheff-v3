@@ -5,15 +5,14 @@
 
 'use client';
 
+import { AnalyticsWidget } from '@/components/chat/AnalyticsWidget';
 import { ChatInterface } from '@/components/chat/ChatInterface';
 import { AlertsWidget, MetricsWidget, PriceWidget } from '@/components/chat/ContextWidgets';
-import { AnalyticsWidget } from '@/components/chat/AnalyticsWidget';
 import { FeedbackMetrics } from '@/components/chat/FeedbackWidget';
-import { ProactiveSuggestions } from '@/components/chat/ProactiveSuggestions';
 import { InputArea } from '@/components/chat/InputArea';
 import { useChatStore } from '@/store/chatStore';
 import { motion } from 'framer-motion';
-import { Bot, ChevronLeft, ChevronRight, Info, Trash2, BarChart } from 'lucide-react';
+import { BarChart, Bot, ChevronLeft, ChevronRight, Info, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export default function ChatPage() {
@@ -76,7 +75,8 @@ export default function ChatPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Chat Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Proactive Suggestions */}
+          {/* Proactive Suggestions - Temporarily disabled due to SQLite client-side issue */}
+          {/*
           <div className="px-6 pt-4">
             <ProactiveSuggestions
               context={{
@@ -87,6 +87,7 @@ export default function ChatPage() {
               maxSuggestions={2}
             />
           </div>
+          */}
 
           <ChatInterface />
 

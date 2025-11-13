@@ -58,8 +58,11 @@ export function EnhancedPaginatedTablesViewer({
       // Search in rows
       if (table.rows.some(row => row.some(cell => cell.toLowerCase().includes(query)))) return true;
       
-      // Search in source
-      if (table.source?.filename?.toLowerCase().includes(query)) return true;
+      // Search in source (doc_id is a string reference like "A:12")
+      if (table.doc_id?.toLowerCase().includes(query)) return true;
+      
+      // Search in title
+      if (table.title?.toLowerCase().includes(query)) return true;
       
       return false;
     });
@@ -161,14 +164,14 @@ export function EnhancedPaginatedTablesViewer({
         <div className="space-y-4">
           {currentTables.map((table, index) => {
             const globalIndex = startIndex + index;
-            const isExpanded = expandedTables.has(table.id);
-            const isBookmarked = bookmarks.has(table.id);
-            const sortedRows = getSortedRows(getFilteredRows(table.rows), table.id);
+            const isExpanded = expandedTables.has(table.table_id);
+            const isBookmarked = bookmarks.has(table.table_id);
+            const sortedRows = getSortedRows(getFilteredRows(table.rows), table.table_id);
             const displayRows = isExpanded ? sortedRows : sortedRows.slice(0, 5);
 
             return (
               <motion.div
-                key={table.id}
+                key={table.table_id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
@@ -185,14 +188,14 @@ export function EnhancedPaginatedTablesViewer({
                       Tablo {globalIndex + 1}
                     </h3>
                     <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
-                      {table.source && (
+                      {table.doc_id && (
                         <>
                           <FileText className="w-3 h-3" />
-                          <span>{highlightText(table.source.filename)}</span>
-                          {table.source.page_number && (
+                          <span>{highlightText(table.doc_id)}</span>
+                          {table.page && (
                             <>
                               <span>•</span>
-                              <span>Sayfa {table.source.page_number}</span>
+                              <span>Sayfa {table.page}</span>
                             </>
                           )}
                         </>
@@ -206,7 +209,7 @@ export function EnhancedPaginatedTablesViewer({
 
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => onBookmarkToggle?.(table.id)}
+                      onClick={() => onBookmarkToggle?.(table.table_id)}
                       className={`p-1.5 rounded transition-colors ${
                         isBookmarked 
                           ? 'bg-yellow-500/20 text-yellow-400' 
@@ -218,7 +221,7 @@ export function EnhancedPaginatedTablesViewer({
                     </button>
 
                     <button
-                      onClick={() => setFullScreenTable(table.id)}
+                      onClick={() => setFullScreenTable(table.table_id)}
                       className="p-1.5 hover:bg-slate-700 rounded transition-colors"
                       title="Tam ekran"
                     >
@@ -226,7 +229,10 @@ export function EnhancedPaginatedTablesViewer({
                     </button>
 
                     <div className="relative group">
-                      <button className="p-1.5 hover:bg-slate-700 rounded transition-colors">
+                      <button
+                        className="p-1.5 hover:bg-slate-700 rounded transition-colors"
+                        aria-label="İndirme seçenekleri"
+                      >
                         <Download className="w-3.5 h-3.5 text-slate-400" />
                       </button>
                       
@@ -261,8 +267,9 @@ export function EnhancedPaginatedTablesViewer({
                             <div className="flex items-center gap-2">
                               <span>{highlightText(header)}</span>
                               <button
-                                onClick={() => handleSort(table.id, colIndex)}
+                                onClick={() => handleSort(table.table_id, colIndex)}
                                 className="p-1 hover:bg-slate-700 rounded transition-colors"
+                                aria-label={`${header} sütununu sırala`}
                               >
                                 <ArrowUpDown className="w-3 h-3 text-slate-500" />
                               </button>
@@ -291,7 +298,7 @@ export function EnhancedPaginatedTablesViewer({
                 {/* Expand/Collapse */}
                 {table.rows.length > 5 && (
                   <button
-                    onClick={() => toggleTableExpansion(table.id)}
+                    onClick={() => toggleTableExpansion(table.table_id)}
                     className="mt-3 flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
                   >
                     {isExpanded ? (
@@ -331,7 +338,7 @@ export function EnhancedPaginatedTablesViewer({
               return (
                 <button
                   key={pageNum}
-                  onClick={() => setCurrentPage(pageNum)}
+                  onClick={() => setCurrentPage(pageNum)} aria-label={`Go to page ${pageNum}`}
                   className={`
                     w-8 h-8 rounded-lg transition-all
                     ${currentPage === pageNum
@@ -366,7 +373,7 @@ export function EnhancedPaginatedTablesViewer({
               onClick={(e) => e.stopPropagation()}
             >
               {/* Render full table here */}
-              {tables.find(t => t.id === fullScreenTable) && (
+              {tables.find(t => t.table_id === fullScreenTable) && (
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-semibold">Tablo Detayı</h2>

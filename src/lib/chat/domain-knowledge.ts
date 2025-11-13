@@ -439,12 +439,12 @@ export class DomainKnowledgeService {
 
     forecast.forecasts.forEach((f: any) => {
       const indicator = f.percentageFromAverage > 0 ? '📈' : '📉';
-      result += `${indicator} **${seasonNames[f.season]}:** ${this.formatCurrency(f.perPersonCost)}/kişi`;
+      result += `${indicator} **${(seasonNames as any)[f.season]}:** ${this.formatCurrency(f.perPersonCost)}/kişi`;
       result += ` (${f.percentageFromAverage > 0 ? '+' : ''}${f.percentageFromAverage.toFixed(1)}%)\n`;
     });
 
-    result += `\n✅ **En Uygun:** ${seasonNames[forecast.bestSeason.season]}`;
-    result += `\n⚠️ **En Pahalı:** ${seasonNames[forecast.worstSeason.season]}`;
+    result += `\n✅ **En Uygun:** ${(seasonNames as any)[forecast.bestSeason.season]}`;
+    result += `\n⚠️ **En Pahalı:** ${(seasonNames as any)[forecast.worstSeason.season]}`;
 
     return result;
   }
@@ -471,7 +471,7 @@ ${portionCost.breakdown.slice(0, 5).map((item: any) =>
     };
 
     return `
-${riskEmoji[assessment.level]} **Risk Seviyesi:** ${assessment.level.toUpperCase()}
+${(riskEmoji as any)[assessment.level]} **Risk Seviyesi:** ${assessment.level.toUpperCase()}
 📊 **Risk Skoru:** ${assessment.score}/100
 
 **Risk Faktörleri:**

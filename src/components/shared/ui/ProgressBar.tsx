@@ -173,6 +173,7 @@ export function CircularProgress({
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, duration: 0.4 }}
         >
+          {/* Dynamic font size based on circular progress size */}
           <span className="text-white font-bold" style={{ fontSize: size * 0.2 }}>
             {Math.round(clampedProgress)}%
           </span>
@@ -263,6 +264,7 @@ export function SteppedProgress({
                 text-xs text-center flex-1
                 ${index + 1 === currentStep ? 'text-white font-medium' : 'text-slate-500'}
               `}
+              // Dynamic label width based on total steps
               style={{ maxWidth: `${100 / totalSteps}%` }}
             >
               {label}

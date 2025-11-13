@@ -1,34 +1,35 @@
 'use client';
 
-import { ToastContainer, useToast } from '@/components/ui/ToastNotification';
-import { AIDocumentDetector, type SmartDetection } from '@/lib/ai/smart-detection';
-import { ChunkUploader } from '@/lib/utils/chunk-upload';
-import { AnimatePresence, motion } from 'framer-motion';
-import { useAnalysisStore } from '@/store/analysisStore';
-import { useRouter } from 'next/navigation';
-import type { DataPool } from '@/lib/document-processor/types';
+import { useToast } from '@/contexts/ToastContext';
 import { AILogger } from '@/lib/ai/logger';
+import { AIDocumentDetector, type SmartDetection } from '@/lib/ai/smart-detection';
+import type { DataPool } from '@/lib/document-processor/types';
+import { ChunkUploader } from '@/lib/utils/chunk-upload';
+import { useAnalysisStore } from '@/store/analysisStore';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  AlertCircle,
-  Brain,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  Cloud,
-  Database,
-  Eye,
-  FileCode,
-  FileText,
-  Folder,
-  Loader2,
-  Search,
-  Tag,
-  Upload,
-  X
+    AlertCircle,
+    Brain,
+    CheckCircle2,
+    ChevronDown,
+    ChevronRight,
+    Clock,
+    Cloud,
+    Database,
+    Eye,
+    FileCode,
+    FileText,
+    Folder,
+    Loader2,
+    Search,
+    Tag,
+    Upload,
+    X
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { IhaleSelector } from './IhaleSelector';
 
 // File types configuration
 const FILE_TYPES = {
@@ -95,8 +96,6 @@ interface FileItem {
   smartDetection?: SmartDetection;
   isLargeFile?: boolean;
   chunkUploadId?: string;
-  tags?: string[];
-  category?: string;
   folderName?: string;
 }
 
@@ -114,7 +113,17 @@ export function UltimateFileUploader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const folderMapRef = useRef<Map<File, string>>(new Map());
-  const { toasts, success, error, warning, info, loading, removeToast } = useToast();
+  const { success, error, warning, info, loading, updateToast, removeToast } = useToast();
+  
+  // Loading state for initial document load from detail page
+  const [isLoadingFromDetail, setIsLoadingFromDetail] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0, message: '' });
+  
+  // İhale selection state
+  const [isLoadingTender, setIsLoadingTender] = useState(false);
+  
+  // Dropzone collapse state
+  const [isDropzoneExpanded, setIsDropzoneExpanded] = useState(false);
 
   useEffect(() => {
     filesRef.current = files;
@@ -262,6 +271,13 @@ export function UltimateFileUploader() {
     const fileItem = filesRef.current.find(f => f.id === fileId);
     if (!fileItem) return;
 
+    // Immediately set status to uploading to show progress bar
+    setFiles(prev => prev.map(f => 
+      f.id === fileId 
+        ? { ...f, status: 'uploading', progress: 0 }
+        : f
+    ));
+
     // Check if large file
     if (fileItem.isLargeFile) {
       return processLargeFile(fileId);
@@ -305,11 +321,20 @@ export function UltimateFileUploader() {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
-              
+
+              // Debug PDF processing
+              if (fileItem.file.type === 'application/pdf' || fileItem.file.name.endsWith('.pdf')) {
+                console.log(`[PDF Debug] ${fileItem.file.name}:`, data);
+              }
+
               if (data.type === 'progress') {
+                // Map API stages to UI stages
                 const stageMap: Record<string, number> = {
+                  'start': 0,
                   'upload': 0,
-                  'hash': 0,
+                  'processing': 1,
+                  'extraction': 1,
+                  'hash': 1,
                   'text': 1,
                   'ocr': 2,
                   'datapool': 3,
@@ -319,17 +344,30 @@ export function UltimateFileUploader() {
                 const stage = stageMap[data.stage] ?? 0;
                 const statusMap: Array<FileItem['status']> = ['uploading', 'parsing', 'extracting', 'analyzing', 'complete'];
                 
+                // Real-time progress update with actual value from API
                 setFiles(prev => prev.map(f => 
                   f.id === fileId 
                     ? { 
                         ...f, 
                         status: statusMap[stage] || 'uploading',
                         stage: stage,
-                        progress: data.progress
+                        progress: data.progress || 0  // Use actual progress from API
                       }
                     : f
                 ));
               } else if (data.type === 'success' && data.dataPool) {
+                // Debug PDF DataPool
+                if (fileItem.file.type === 'application/pdf' || fileItem.file.name.endsWith('.pdf')) {
+                  console.log(`[PDF Debug - Success] ${fileItem.file.name} DataPool:`, {
+                    hasDataPool: !!data.dataPool,
+                    documents: data.dataPool?.documents?.length || 0,
+                    textBlocks: data.dataPool?.textBlocks?.length || 0,
+                    rawTextLength: data.dataPool?.rawText?.length || 0,
+                    ocrUsed: data.dataPool?.metadata?.ocr_used || false,
+                    fullDataPool: data.dataPool
+                  });
+                }
+
                 const metrics: FileMetrics = {
                   tables: data.dataPool?.tables?.length || 0,
                   amounts: data.dataPool?.amounts?.length || 0,
@@ -342,10 +380,10 @@ export function UltimateFileUploader() {
                   categories: data.dataPool?.documents?.[0]?.categories || []
                 };
 
-                setFiles(prev => prev.map(f => 
-                  f.id === fileId 
-                    ? { 
-                        ...f, 
+                setFiles(prev => prev.map(f =>
+                  f.id === fileId
+                    ? {
+                        ...f,
                         status: 'complete',
                         metrics,
                         dataPool: data.dataPool,
@@ -380,6 +418,10 @@ export function UltimateFileUploader() {
                   `${metrics.tables} tablo, ${metrics.words} kelime bulundu`
                 );
               } else if (data.type === 'error') {
+                // Debug PDF errors
+                if (fileItem.file.type === 'application/pdf' || fileItem.file.name.endsWith('.pdf')) {
+                  console.error(`[PDF Debug - Error] ${fileItem.file.name}:`, data.error, data);
+                }
                 throw new Error(data.error || 'Processing failed');
               }
             } catch (parseError) {
@@ -455,6 +497,164 @@ export function UltimateFileUploader() {
   };
 
   // ============================================
+  // İhale Selection Functions
+  // ============================================
+
+  /**
+   * Handle tender selection - fetch all documents and add to file list
+   */
+  const handleTenderSelect = async (tender: any) => {
+    setIsLoadingTender(true);
+    const loadingId = loading(
+      `🏢 ${tender.title}`,
+      'İhale dökümanları ve formatları getiriliyor...'
+    );
+
+    try {
+      AILogger.info('İhale seçildi', { 
+        tenderId: tender.id, 
+        title: tender.title,
+        organization: tender.organization 
+      });
+
+      // 1. Get tender details with documents
+      const detailResponse = await fetch(`/api/ihale/detail/${tender.id}`);
+      const tenderDetail = await detailResponse.json();
+
+      if (!detailResponse.ok || !tenderDetail) {
+        throw new Error('İhale detayları alınamadı');
+      }
+
+      updateToast(loadingId, {
+        description: 'Dökümanlar indiriliyor...',
+        progress: 20
+      });
+
+      const allFiles: File[] = [];
+
+      // 2. Download all documents
+      if (tenderDetail.documents && tenderDetail.documents.length > 0) {
+        let docCount = 0;
+        for (const doc of tenderDetail.documents) {
+          try {
+            const proxyUrl = `/api/ihale/proxy?url=${encodeURIComponent(doc.url)}&worker=true&inline=true&binary=true`;
+            const response = await fetch(proxyUrl);
+            
+            if (response.ok) {
+              const blob = await response.blob();
+              const filename = doc.filename || doc.name || doc.url.split('/').pop() || `document_${docCount + 1}.pdf`;
+              const file = new File([blob], filename, { type: blob.type });
+              allFiles.push(file);
+              docCount++;
+
+              updateToast(loadingId, {
+                description: `${filename} indirildi (${docCount}/${tenderDetail.documents.length})`,
+                progress: 20 + (docCount / tenderDetail.documents.length) * 50
+              });
+            }
+          } catch (docError) {
+            console.warn('Döküman indirilemedi:', doc.url, docError);
+          }
+        }
+      }
+
+      // 3. Add format exports (CSV, TXT, JSON)
+      updateToast(loadingId, {
+        description: 'Format dosyaları oluşturuluyor...',
+        progress: 70
+      });
+
+      const formats = ['csv', 'txt', 'json'];
+      for (const format of formats) {
+        try {
+          const exportResponse = await fetch(`/api/ihale/export-csv/${tender.id}?format=${format}`);
+          
+          if (exportResponse.ok) {
+            const blob = await exportResponse.blob();
+            const filename = `ihale_${tender.id}.${format}`;
+            const file = new File([blob], filename, { 
+              type: format === 'csv' ? 'text/csv' : 
+                    format === 'json' ? 'application/json' : 
+                    'text/plain' 
+            });
+            allFiles.push(file);
+          }
+        } catch (formatError) {
+          console.warn(`${format.toUpperCase()} export başarısız:`, formatError);
+        }
+      }
+
+      updateToast(loadingId, {
+        description: 'Dosyalar işleniyor...',
+        progress: 90
+      });
+
+      // 4. Check for duplicates and add only new files
+      if (allFiles.length > 0) {
+        // Filter out duplicates based on filename and size
+        const existingFiles = new Set(files.map(f => `${f.file.name}_${f.file.size}`));
+        const newFiles = allFiles.filter(file => {
+          const fileKey = `${file.name}_${file.size}`;
+          return !existingFiles.has(fileKey);
+        });
+
+        if (newFiles.length === 0) {
+          updateToast(loadingId, {
+            type: 'warning',
+            title: '⚠️ Dosyalar zaten mevcut',
+            description: 'Bu ihalenin tüm dosyaları zaten ekli',
+            progress: undefined,
+            persistent: false
+          });
+          return;
+        }
+
+        if (newFiles.length < allFiles.length) {
+          const duplicateCount = allFiles.length - newFiles.length;
+          warning(
+            `${duplicateCount} dosya zaten mevcut`,
+            `${newFiles.length} yeni dosya eklendi, ${duplicateCount} dosya atlandı`
+          );
+        }
+
+        await onDrop(newFiles);
+        
+        updateToast(loadingId, {
+          type: 'success',
+          title: '✅ İhale dosyaları eklendi!',
+          description: `${newFiles.length} dosya başarıyla eklendi`,
+          progress: undefined,
+          persistent: false
+        });
+
+        // Auto-remove success toast after 3 seconds
+        setTimeout(() => {
+          removeToast(loadingId);
+        }, 3000);
+
+        success(
+          `${tender.title} eklendi`,
+          `${newFiles.length} dosya (dökümanlar + formatlar) başarıyla eklendi`
+        );
+      } else {
+        throw new Error('Hiç dosya indirilemedi');
+      }
+
+    } catch (error) {
+      console.error('Tender selection error:', error);
+      updateToast(loadingId, {
+        type: 'error',
+        title: '❌ İhale dosyaları eklenemedi',
+        description: error instanceof Error ? error.message : 'Bilinmeyen hata',
+        progress: undefined,
+        persistent: false
+      });
+    } finally {
+      setIsLoadingTender(false);
+    }
+  };
+
+  // ============================================
   // Deep Analysis Functions
   // ============================================
 
@@ -464,8 +664,22 @@ export function UltimateFileUploader() {
   const mergeDataPools = (): DataPool => {
     const completedWithDataPool = completedFiles.filter(f => f.dataPool);
 
+    // Debug PDF files in merge
+    const pdfFiles = completedFiles.filter(f =>
+      f.file.type === 'application/pdf' || f.file.name.endsWith('.pdf')
+    );
+    if (pdfFiles.length > 0) {
+      console.log('[PDF Debug - Merge] PDF files status:', pdfFiles.map(f => ({
+        name: f.file.name,
+        status: f.status,
+        hasDataPool: !!f.dataPool,
+        textBlocks: (f.dataPool as any)?.textBlocks?.length || 0,
+        rawTextLength: (f.dataPool as any)?.rawText?.length || 0
+      })));
+    }
+
     if (completedWithDataPool.length === 0) {
-      AILogger.error('No files with DataPool', { 
+      AILogger.error('No files with DataPool', {
         completedFiles: completedFiles.length,
         filesStatus: completedFiles.map(f => ({ name: f.file.name, status: f.status, hasDataPool: !!f.dataPool }))
       });
@@ -484,20 +698,21 @@ export function UltimateFileUploader() {
       entities: [],
       rawText: '',
       metadata: {
-        total_files: completedWithDataPool.length,
-        total_words: 0,
         total_pages: 0,
-        creation_date: new Date().toISOString(),
-        file_types: [],
+        total_words: 0,
+        extraction_time_ms: 0,
         ocr_used: false,
+        languages_detected: ['tr'],
+        warnings: [],
       },
+      provenance: new Map(),
     };
 
     // Her dosyanın DataPool'unu birleştir
     completedWithDataPool.forEach((fileItem, index) => {
       const pool = fileItem.dataPool as DataPool | null;
       if (!pool) {
-        AILogger.warn('DataPool missing for file - skipping', { fileName: fileItem.file.name });
+        AILogger.warn('DataPool missing for file - skipping', { filename: fileItem.file.name });
         return;
       }
 
@@ -523,7 +738,7 @@ export function UltimateFileUploader() {
         mergedPool.tables.push(...pool.tables.map(table => ({
           ...table,
           source_file: fileItem.file.name,
-          source_document: fileItem.smartDetection?.documentType || fileItem.category || 'Diğer',
+          source_document: fileItem.smartDetection?.documentType || 'Diğer',
         })));
       }
 
@@ -559,11 +774,6 @@ export function UltimateFileUploader() {
       mergedPool.metadata.total_words += pool.metadata?.total_words || 0;
       mergedPool.metadata.total_pages += pool.metadata?.total_pages || 0;
       mergedPool.metadata.ocr_used = mergedPool.metadata.ocr_used || pool.metadata?.ocr_used || false;
-
-      const fileType = fileItem.smartDetection?.documentType || fileItem.category || fileItem.file.type;
-      if (!mergedPool.metadata.file_types.includes(fileType)) {
-        mergedPool.metadata.file_types.push(fileType);
-      }
     });
 
     AILogger.success('DataPools merged', {
@@ -627,7 +837,7 @@ export function UltimateFileUploader() {
       }
 
       // Store'a kaydet
-      setDataPool(mergedDataPool);
+      setDataPool(analysisId, mergedDataPool);
 
       success('DataPool birleştirildi', `${mergedDataPool.documents.length} doküman, ${mergedDataPool.tables.length} tablo`);
 
@@ -643,7 +853,7 @@ export function UltimateFileUploader() {
         son_basvuru: extractDeadline(mergedDataPool),
         files: completedFiles.map(f => ({
           name: f.file.name,
-          type: f.smartDetection?.documentType || f.category || 'Diğer',
+          type: f.smartDetection?.documentType || 'Diğer',
           size: f.file.size,
         })),
       };
@@ -679,15 +889,29 @@ export function UltimateFileUploader() {
       });
 
       // 4. Store'a kaydet (pending status)
-      setCurrentAnalysis({
+      const { addAnalysis } = useAnalysisStore.getState();
+      addAnalysis({
         id: analysisId,
         dataPool: mergedDataPool,
-        deepAnalysis: null,
-        contextualAnalysis: null,
-        marketAnalysis: null,
-        createdAt: new Date(),
+        deep_analysis: undefined,
+        contextual_analysis: undefined,
+        market_analysis: undefined,
         status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        inputFiles: completedFiles.map(f => ({
+          name: f.file.name,
+          size: f.file.size
+        })),
+        stats: {
+          documents: mergedDataPool.documents.length,
+          tables: mergedDataPool.tables.length,
+          textBlocks: mergedDataPool.textBlocks.length,
+          entities: mergedDataPool.entities.length,
+          amounts: mergedDataPool.amounts.length
+        }
       });
+      setCurrentAnalysis(analysisId);
 
       removeToast(loadingId);
       success(
@@ -695,7 +919,7 @@ export function UltimateFileUploader() {
         'Arka planda devam ediyor. Sonuç sayfasında takip edebilirsiniz.'
       );
 
-      AILogger.sessionEnd(analysisId, 'pending');
+      AILogger.sessionEnd(analysisId, 'completed');
 
       // 5. Hemen sonuç sayfasına yönlendir (polling yapacak)
       router.push(`/analysis/${analysisId}`);
@@ -736,10 +960,10 @@ export function UltimateFileUploader() {
       return 'Belediye';
     }
 
-    // Entities'ten ORGANIZATION tipli varlıkları kontrol et
-    const orgEntities = pool.entities.filter(e => e.type === 'ORGANIZATION');
+    // Entities'ten kurum tipli varlıkları kontrol et
+    const orgEntities = pool.entities.filter(e => e.kind === 'kurum');
     if (orgEntities.length > 0) {
-      return orgEntities[0].text;
+      return orgEntities[0].value;
     }
 
     return 'Tespit Edilemedi';
@@ -837,8 +1061,8 @@ export function UltimateFileUploader() {
     
     if (typeof firstDate === 'string') {
       return firstDate;
-    } else if (firstDate && typeof firstDate === 'object' && 'formatted' in firstDate) {
-      return firstDate.formatted || null;
+    } else if (firstDate && typeof firstDate === 'object' && 'value' in firstDate) {
+      return firstDate.value || null;
     }
     
     return null;
@@ -856,7 +1080,7 @@ export function UltimateFileUploader() {
 
     // Dates'ten en son tarihi al
     if (pool.dates.length > 0) {
-      return pool.dates[pool.dates.length - 1].formatted || null;
+      return pool.dates[pool.dates.length - 1].original || null;
     }
 
     return null;
@@ -867,7 +1091,7 @@ export function UltimateFileUploader() {
     const loadingToastId = loading('Dosyalar analiz ediliyor...', 'AI ile otomatik tanıma yapılıyor');
 
     // ✅ STEP 1: Extract ZIP files first
-    let allFiles: File[] = [];
+    const allFiles: File[] = [];
     for (const file of acceptedFiles) {
       if (file.type === 'application/zip' || file.type === 'application/x-zip-compressed' || file.name.toLowerCase().endsWith('.zip')) {
         // ZIP dosyası - içindekileri çıkar
@@ -963,8 +1187,6 @@ export function UltimateFileUploader() {
         preview,
         smartDetection,
         isLargeFile,
-        tags: smartDetection?.autoTags || [],
-        category: smartDetection?.suggestedCategory || 'Genel',
         folderName
       };
     }));
@@ -974,10 +1196,19 @@ export function UltimateFileUploader() {
     
     // AI detection info will be shown in file list instead of toast
     
-    // Auto-start processing
-    newFiles.forEach(file => {
-      setTimeout(() => processFile(file.id), 100);
-    });
+    // Auto-start processing with queue system (max 3 parallel)
+    const BATCH_SIZE = 3;
+    const DELAY_BETWEEN_BATCHES = 500; // ms
+    
+    // Process files in batches to prevent server overload
+    for (let i = 0; i < newFiles.length; i += BATCH_SIZE) {
+      const batch = newFiles.slice(i, i + BATCH_SIZE);
+      const batchDelay = i > 0 ? (i / BATCH_SIZE) * DELAY_BETWEEN_BATCHES : 100;
+      
+      batch.forEach((file, index) => {
+        setTimeout(() => processFile(file.id), batchDelay + (index * 100));
+      });
+    }
   }, [fileHashes, loading, processFile, removeToast, warning]);
 
   // Load documents from ihale detail page (AFTER onDrop is defined)
@@ -985,18 +1216,59 @@ export function UltimateFileUploader() {
     const loadDocumentsFromStorage = async () => {
       try {
         // Dynamic import to avoid SSR issues
-        const { storage } = await import('@/lib/storage/storage-manager');
-        const selectedData = storage.getTemp('ihaleSelectedDocs');
+        const { storage, StorageManager } = await import('@/lib/storage/storage-manager');
+
+        // Check storage stats first
+        const stats = StorageManager.getStats();
+        console.log('📊 [DEBUG] Storage stats:', stats);
+
+        const selectedData = storage.getTemp('ihaleSelectedDocs') as any;
+
+        console.log('🔍 [DEBUG] Checking storage for ihaleSelectedDocs:', {
+          found: !!selectedData,
+          hasDocuments: selectedData?.documents?.length || 0,
+          hasFormats: selectedData?.formats?.length || 0,
+          tenderId: selectedData?.tenderId,
+          timestamp: new Date().toISOString()
+        });
 
         if (!selectedData || (!selectedData.documents?.length && !selectedData.formats?.length)) {
+          console.warn('⚠️ [DEBUG] No data in storage or empty arrays, skipping load', {
+            selectedData,
+            storageKeys: Object.keys(localStorage).filter(k => k.includes('ihale'))
+          });
           return;
         }
 
-        console.log('📦 Loading documents from ihale detail:', selectedData);
-        console.log('📋 Document URLs:', selectedData.documents);
+        console.log('📦 [DEBUG] Loading documents from ihale detail:', {
+          tenderId: selectedData.tenderId,
+          documentsCount: selectedData.documents?.length || 0,
+          formatsCount: selectedData.formats?.length || 0
+        });
+        console.log('📋 [DEBUG] Document URLs:', selectedData.documents);
+        console.log('📊 [DEBUG] Formats:', selectedData.formats);
 
         // Clear storage after reading
         storage.removeTemp('ihaleSelectedDocs');
+        console.log('🗑️ [DEBUG] Cleared ihaleSelectedDocs from storage');
+
+        // 🎯 Calculate total files to download
+        const totalFiles = selectedData.documents?.length || 0;
+        let completedFiles = 0;
+
+        // Set loading state for full screen progress
+        setIsLoadingFromDetail(true);
+        setLoadingProgress({
+          current: 0,
+          total: totalFiles,
+          message: '📦 İhale dosyaları indiriliyor...'
+        });
+
+        // 🎯 Create single progress toast
+        console.log('🎯 [DEBUG] Creating progress toast for', totalFiles, 'files');
+        let progressToastId: string | null = null;
+        progressToastId = loading('📦 Dosyalar getiriliyor...', `0/${totalFiles} dosya hazır`);
+        console.log('✅ [DEBUG] Progress toast created with ID:', progressToastId);
 
         const downloadedFiles: File[] = [];
 
@@ -1004,8 +1276,44 @@ export function UltimateFileUploader() {
         if (selectedData.documents && selectedData.documents.length > 0) {
           for (const docUrl of selectedData.documents) {
             try {
-              info('Döküman indiriliyor...');
-
+              // Check if this is a format export (format:csv:tenderId)
+              if (docUrl.startsWith('format:')) {
+                const [, formatType, tenderId] = docUrl.split(':');
+                console.log(`📊 Fetching ${formatType.toUpperCase()} export for tender ${tenderId}`);
+                
+                const exportUrl = `/api/ihale/export-csv/${tenderId}?format=${formatType}`;
+                const response = await fetch(exportUrl);
+                
+                if (!response.ok) {
+                  throw new Error(`${formatType.toUpperCase()} export failed: ${response.status}`);
+                }
+                
+                const blob = await response.blob();
+                const filename = `ihale_${tenderId}.${formatType}`;
+                const file = new File([blob], filename, { 
+                  type: formatType === 'csv' ? 'text/csv' : 
+                        formatType === 'json' ? 'application/json' : 
+                        'text/plain' 
+                });
+                
+                downloadedFiles.push(file);
+                completedFiles++;
+                
+                updateToast(progressToastId, {
+                  description: `${completedFiles}/${totalFiles} dosya hazır`,
+                  progress: Math.round((completedFiles / totalFiles) * 100)
+                });
+                
+                // Update full screen progress
+                setLoadingProgress({
+                  current: completedFiles,
+                  total: totalFiles,
+                  message: `📊 ${filename} indirildi`
+                });
+                
+                continue; // Skip to next document
+              }
+              
               // Check if this is a ZIP-extracted document (format: zip:PROXY_URL#FILENAME)
               if (docUrl.startsWith('zip:')) {
                 // Extract ZIP URL and filename from special format
@@ -1095,7 +1403,19 @@ export function UltimateFileUploader() {
                 const file = new File([fileBlob], filename, { type: mimeType });
                 downloadedFiles.push(file);
 
-                success(`${filename} eklendi`);
+                // Update progress
+                completedFiles++;
+                updateToast(progressToastId, {
+                  description: `${completedFiles}/${totalFiles} dosya hazır`,
+                  progress: Math.round((completedFiles / totalFiles) * 100)
+                });
+                
+                // Update full screen progress
+                setLoadingProgress({
+                  current: completedFiles,
+                  total: totalFiles,
+                  message: `📄 ${filename} indirildi`
+                });
               } else {
                 // Regular document URL
                 // Fetch the document
@@ -1132,15 +1452,52 @@ export function UltimateFileUploader() {
                   }
                 }
 
-                // Create File object
-                const file = new File([blob], filename, { type: blob.type });
+                // Create File object with explicit MIME type
+                // 🔥 CRITICAL: Infer MIME type from filename extension if blob.type is empty
+                let mimeType = blob.type;
+                if (!mimeType || mimeType === 'application/octet-stream') {
+                  if (filename.toLowerCase().endsWith('.zip')) {
+                    mimeType = 'application/zip';
+                  } else if (filename.toLowerCase().endsWith('.pdf')) {
+                    mimeType = 'application/pdf';
+                  } else if (filename.toLowerCase().endsWith('.docx')) {
+                    mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                  } else if (filename.toLowerCase().endsWith('.doc')) {
+                    mimeType = 'application/msword';
+                  } else if (filename.toLowerCase().endsWith('.xlsx')) {
+                    mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                  } else if (filename.toLowerCase().endsWith('.xls')) {
+                    mimeType = 'application/vnd.ms-excel';
+                  } else if (filename.toLowerCase().endsWith('.txt')) {
+                    mimeType = 'text/plain';
+                  } else if (filename.toLowerCase().endsWith('.csv')) {
+                    mimeType = 'text/csv';
+                  } else if (filename.toLowerCase().endsWith('.json')) {
+                    mimeType = 'application/json';
+                  }
+                }
+
+                const file = new File([blob], filename, { type: mimeType });
+                console.log(`📄 Created File: ${filename} (type: ${mimeType})`);
                 downloadedFiles.push(file);
 
-                success(`${filename} eklendi`);
+                // Update progress
+                completedFiles++;
+                updateToast(progressToastId, {
+                  description: `${completedFiles}/${totalFiles} dosya hazır`,
+                  progress: Math.round((completedFiles / totalFiles) * 100)
+                });
+                
+                // Update full screen progress
+                setLoadingProgress({
+                  current: completedFiles,
+                  total: totalFiles,
+                  message: `📄 ${filename} indirildi`
+                });
               }
             } catch (err) {
               console.error('Failed to load document:', err);
-              error(`Döküman yüklenemedi`, err instanceof Error ? err.message : 'Bilinmeyen hata');
+              // Don't show individual error toasts, will be handled in final catch
             }
           }
         }
@@ -1149,13 +1506,12 @@ export function UltimateFileUploader() {
         if (selectedData.formats && selectedData.formats.length > 0 && selectedData.tenderId) {
           for (const format of selectedData.formats) {
             try {
-              info(`${format.toUpperCase()} formatı indiriliyor...`);
-
-              const exportUrl = `/api/ihale/export-${format}/${selectedData.tenderId}?format=${format}`;
+              const exportUrl = `/api/ihale/export-csv/${selectedData.tenderId}?format=${format}`;
               const response = await fetch(exportUrl);
 
               if (!response.ok) {
-                throw new Error(`Failed to export ${format}: ${response.statusText}`);
+                console.error(`❌ ${format.toUpperCase()} export failed: ${response.status} ${response.statusText}`);
+                continue;
               }
 
               const blob = await response.blob();
@@ -1163,27 +1519,117 @@ export function UltimateFileUploader() {
               const file = new File([blob], filename, { type: blob.type });
 
               downloadedFiles.push(file);
-              success(`${filename} eklendi`);
+              
+              // Update progress
+              completedFiles++;
+              updateToast(progressToastId, {
+                description: `${completedFiles}/${totalFiles} dosya hazır`,
+                progress: Math.round((completedFiles / totalFiles) * 100)
+              });
             } catch (err) {
-              console.error(`Failed to export ${format}:`, err);
-              error(`${format.toUpperCase()} formatı yüklenemedi`, err instanceof Error ? err.message : 'Bilinmeyen hata');
+              console.error(`❌ ${format.toUpperCase()} export error:`, err);
+              // Don't show individual error toasts, will be handled in final catch
             }
           }
         }
 
-        // Process all downloaded files through onDrop to trigger AI detection and auto-processing
+        // Process all downloaded files - extract ZIPs and add to file list
         if (downloadedFiles.length > 0) {
-          info('Dosyalar işleniyor...', `${downloadedFiles.length} dosya hazırlanıyor`);
-          // Use the existing onDrop callback which handles AI detection and auto-processing
-          await onDrop(downloadedFiles);
+          // Update progress toast for processing phase
+          updateToast(progressToastId, {
+            title: '📦 Dosyalar işleniyor...',
+            description: 'ZIP dosyaları açılıyor...',
+            progress: 100
+          });
+          
+          // ✅ STEP 1: Extract ZIP files
+          const processedFiles: File[] = [];
+          let totalExtracted = 0;
+          
+          for (const file of downloadedFiles) {
+            // 🔥 Güçlendirilmiş ZIP detection: type + extension + octet-stream check
+            const isZip = 
+              file.type === 'application/zip' || 
+              file.type === 'application/x-zip-compressed' ||
+              file.type === 'application/octet-stream' && file.name.toLowerCase().endsWith('.zip') ||
+              file.name.toLowerCase().endsWith('.zip');
+            
+            if (isZip) {
+              // ZIP dosyası - içindekileri çıkar
+              console.log(`📦 ZIP dosyası tespit edildi: ${file.name} (type: ${file.type})`);
+
+              const { ZipExtractor } = await import('@/lib/utils/zip-extractor');
+              const result = await ZipExtractor.extract(file);
+
+              if (result.success && result.files.length > 0) {
+                // Convert extracted files to File objects
+                const extractedFiles = result.files.map(extracted => {
+                  const cleanName = extracted.name.split('/').pop() || extracted.name;
+                  const folderPath = extracted.name.includes('/')
+                    ? extracted.name.split('/').slice(0, -1).join('/')
+                    : undefined;
+                  const file = ZipExtractor.arrayBufferToFile(extracted.content, cleanName, extracted.type);
+                  if (folderPath) {
+                    folderMapRef.current.set(file, folderPath);
+                  }
+                  return file;
+                });
+                processedFiles.push(...extractedFiles);
+                totalExtracted += result.files.length;
+                console.log(`✅ ${file.name} açıldı: ${result.files.length} dosya çıkarıldı`);
+              } else {
+                console.error(`❌ ${file.name} açılamadı:`, result.error);
+              }
+            } else {
+              // Normal dosya
+              processedFiles.push(file);
+            }
+          }
+
+          // ✅ STEP 2: Add to file list (call onDrop with processed files)
+          if (processedFiles.length > 0) {
+            await onDrop(processedFiles);
+          }
+
+          // 🎉 Final success toast
+          updateToast(progressToastId, {
+            type: 'success',
+            title: '✅ Tüm dosyalar hazır!',
+            description: `${totalFiles} dosya yüklendi${totalExtracted > 0 ? `, ${totalExtracted} dosya ZIP'den çıkarıldı` : ''}`,
+            progress: undefined,
+            persistent: false
+          });
+
+          // Auto-remove success toast after 3 seconds
+          setTimeout(() => {
+            removeToast(progressToastId);
+          }, 3000);
         }
+        
+        // Hide loading overlay
+        setIsLoadingFromDetail(false);
       } catch (err) {
         console.error('Error loading documents from storage:', err);
+        
+        // Hide loading overlay on error
+        setIsLoadingFromDetail(false);
+        // Update toast to error state
+        // @ts-ignore - progressToastId may be out of scope
+        if (typeof progressToastId !== 'undefined' && progressToastId) {
+          // @ts-ignore
+          updateToast(progressToastId, {
+            type: 'error',
+            title: '❌ Yükleme hatası',
+            description: err instanceof Error ? err.message : 'Bilinmeyen hata',
+            progress: undefined,
+            persistent: false
+          });
+        }
       }
     };
 
     loadDocumentsFromStorage();
-  }, [onDrop, info, success, error]); // onDrop is now defined above
+  }, [onDrop, loading, updateToast, removeToast]); // Dependencies for useEffect
 
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,
@@ -1210,8 +1656,7 @@ export function UltimateFileUploader() {
     // Filter
     if (searchTerm) {
       processed = processed.filter(f => 
-        f.file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        f.file.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
@@ -1251,26 +1696,6 @@ export function UltimateFileUploader() {
         selectedIds.forEach(id => removeFile(id));
         success(`${selectedIds.length} dosya silindi`);
         break;
-      case 'tag':
-        if (value) {
-          setFiles(prev => prev.map(f => 
-            selectedIds.includes(f.id) 
-              ? { ...f, tags: [...(f.tags || []), value] }
-              : f
-          ));
-          success(`${selectedIds.length} dosyaya tag eklendi`, value);
-        }
-        break;
-      case 'category':
-        if (value) {
-          setFiles(prev => prev.map(f => 
-            selectedIds.includes(f.id) 
-              ? { ...f, category: value }
-              : f
-          ));
-          success(`${selectedIds.length} dosya kategorize edildi`, value);
-        }
-        break;
     }
     
     setSelectedFiles(new Set());
@@ -1300,9 +1725,9 @@ export function UltimateFileUploader() {
 
     folderFiles.forEach(fileItem => {
       const detection = fileItem.smartDetection;
-      const fileName = fileItem.file.name.toLowerCase();
+      const filename = fileItem.file.name.toLowerCase();
       const tags = (detection?.autoTags || []).map(tag => tag.toLowerCase());
-      const combined = [fileName, ...tags].join(' ');
+      const combined = [filename, ...tags].join(' ');
 
       if (/(zeyil|zeyilname)/.test(combined)) addScore('Zeyilname', 4);
       if (/(ilan|duyuru)/.test(combined)) addScore('İhale İlanı', 3);
@@ -1379,9 +1804,94 @@ export function UltimateFileUploader() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 p-4 sm:p-6 lg:p-8">
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-      <div className="max-w-7xl mx-auto">
+    <>
+      {/* Loading Overlay for Detail Page Files */}
+      {isLoadingFromDetail && (
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm">
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 rounded-2xl p-8 max-w-md w-full border border-purple-500/20 shadow-2xl">
+            <div className="text-center">
+              {/* Animated Logo/Icon */}
+              <div className="mb-6">
+                <div className="w-24 h-24 mx-auto relative">
+                  <motion.div
+                    className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 opacity-20"
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      opacity: [0.2, 0.4, 0.2],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  />
+                  <motion.div
+                    className="absolute inset-2 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 opacity-40"
+                    animate={{
+                      scale: [1, 1.1, 1],
+                      opacity: [0.4, 0.6, 0.4],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: 0.3
+                    }}
+                  />
+                  <div className="absolute inset-4 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
+                    <Loader2 className="w-10 h-10 text-white animate-spin" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Title */}
+              <h2 className="text-2xl font-bold text-white mb-2">
+                İhale Dosyaları Yükleniyor
+              </h2>
+
+              {/* Message */}
+              <p className="text-sm text-slate-400 mb-6">
+                {loadingProgress.message || 'Dosyalar hazırlanıyor...'}
+              </p>
+
+              {/* Progress Bar */}
+              <div className="mb-4">
+                <div className="flex justify-between text-xs text-slate-400 mb-2">
+                  <span>İlerleme</span>
+                  <span>{loadingProgress.current}/{loadingProgress.total} dosya</span>
+                </div>
+                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-purple-600 to-blue-600"
+                    initial={{ width: 0 }}
+                    animate={{ 
+                      width: loadingProgress.total > 0 
+                        ? `${(loadingProgress.current / loadingProgress.total) * 100}%` 
+                        : '5%' 
+                    }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+              </div>
+
+              {/* Percentage */}
+              <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+                {loadingProgress.total > 0 
+                  ? Math.round((loadingProgress.current / loadingProgress.total) * 100) 
+                  : 0}%
+              </div>
+
+              {/* Info Text */}
+              <p className="text-xs text-slate-500 mt-4">
+                Lütfen bekleyin, bu işlem birkaç dakika sürebilir...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="w-full min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto relative">
         
         {/* Header */}
         <motion.div 
@@ -1462,96 +1972,110 @@ export function UltimateFileUploader() {
               >
                 Sil
               </button>
-              <button
-                onClick={() => {
-                  const tag = prompt('Tag ekle:');
-                  if (tag) applyBulkAction('tag', tag);
-                }}
-                className="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg text-sm"
-              >
-                Tag Ekle
-              </button>
-              <button
-                onClick={() => {
-                  const category = prompt('Kategori seç:');
-                  if (category) applyBulkAction('category', category);
-                }}
-                className="px-3 py-1 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg text-sm"
-              >
-                Kategorize Et
-              </button>
             </div>
           )}
 
         </motion.div>
 
-        {/* Drop Zone - Daha küçük ve kompakt */}
-        <div
-          {...getRootProps()}
-          className={`
-            relative mb-4 rounded-2xl border-2 border-dashed p-4 sm:p-6
-            transition-all duration-500 cursor-pointer overflow-hidden
-            ${isDragging 
-              ? 'border-purple-500 bg-purple-950/30 shadow-xl shadow-purple-500/20 scale-[1.01]' 
-              : 'border-slate-700 bg-slate-900/30 hover:border-purple-600 hover:bg-purple-950/20'
-            }
-          `}
-        >
-          <input {...getInputProps()} ref={fileInputRef} />
-          
-          <div className="relative z-10 text-center">
+        {/* İhale Selector Panel */}
+        <IhaleSelector 
+          onTenderSelect={handleTenderSelect}
+          disabled={isLoadingTender || isLoadingFromDetail}
+        />
+
+        {/* Collapsible Manual File Upload */}
+        <div className="mb-4">
+          {/* Minimal Header */}
+          <div
+            onClick={() => setIsDropzoneExpanded(!isDropzoneExpanded)}
+            className="flex items-center justify-between p-3 bg-slate-800/30 hover:bg-slate-700/40 border border-slate-700/30 rounded-lg cursor-pointer transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <Upload className="w-4 h-4 text-slate-400 group-hover:text-purple-400 transition-colors" />
+              <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
+                Manuel Dosya Ekle
+              </span>
+              <span className="text-xs text-slate-500">(isteğe bağlı)</span>
+            </div>
             <motion.div
-              animate={{ 
-                y: isDragging ? -5 : 0,
-                rotate: isDragging ? [0, -3, 3, 0] : 0
-              }}
-              className="inline-flex p-3 bg-linear-to-br from-purple-600/20 to-blue-600/20 rounded-2xl mb-3"
+              animate={{ rotate: isDropzoneExpanded ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
             >
-              <Upload className="w-10 h-10 text-purple-400" />
+              <ChevronDown className="w-4 h-4 text-slate-400" />
             </motion.div>
-            
-            <h3 className="text-lg font-bold text-white mb-1">
-              {isDragging ? '📥 Dosyaları Bırakın' : 'Dosyalarınızı Yükleyin'}
-            </h3>
-            <p className="text-slate-400 text-sm mb-3">
-              Sürükle-bırak veya tıklayarak dosya seçin
-            </p>
-            
-            {/* Action Buttons - Daha küçük */}
-            <div className="flex justify-center gap-2 mb-3">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleFolderSelect();
-                }}
-                className="px-3 py-1.5 text-sm bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded-lg text-purple-400 transition-all flex items-center gap-1.5"
-              >
-                <Folder className="w-3.5 h-3.5" />
-                Klasör Yükle
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  fileInputRef.current?.click();
-                }}
-                className="px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg text-blue-400 transition-all flex items-center gap-1.5"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                Dosya Seç
-              </button>
-            </div>
-            
-            {/* Supported Formats - Daha küçük */}
-            <div className="flex flex-wrap justify-center gap-1">
-              {Object.entries(FILE_TYPES).slice(0, 5).map(([mime, data]) => (
-                <span key={mime} className={`px-2 py-0.5 bg-linear-to-r ${data.gradient} bg-opacity-10 rounded-full text-[10px] text-white/80 border border-white/10`}>
-                  {data.icon} {data.label}
-                </span>
-              ))}
-            </div>
           </div>
+
+          {/* Expandable Dropzone */}
+          <AnimatePresence>
+            {isDropzoneExpanded && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden mt-2"
+              >
+                <div
+                  {...getRootProps()}
+                  className={`
+                    relative rounded-xl border-2 border-dashed p-6
+                    transition-all duration-300 cursor-pointer
+                    ${isDragging 
+                      ? 'border-purple-500 bg-purple-950/30 shadow-lg' 
+                      : 'border-slate-700/50 bg-slate-900/20 hover:border-purple-600/50'
+                    }
+                  `}
+                >
+                  <input {...getInputProps()} ref={fileInputRef} />
+                  
+                  <div className="text-center">
+                    <motion.div
+                      animate={{ 
+                        y: isDragging ? -5 : 0,
+                        scale: isDragging ? 1.1 : 1
+                      }}
+                      className="inline-flex p-2 bg-purple-600/20 rounded-xl mb-3"
+                    >
+                      <Upload className="w-8 h-8 text-purple-400" />
+                    </motion.div>
+                    
+                    <h4 className="text-base font-semibold text-white mb-2">
+                      {isDragging ? '📥 Dosyaları Bırakın' : 'Dosya Yükle'}
+                    </h4>
+                    
+                    <div className="flex justify-center gap-2 mb-3">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                        className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded-lg text-purple-400 transition-all flex items-center gap-2"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Dosya Seç
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleFolderSelect();
+                        }}
+                        className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg text-blue-400 transition-all flex items-center gap-2"
+                      >
+                        <Folder className="w-4 h-4" />
+                        Klasör
+                      </button>
+                    </div>
+                    
+                    <div className="text-xs text-slate-500">
+                      PDF, DOCX, XLSX, CSV, TXT desteklenir
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Folder summaries */}
@@ -1602,61 +2126,7 @@ export function UltimateFileUploader() {
               
               {/* List Items - Grouped by Category */}
               <div className="space-y-4">
-              {(() => {
-                // Group files by document type
-                const grouped = processedFiles.reduce((acc, fileItem) => {
-                  const category = fileItem.smartDetection?.documentType || 'Diğer';
-                  if (!acc[category]) acc[category] = [];
-                  acc[category].push(fileItem);
-                  return acc;
-                }, {} as Record<string, typeof processedFiles>);
-
-                // Priority order for categories
-                const categoryOrder = ['Zeyilname', 'İhale İlanı', 'İdari Şartname', 'Teknik Şartname', 
-                                     'Sözleşme Taslağı', 'Fatura', 'Menü', 'Rapor', 'Teklif', 'Diğer'];
-                
-                return categoryOrder.map(category => {
-                  const categoryFiles = grouped[category];
-                  if (!categoryFiles || categoryFiles.length === 0) return null;
-                  
-                  const getCategoryColor = (cat: string) => {
-                    const colors: Record<string, string> = {
-                      'Zeyilname': 'bg-yellow-500 text-black',
-                      'İhale İlanı': 'bg-red-500 text-white',
-                      'İdari Şartname': 'bg-blue-500 text-white',
-                      'Teknik Şartname': 'bg-purple-500 text-white',
-                      'Sözleşme Taslağı': 'bg-green-500 text-white',
-                      'Fatura': 'bg-orange-500 text-white',
-                      'Menü': 'bg-pink-500 text-white',
-                      'Rapor': 'bg-indigo-500 text-white',
-                      'Teklif': 'bg-teal-500 text-white',
-                      'Diğer': 'bg-slate-500 text-white'
-                    };
-                    return colors[cat] || 'bg-slate-500 text-white';
-                  };
-                  
-                  return (
-                    <div key={category} className="space-y-2">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className={`px-3 py-1 rounded-lg text-sm font-bold ${getCategoryColor(category)}`}>
-                          {category}
-                        </span>
-                        <span className="text-sm text-slate-400 font-medium">({categoryFiles.length})</span>
-                        {category === 'Zeyilname' && (
-                          <span className="text-sm text-yellow-400 font-semibold">⚠️ Öncelikli</span>
-                        )}
-                      </div>
-                      
-                      {categoryFiles
-                        .sort((a, b) => {
-                          // Zeyilname files sorted by confidence
-                          if (category === 'Zeyilname') {
-                            return (b.smartDetection?.confidence || 0) - (a.smartDetection?.confidence || 0);
-                          }
-                          // Others sorted by name
-                          return a.file.name.localeCompare(b.file.name);
-                        })
-                        .map((fileItem) => {
+              {processedFiles.map((fileItem) => {
                 const fileType = getFileType(fileItem.file);
                 const isSelected = selectedFiles.has(fileItem.id);
                 const isProcessing = fileItem.status !== 'idle' && fileItem.status !== 'complete' && fileItem.status !== 'error';
@@ -1700,13 +2170,26 @@ export function UltimateFileUploader() {
                       }
                     `}
                   >
-                    {/* Progress Background */}
+                    {/* Progress Background - Daha şeffaf */}
                     {isProcessing && (
                       <motion.div
-                        className="absolute inset-0 bg-linear-to-r from-purple-600/5 to-blue-600/5"
+                        className="absolute inset-0 bg-gradient-to-r from-purple-600/3 to-blue-600/3"
                         initial={{ width: 0 }}
-                        animate={{ width: `${fileItem.progress}%` }}
+                        animate={{ width: `${Math.max(fileItem.progress || 0, 5)}%` }}
+                        transition={{ duration: 0.3 }}
                       />
+                    )}
+                    
+                    {/* Progress Bar Line - Daha şeffaf */}
+                    {isProcessing && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-800/30">
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-purple-500/40 to-blue-500/40"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.max(fileItem.progress || 0, 5)}%` }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      </div>
                     )}
                     
                     <div className="relative z-10 px-4 py-3">
@@ -1846,12 +2329,15 @@ export function UltimateFileUploader() {
                           
                           {/* Status */}
                           <div className="flex items-center gap-4">
-                            {/* Processing Status */}
+                            {/* Processing Status with Progress */}
                             {isProcessing && (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-2">
                                 <Loader2 className="w-3 h-3 text-purple-400 animate-spin" />
                                 <span className="text-[10px] text-purple-400">
                                   {STAGES[fileItem.stage]?.description || 'İşleniyor...'}
+                                </span>
+                                <span className="text-[10px] text-purple-500 font-medium">
+                                  %{Math.round(fileItem.progress || 0)}
                                 </span>
                               </div>
                             )}
@@ -1889,24 +2375,6 @@ export function UltimateFileUploader() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              const newSelected = new Set(selectedFiles);
-                              if (isSelected) {
-                                newSelected.delete(fileItem.id);
-                              } else {
-                                newSelected.add(fileItem.id);
-                              }
-                              setSelectedFiles(newSelected);
-                            }}
-                            className={`p-1 rounded transition-colors ${
-                              isSelected ? 'bg-purple-600 text-white' : 'hover:bg-slate-800 text-slate-400'
-                            }`}
-                            aria-label={isSelected ? 'Seçimi kaldır' : 'Seç'}
-                          >
-                            <Check className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
                               removeFile(fileItem.id);
                             }}
                             className="p-1 hover:bg-red-600/20 text-red-400 rounded transition-colors"
@@ -1920,10 +2388,6 @@ export function UltimateFileUploader() {
                   </motion.div>
                 );
               })}
-                    </div>
-                  );
-                });
-              })()}
               </div>
             </div>
           )}
@@ -2069,14 +2533,14 @@ export function UltimateFileUploader() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999]"
             onClick={() => setShowPreview(null)}
           >
             <motion.div
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.9 }}
-              className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -2096,5 +2560,6 @@ export function UltimateFileUploader() {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }

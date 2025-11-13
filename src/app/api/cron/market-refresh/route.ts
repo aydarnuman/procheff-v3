@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { normalizeProductName } from '@/lib/market/normalize';
+import { normalizeProductPipeline } from '@/lib/market/product-normalizer';
 import { tuikQuote } from '@/lib/market/provider/tuik';
 import { webQuote } from '@/lib/market/provider/web';
 import { dbQuote } from '@/lib/market/provider/db';
+import { aiQuote, shouldUseAI } from '@/lib/market/provider/ai';
 import { fuse } from '@/lib/market/fuse';
 import { cacheSet, cacheClearAll } from '@/lib/market/cache';
 import type { MarketQuote } from '@/lib/market/schema';
+import { getDB } from '@/lib/db/sqlite-client';
 
 /**
  * Market cache refresh cron job
@@ -75,7 +77,8 @@ export async function GET(req: NextRequest) {
 
     for (const product of popularProducts) {
       try {
-        const { product_key } = normalizeProductName(product);
+        const normalized = await normalizeProductPipeline(product);
+        const product_key = normalized.productKey;
 
         // Fetch from all providers
         const [qTuik, qWeb, qDb] = await Promise.all([
@@ -85,9 +88,17 @@ export async function GET(req: NextRequest) {
         ]);
 
         const quotes = [qTuik, qWeb, qDb].filter(Boolean) as MarketQuote[];
+        
+        // Try AI fallback if needed
+        if (shouldUseAI(quotes)) {
+          const qAi = await aiQuote(product_key, 'kg');
+          if (qAi) {
+            quotes.push(qAi);
+          }
+        }
 
         if (quotes.length > 0) {
-          const fusion = fuse(quotes);
+          const fusion = await fuse(quotes);
 
           if (fusion) {
             // Update cache

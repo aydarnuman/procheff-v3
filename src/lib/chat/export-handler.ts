@@ -8,6 +8,18 @@ import { AILogger } from '@/lib/ai/logger';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 
+// Database row type
+interface AnalysisRow {
+  id: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  data_pool?: string;
+  contextual?: string;
+  deep?: string;
+  [key: string]: any;
+}
+
 export interface ExportOptions {
   format: 'pdf' | 'excel' | 'csv' | 'json';
   analysisId?: string;
@@ -243,12 +255,12 @@ export class ExportHandler {
         WHERE id = ?
         ORDER BY created_at DESC
       `);
-      const analysis = stmt.get(options.analysisId);
+      const analysis = stmt.get(options.analysisId) as AnalysisRow | undefined;
       if (analysis) {
         // Parse JSON fields
-        if (analysis.data_pool) analysis.data_pool = JSON.parse(analysis.data_pool);
-        if (analysis.contextual) analysis.contextual = JSON.parse(analysis.contextual);
-        if (analysis.deep) analysis.deep = JSON.parse(analysis.deep);
+        if (analysis.data_pool) (analysis as any).data_pool = JSON.parse(analysis.data_pool);
+        if (analysis.contextual) (analysis as any).contextual = JSON.parse(analysis.contextual);
+        if (analysis.deep) (analysis as any).deep = JSON.parse(analysis.deep);
         results.push(analysis);
       }
     }
@@ -261,12 +273,12 @@ export class ExportHandler {
         WHERE id IN (${placeholders})
         ORDER BY created_at DESC
       `);
-      const analyses = stmt.all(...options.compareIds);
+      const analyses = stmt.all(...options.compareIds) as AnalysisRow[];
 
-      analyses.forEach(analysis => {
-        if (analysis.data_pool) analysis.data_pool = JSON.parse(analysis.data_pool);
-        if (analysis.contextual) analysis.contextual = JSON.parse(analysis.contextual);
-        if (analysis.deep) analysis.deep = JSON.parse(analysis.deep);
+      analyses.forEach((analysis: AnalysisRow) => {
+        if (analysis.data_pool) (analysis as any).data_pool = JSON.parse(analysis.data_pool);
+        if (analysis.contextual) (analysis as any).contextual = JSON.parse(analysis.contextual);
+        if (analysis.deep) (analysis as any).deep = JSON.parse(analysis.deep);
         results.push(analysis);
       });
     }
@@ -278,12 +290,12 @@ export class ExportHandler {
         WHERE created_at BETWEEN ? AND ?
         ORDER BY created_at DESC
       `);
-      const analyses = stmt.all(options.dateRange.start, options.dateRange.end);
+      const analyses = stmt.all(options.dateRange.start, options.dateRange.end) as AnalysisRow[];
 
-      analyses.forEach(analysis => {
-        if (analysis.data_pool) analysis.data_pool = JSON.parse(analysis.data_pool);
-        if (analysis.contextual) analysis.contextual = JSON.parse(analysis.contextual);
-        if (analysis.deep) analysis.deep = JSON.parse(analysis.deep);
+      analyses.forEach((analysis: AnalysisRow) => {
+        if (analysis.data_pool) (analysis as any).data_pool = JSON.parse(analysis.data_pool);
+        if (analysis.contextual) (analysis as any).contextual = JSON.parse(analysis.contextual);
+        if (analysis.deep) (analysis as any).deep = JSON.parse(analysis.deep);
         results.push(analysis);
       });
     }
@@ -295,12 +307,12 @@ export class ExportHandler {
         ORDER BY created_at DESC
         LIMIT 10
       `);
-      const analyses = stmt.all();
+      const analyses = stmt.all() as AnalysisRow[];
 
-      analyses.forEach(analysis => {
-        if (analysis.data_pool) analysis.data_pool = JSON.parse(analysis.data_pool);
-        if (analysis.contextual) analysis.contextual = JSON.parse(analysis.contextual);
-        if (analysis.deep) analysis.deep = JSON.parse(analysis.deep);
+      analyses.forEach((analysis: AnalysisRow) => {
+        if (analysis.data_pool) (analysis as any).data_pool = JSON.parse(analysis.data_pool);
+        if (analysis.contextual) (analysis as any).contextual = JSON.parse(analysis.contextual);
+        if (analysis.deep) (analysis as any).deep = JSON.parse(analysis.deep);
         results.push(analysis);
       });
     }

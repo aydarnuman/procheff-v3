@@ -1,0 +1,41 @@
+# 🔧 Environment Variables - Manuel Kurulum
+
+`.env.local` dosyanızı açın ve şu satırları ekleyin:
+
+# ============================================
+# OCR Configuration (YENİ!)
+# ============================================
+OCR_PROVIDER=auto
+OCR_LANGUAGE=tur+eng
+OCR_TIMEOUT=120000
+
+# ============================================
+# Google AI API Key (MEVCUT - Kontrol edin)
+# ============================================
+GOOGLE_AI_API_KEY=your_google_ai_api_key_here
+
+# ============================================
+# İhale Worker (MEVCUT - Değiştirmeyin)
+# ============================================
+IHALE_WORKER_URL=http://127.0.0.1:8080
+IHALEBUL_USERNAME=your_username
+IHALEBUL_PASSWORD=your_password
+
+
+## Açıklamalar:
+
+OCR_PROVIDER:
+  - auto    : Önce Gemini, sonra Tesseract (ÖNERİLEN)
+  - gemini  : Sadece Gemini Vision
+  - tesseract : Sadece Tesseract.js
+
+OCR_LANGUAGE:
+  - tur+eng : Türkçe + İngilizce (ÖNERİLEN)
+  - tur     : Sadece Türkçe
+  - eng     : Sadece İngilizce
+
+OCR_TIMEOUT:
+  - 120000  : 120 saniye (2 dakika) - ÖNERİLEN
+  - 180000  : 3 dakika (çok büyük dosyalar için)
+  - 60000   : 1 dakika (hızlı test için)
+

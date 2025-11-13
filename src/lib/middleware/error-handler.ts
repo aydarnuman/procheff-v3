@@ -189,7 +189,7 @@ export function handleValidationError(
   });
   
   return NextResponse.json(
-    createErrorResponse('INVALID_REQUEST', 'Validation failed', errors),
+    createErrorResponse('INVALID_REQUEST', `Validation failed: ${JSON.stringify(errors)}`),
     { status: 400 }
   );
 }

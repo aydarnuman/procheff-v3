@@ -63,10 +63,18 @@ const nextConfig: NextConfig = {
       };
     }
 
-    // Externalize better-sqlite3 for server-side only
+    // ✅ Tesseract WASM Support
+    // Disable Node worker module for Tesseract - force WASM mode
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'tesseract.js/src/worker/node': false,
+    };
+
+    // Externalize native modules for server-side only
     config.externals = config.externals || [];
     config.externals.push({
       'better-sqlite3': 'commonjs better-sqlite3',
+      '@napi-rs/canvas': 'commonjs @napi-rs/canvas',
     });
 
     return config;

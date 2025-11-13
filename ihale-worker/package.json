@@ -5,8 +5,10 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:clean": "./start-clean.sh",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "kill": "pkill -f 'tsx.*server.ts' || lsof -ti:8080 | xargs kill -9"
   },
   "dependencies": {
     "@types/json2csv": "^5.0.7",

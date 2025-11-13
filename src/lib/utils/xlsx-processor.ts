@@ -1,5 +1,5 @@
-import * as XLSX from 'xlsx';
 import { AILogger } from '@/lib/ai/logger';
+import * as XLSX from 'xlsx';
 
 export interface XlsxProcessingResult {
   success: boolean;
@@ -120,7 +120,7 @@ export class XlsxProcessor {
         success: false,
         text: '',
         sheets: [],
-        error: error.message || 'Excel dosyası işlenemedi',
+        error: (error instanceof Error ? error.message : String(error)) || 'Excel dosyası işlenemedi',
         totalRows: 0,
         totalCells: 0,
       };

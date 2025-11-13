@@ -108,13 +108,13 @@ export class AnalysisRepository {
 
         insertStmt.run(
           result.analysis_id,
-          result.extracted_fields?.tender_id || null,
+          (result.extracted_fields as any)?.tender_id || null,
           result.status,
-          result.extracted_fields?.institution || null,
-          result.extracted_fields?.budget_amount || null,
-          result.extracted_fields?.person_count || null,
-          result.extracted_fields?.duration_days || null,
-          result.extracted_fields?.tender_type || null,
+          (result.extracted_fields as any)?.institution || null,
+          (result.extracted_fields as any)?.budget_amount || null,
+          (result.extracted_fields as any)?.person_count || null,
+          (result.extracted_fields as any)?.duration_days || null,
+          (result.extracted_fields as any)?.tender_type || null,
           result.contextual?.genel_degerlendirme?.puan || null,
           result.market?.comparison?.risk_level || null,
           result.validation?.data_quality_score || null,
@@ -130,7 +130,7 @@ export class AnalysisRepository {
         // Update FTS index
         if (result.data_pool) {
           const textContent = result.data_pool.textBlocks
-            ?.map(block => block.text)
+            ?.map((block: any) => block.text)
             .join(' ') || '';
           
           const ftsStmt = db.prepare(`
@@ -240,7 +240,7 @@ export class AnalysisRepository {
       expiresAt.setHours(expiresAt.getHours() + ttlHours);
 
       const textContent = dataPool.textBlocks
-        ?.map(block => block.text)
+        ?.map((block: any) => block.text)
         .join(' ') || '';
 
       // Validate JSON before storing
@@ -467,7 +467,7 @@ export class AnalysisRepository {
       const result = db.prepare(`
         DELETE FROM data_pools WHERE expires_at < datetime('now')
       `).run();
-      return result.changes || 0;
+      return (result as any).changes || 0;
     } catch (error) {
       console.error('[AnalysisRepository] Failed to cleanup expired DataPools:', error);
       return 0;

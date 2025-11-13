@@ -106,9 +106,9 @@ export async function buildDataPool(
         });
         errors.push({
           doc_id: generateDocId(i),
-          stage: 'extract_zip',
+          stage: 'extract_zip' as any,
           message: `ZIP dosyası çıkarılamadı: ${file.name}`,
-          details: errorMsg
+          details: { error: errorMsg } as any
         });
         // Add ZIP file itself to processing queue as fallback
         filesToProcess.push(file);
@@ -132,7 +132,7 @@ export async function buildDataPool(
           doc_id: docId,
           stage: 'extract',
           message: `İç içe ZIP dosyası desteklenmiyor: ${file.name}`,
-          details: 'Nested ZIP files are not supported to prevent infinite loops'
+          details: { reason: 'Nested ZIP files are not supported to prevent infinite loops' } as any
         });
         continue;
       }
@@ -159,7 +159,7 @@ export async function buildDataPool(
           doc_id: docId,
           stage: 'extract',
           message: `Dosya işlenirken hata: ${file.name}`,
-          details: extractError instanceof Error ? extractError.message : String(extractError)
+          details: { error: extractError instanceof Error ? extractError.message : String(extractError) } as any
         });
         continue;
       }
@@ -232,7 +232,7 @@ export async function buildDataPool(
         doc_id: docId,
         stage: 'extract',
         message: `Failed to process ${file.name}`,
-        details: error
+        details: error as any
       });
     }
   }

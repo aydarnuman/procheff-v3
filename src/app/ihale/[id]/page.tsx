@@ -3,6 +3,7 @@ import { ReplicaFrame } from '@/components/tender/ReplicaFrame';
 import { PIPELINE_STEPS, usePipelineStore } from '@/store/usePipelineStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import JSZip from 'jszip';
+import Link from 'next/link';
 import {
   ArrowLeft,
   Brain,
@@ -24,13 +25,13 @@ import {
   Monitor,
   X
 } from 'lucide-react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export default function IhaleDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
 
   interface DocumentType {
@@ -99,7 +100,19 @@ export default function IhaleDetailPage() {
   // Items per page
   const ITEMS_PER_PAGE = 10;
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set()); // Seçili dökümanlar
-  const [selectedDataFormats, setSelectedDataFormats] = useState<Set<string>>(new Set()); // Seçili veri formatları (txt, csv, json)
+  const [selectedFormatsState, setSelectedFormatsState] = useState<{ csv: boolean; txt: boolean; json: boolean }>({
+    csv: false,
+    txt: false,
+    json: false,
+  });
+  const selectedDataFormats = useMemo(() => {
+    const formats: string[] = [];
+    if (selectedFormatsState.csv) formats.push('csv');
+    if (selectedFormatsState.txt) formats.push('txt');
+    if (selectedFormatsState.json) formats.push('json');
+    return formats;
+  }, [selectedFormatsState]);
+  const selectedFormatsCount = selectedDataFormats.length;
   const [previewFormat, setPreviewFormat] = useState<string | null>(null); // Önizleme formatı
   const [previewContent, setPreviewContent] = useState<string>(''); // Önizleme içeriği
   const [loadingPreview] = useState(false); // Önizleme yükleniyor mu
@@ -113,6 +126,7 @@ export default function IhaleDetailPage() {
   const [loadingZip, setLoadingZip] = useState<Set<string>>(new Set()); // ZIP açılıyor mu
   const processedZipUrlsRef = useRef<Set<string>>(new Set()); // İşlenmiş ZIP URL'leri (tekrar işleme önleme)
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set()); // İndirilen dosyalar (çift tıklama önleme)
+  const [isRedirecting, setIsRedirecting] = useState(false); // Analiz sayfasına yönlendirme durumu
   // Sidebar state - currently unused but may be needed in future
   // const [sidebarExpanded, setSidebarExpanded] = useState({
   //   quickActions: true,
@@ -129,6 +143,10 @@ export default function IhaleDetailPage() {
 
   // Track previous ID to only reset when ID actually changes
   const prevIdRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    router.prefetch('/analysis');
+  }, [router]);
 
   const persistExpandedDocuments = useCallback(async (docs: DocumentType[]) => {
     try {
@@ -279,34 +297,40 @@ export default function IhaleDetailPage() {
           }
 
           // Create new detail object and update state
-          let newDetail: TenderDetail;
-          setDetail((prev: TenderDetail | null) => {
-            newDetail = {
-              ...prev,
-              ...data,
-              // Keep the existing fields if API doesn't return them
-              organization: data.organization || prev?.organization,
-              city: data.city || prev?.city,
-              tenderType: data.tenderType || prev?.tenderType,
-              partialBidAllowed: data.partialBidAllowed ?? prev?.partialBidAllowed,
-              publishDate: data.publishDate || prev?.publishDate,
-              tenderDate: data.tenderDate || prev?.tenderDate,
-              daysRemaining: data.daysRemaining ?? prev?.daysRemaining,
-              // CRITICAL: Ensure documents array is preserved from API response
-              documents: Array.isArray(data.documents) ? data.documents : (prev?.documents || []),
-              // CRITICAL: Ensure ai_parsed is preserved
-              ai_parsed: data.ai_parsed || prev?.ai_parsed
-            };
-            return newDetail;
-          });
+          const newDetail: TenderDetail = {
+            ...(detail || {} as TenderDetail),
+            ...data,
+            // Keep the existing fields if API doesn't return them
+            organization: data.organization || detail?.organization,
+            city: data.city || detail?.city,
+            tenderType: data.tenderType || detail?.tenderType,
+            partialBidAllowed: data.partialBidAllowed ?? detail?.partialBidAllowed,
+            publishDate: data.publishDate || detail?.publishDate,
+            tenderDate: data.tenderDate || detail?.tenderDate,
+            daysRemaining: data.daysRemaining ?? detail?.daysRemaining,
+            // CRITICAL: Ensure documents array is preserved from API response
+            documents: Array.isArray(data.documents) ? data.documents : (detail?.documents || []),
+            // CRITICAL: Ensure ai_parsed is preserved
+            ai_parsed: data.ai_parsed || detail?.ai_parsed
+          };
+          setDetail(newDetail);
           setError('');
 
           // Cache the detail (varsayılan TTL: 7 gün)
           (async () => {
             try {
               const { StorageManager } = await import('@/lib/storage/storage-manager');
-              StorageManager.set(`tender_detail_${id}`, newDetail);
-              console.log('💾 Tender detail cached:', id);
+              // Validate data before caching
+              if (newDetail && Object.keys(newDetail).length > 0) {
+                const cacheSuccess = StorageManager.set(`tender_detail_${id}`, newDetail);
+                if (cacheSuccess) {
+                  console.log('💾 Tender detail cached:', id);
+                } else {
+                  console.warn('⚠️ Tender detail too large or invalid to cache');
+                }
+              } else {
+                console.warn('⚠️ Skipping cache - tender detail is empty');
+              }
             } catch (err) {
               console.warn('Cache save failed:', err);
             }
@@ -811,7 +835,7 @@ export default function IhaleDetailPage() {
                                 <div className="grid grid-cols-1 gap-3 mb-4">
                                   {paginatedItems.map((item: { key: string; value: string }, itemIdx: number) => (
                                     <div key={itemIdx} className="flex flex-col gap-1 p-3 rounded-lg bg-slate-700/40 border border-slate-600/40 hover:bg-slate-700/60 transition-colors">
-                                      <span className="text-xs text-slate-400 font-medium">{item.label}</span>
+                                      <span className="text-xs text-slate-400 font-medium">{item.key}</span>
                                       <span className="text-sm text-slate-200 font-semibold">{item.value}</span>
                                     </div>
                                   ))}
@@ -914,7 +938,7 @@ export default function IhaleDetailPage() {
                                 <div className="grid grid-cols-1 gap-3 mb-4">
                                   {paginatedItems.map((item: { key: string; value: string }, itemIdx: number) => (
                                     <div key={itemIdx} className="flex flex-col gap-1 p-3 rounded-lg bg-slate-700/40 border border-slate-600/40 hover:bg-slate-700/60 transition-colors">
-                                          <span className="text-xs text-slate-400 font-medium">{item.label}</span>
+                                          <span className="text-xs text-slate-400 font-medium">{item.key}</span>
                                       <span className="text-sm text-slate-200 font-semibold">{item.value}</span>
                                         </div>
                                       ))}
@@ -1190,556 +1214,7 @@ export default function IhaleDetailPage() {
           </div>
         </motion.div>
 
-        {/* Export Section - Premium */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.35 }}
-          className="relative group mb-6"
-          style={{ overflow: 'visible' }}
-        >
-          <div className="absolute -inset-0.5 bg-linear-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 rounded-xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10"></div>
-          <div className="relative glass-card rounded-xl p-5 bg-linear-to-br from-slate-900/60 via-slate-800/50 to-slate-900/60 backdrop-blur-xl border border-white/10 shadow-xl shadow-black/30">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold text-white flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-linear-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 backdrop-blur-sm">
-                  <Download className="w-4 h-4 text-indigo-400" />
-                </div>
-                İhale ilanı ve Mal/Hizmet Listesi
-              </h2>
-              {selectedDataFormats.size > 0 && (
-                <motion.span 
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="px-3 py-1 bg-linear-to-r from-indigo-500/20 to-purple-500/20 text-indigo-300 text-xs rounded-full font-semibold border border-indigo-500/30 backdrop-blur-sm"
-                >
-                  {selectedDataFormats.size} Seçili
-                </motion.span>
-              )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* TXT Export */}
-            <div className="space-y-2 relative">
-              <div
-                className={`flex items-center gap-3 p-4 rounded-lg border transition-all cursor-pointer ${
-                  selectedDataFormats.has('txt')
-                    ? 'bg-blue-500/20 border-blue-500/50'
-                    : 'bg-slate-900/60 hover:bg-slate-800/60 border-slate-700/50 hover:border-blue-500/50'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  console.log('TXT format clicked, current state:', Array.from(selectedDataFormats));
-                  setSelectedDataFormats(prev => {
-                    const next = new Set(prev);
-                    if (next.has('txt')) {
-                      next.delete('txt');
-                      console.log('Removed txt, new state:', Array.from(next));
-                    } else {
-                      next.add('txt');
-                      console.log('Added txt, new state:', Array.from(next));
-                    }
-                    return next;
-                  });
-                }}
-              >
-                <div className={`shrink-0 w-12 h-12 rounded-lg border flex items-center justify-center backdrop-blur-sm transition-all relative ${
-                  selectedDataFormats.has('txt')
-                    ? 'bg-linear-to-br from-blue-500/30 to-cyan-500/30 border-blue-500/50 shadow-md shadow-blue-500/20'
-                    : 'bg-linear-to-br from-slate-800/60 to-slate-700/60 border-slate-700/50 group-hover/item:border-blue-500/50'
-                }`}>
-                  <FileType className="w-5 h-5 text-blue-400" />
-                  {selectedDataFormats.has('txt') && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-slate-900">
-                      <CheckSquare className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-                </div>
-                        <div className="flex-1 min-w-0 space-y-1">
-                  <div className="flex items-center gap-2 relative">
-                    <p className="text-sm font-medium text-blue-300">
-                            Metin İçerik (TXT)
-                          </p>
-                    <div className="relative group">
-                      <button
-                        ref={(el) => { hoverButtonRefs.current['txt'] = el; }}
-                        onMouseEnter={async (e) => {
-                          e.stopPropagation();
-                          const button = e.currentTarget;
-                          const rect = button.getBoundingClientRect();
-                          // Adjust position to prevent overflow
-                          const popupWidth = 700;
-                          const adjustedX = Math.min(rect.left, window.innerWidth - popupWidth - 20);
-                          setHoverPosition({ x: Math.max(20, adjustedX), y: rect.bottom + 8 });
-                          if (!hoverContent && hoverFormat !== 'txt') {
-                            setLoadingHover(true);
-                            setHoverFormat('txt');
-                            try {
-                              const res = await fetch(`/api/ihale/export-csv/${id}?format=txt`);
-                              const text = await res.text();
-                              setHoverContent(text);
-                            } catch {
-                              setHoverContent('Önizleme yüklenemedi');
-                            } finally {
-                              setLoadingHover(false);
-                            }
-                          } else {
-                            setHoverFormat('txt');
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          e.stopPropagation();
-                          // Delay kapatma, popup'a geçiş için zaman tanı
-                          if (hoverTimeoutRef.current) {
-                            clearTimeout(hoverTimeoutRef.current);
-                          }
-                          hoverTimeoutRef.current = setTimeout(() => {
-                            setHoverFormat(null);
-                            setHoverContent('');
-                            setHoverPosition(null);
-                          }, 200);
-                        }}
-                        className="bg-transparent border-0 shadow-none p-0 m-0 hover:bg-transparent focus:outline-none focus:ring-0"
-                        title="Önizle"
-                      >
-                        <Eye className="w-4 h-4 text-slate-400 hover:text-blue-400 transition-colors" />
-                      </button>
-                    </div>
-                  </div>
-                          <p className="text-xs text-blue-500/70">
-                            Özet + key-value bilgileri + paragraflar
-                          </p>
-                        </div>
-                <div className="flex items-center gap-1">
-                  {(() => {
-                    const exportKey = `export-txt-${id}`;
-                    const isDownloading = downloadingFiles.has(exportKey);
-                    
-                    const handleExport = (e: React.MouseEvent<HTMLButtonElement>) => {
-                      e.stopPropagation();
-                      if (isDownloading) return;
-                      
-                      setDownloadingFiles(prev => new Set(prev).add(exportKey));
-                      const link = document.createElement('a');
-                      link.href = `/api/ihale/export-csv/${id}?format=txt`;
-                      link.download = 'ihale-detay.txt';
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      
-                      setTimeout(() => {
-                        setDownloadingFiles(prev => {
-                          const next = new Set(prev);
-                          next.delete(exportKey);
-                          return next;
-                        });
-                      }, 2000);
-                    };
-                    
-                    return (
-                      <button
-                        type="button"
-                        onClick={handleExport}
-                        disabled={isDownloading}
-                        className={`p-2 rounded-lg transition-colors ${
-                          isDownloading
-                            ? 'opacity-50 cursor-not-allowed text-slate-500'
-                            : 'hover:bg-blue-500/30 text-blue-400'
-                        }`}
-                        title={isDownloading ? "İndiriliyor..." : "İndir"}
-                      >
-                        {isDownloading ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <Download className="w-5 h-5" />
-                        )}
-                      </button>
-                    );
-                  })()}
-                </div>
-              </div>
-              {/* Preview */}
-              {previewFormat === 'txt' && (
-                <div className="bg-slate-900/50 border border-blue-500/30 rounded-lg p-4 max-h-64 overflow-auto">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-blue-400">TXT Önizleme</span>
-                    <button
-                      onClick={() => {
-                        setPreviewFormat(null);
-                        setPreviewContent('');
-                      }}
-                      className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
-                      title="Kapat"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  {loadingPreview ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
-                    </div>
-                  ) : (
-                    <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono">{previewContent}</pre>
-                  )}
-                </div>
-              )}
-            </div>
-
-                      {/* CSV Export - Premium */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.4 }}
-              whileHover={{ y: -2, scale: 1.02 }}
-              className="space-y-2 relative group/item"
-            >
-              <div className="absolute -inset-0.5 bg-linear-to-r from-emerald-500/20 to-green-500/20 rounded-xl blur opacity-0 group-hover/item:opacity-100 transition-opacity duration-500 -z-10"></div>
-              <div
-                className={`relative flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer overflow-hidden backdrop-blur-sm ${
-                  selectedDataFormats.has('csv')
-                    ? 'bg-linear-to-br from-emerald-500/20 to-green-500/20 border-emerald-500/50 shadow-lg shadow-emerald-500/20'
-                    : 'bg-linear-to-br from-slate-900/60 to-slate-800/60 hover:from-slate-800/60 hover:to-slate-700/60 border-slate-700/50 hover:border-emerald-500/50'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  console.log('CSV format clicked, current state:', Array.from(selectedDataFormats));
-                  setSelectedDataFormats(prev => {
-                    const next = new Set(prev);
-                    if (next.has('csv')) {
-                      next.delete('csv');
-                      console.log('Removed csv, new state:', Array.from(next));
-                    } else {
-                      next.add('csv');
-                      console.log('Added csv, new state:', Array.from(next));
-                    }
-                    return next;
-                  });
-                }}
-              >
-                <div className={`shrink-0 w-12 h-12 rounded-lg border flex items-center justify-center backdrop-blur-sm transition-all relative ${
-                  selectedDataFormats.has('csv')
-                    ? 'bg-linear-to-br from-emerald-500/30 to-green-500/30 border-emerald-500/50 shadow-md shadow-emerald-500/20'
-                    : 'bg-linear-to-br from-slate-800/60 to-slate-700/60 border-slate-700/50 group-hover/item:border-emerald-500/50'
-                }`}>
-                  <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
-                  {selectedDataFormats.has('csv') && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-slate-900">
-                      <CheckSquare className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-                </div>
-                        <div className="flex-1 min-w-0 space-y-1">
-                  <div className="flex items-center gap-2 relative">
-                    <p className="text-sm font-medium text-emerald-300">
-                            Tablolar (CSV)
-                          </p>
-                    <div className="relative group">
-                      <button
-                        ref={(el) => { hoverButtonRefs.current['csv'] = el; }}
-                        onMouseEnter={async (e) => {
-                          e.stopPropagation();
-                          const button = e.currentTarget;
-                          const rect = button.getBoundingClientRect();
-                          // Adjust position to prevent overflow
-                          const popupWidth = 700;
-                          const adjustedX = Math.min(rect.left, window.innerWidth - popupWidth - 20);
-                          setHoverPosition({ x: Math.max(20, adjustedX), y: rect.bottom + 8 });
-                          if (!hoverContent && hoverFormat !== 'csv') {
-                            setLoadingHover(true);
-                            setHoverFormat('csv');
-                            try {
-                              const res = await fetch(`/api/ihale/export-csv/${id}?format=csv`);
-                              const text = await res.text();
-                              setHoverContent(text);
-                            } catch {
-                              setHoverContent('Önizleme yüklenemedi');
-                            } finally {
-                              setLoadingHover(false);
-                            }
-                          } else {
-                            setHoverFormat('csv');
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          e.stopPropagation();
-                          // Delay kapatma, popup'a geçiş için zaman tanı
-                          if (hoverTimeoutRef.current) {
-                            clearTimeout(hoverTimeoutRef.current);
-                          }
-                          hoverTimeoutRef.current = setTimeout(() => {
-                            setHoverFormat(null);
-                            setHoverContent('');
-                            setHoverPosition(null);
-                          }, 200);
-                        }}
-                        className="bg-transparent border-0 shadow-none p-0 m-0 hover:bg-transparent focus:outline-none focus:ring-0"
-                        title="Önizle"
-                      >
-                        <Eye className="w-4 h-4 text-slate-400 hover:text-emerald-400 transition-colors" />
-                      </button>
-                    </div>
-                  </div>
-                          <p className="text-xs text-emerald-500/70">
-                            Tüm tablolar Excel formatında
-                          </p>
-                        </div>
-                <div className="flex items-center gap-1">
-                  {(() => {
-                    const exportKey = `export-csv-${id}`;
-                    const isDownloading = downloadingFiles.has(exportKey);
-                    
-                    const handleExport = (e: React.MouseEvent<HTMLButtonElement>) => {
-                      e.stopPropagation();
-                      if (isDownloading) return;
-                      
-                      setDownloadingFiles(prev => new Set(prev).add(exportKey));
-                      const link = document.createElement('a');
-                      link.href = `/api/ihale/export-csv/${id}?format=csv`;
-                      link.download = 'ihale-detay.csv';
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      
-                      setTimeout(() => {
-                        setDownloadingFiles(prev => {
-                          const next = new Set(prev);
-                          next.delete(exportKey);
-                          return next;
-                        });
-                      }, 2000);
-                    };
-                    
-                    return (
-                      <button
-                        type="button"
-                        onClick={handleExport}
-                        disabled={isDownloading}
-                        className={`p-2 rounded-lg transition-colors ${
-                          isDownloading
-                            ? 'opacity-50 cursor-not-allowed text-slate-500'
-                            : 'hover:bg-emerald-500/30 text-emerald-400'
-                        }`}
-                        title={isDownloading ? "İndiriliyor..." : "İndir"}
-                      >
-                        {isDownloading ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <Download className="w-5 h-5" />
-                        )}
-                      </button>
-                    );
-                  })()}
-                </div>
-              </div>
-              {/* Preview */}
-              {previewFormat === 'csv' && (
-                <div className="bg-slate-900/50 border border-emerald-500/30 rounded-lg p-4 max-h-64 overflow-auto">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-emerald-400">CSV Önizleme</span>
-                    <button
-                      onClick={() => {
-                        setPreviewFormat(null);
-                        setPreviewContent('');
-                      }}
-                      className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
-                      title="Kapat"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  {loadingPreview ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
-                    </div>
-                  ) : (
-                    <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono">{previewContent}</pre>
-                  )}
-                </div>
-              )}
-            </motion.div>
-
-                      {/* JSON Export - Premium */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.45 }}
-              whileHover={{ y: -2, scale: 1.02 }}
-              className="space-y-2 relative group/item"
-            >
-              <div className="absolute -inset-0.5 bg-linear-to-r from-purple-500/20 to-pink-500/20 rounded-xl blur opacity-0 group-hover/item:opacity-100 transition-opacity duration-500 -z-10"></div>
-              <div
-                className={`relative flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer overflow-hidden backdrop-blur-sm ${
-                  selectedDataFormats.has('json')
-                    ? 'bg-linear-to-br from-purple-500/20 to-pink-500/20 border-purple-500/50 shadow-lg shadow-purple-500/20'
-                    : 'bg-linear-to-br from-slate-900/60 to-slate-800/60 hover:from-slate-800/60 hover:to-slate-700/60 border-slate-700/50 hover:border-purple-500/50'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  console.log('JSON format clicked, current state:', Array.from(selectedDataFormats));
-                  setSelectedDataFormats(prev => {
-                    const next = new Set(prev);
-                    if (next.has('json')) {
-                      next.delete('json');
-                      console.log('Removed json, new state:', Array.from(next));
-                    } else {
-                      next.add('json');
-                      console.log('Added json, new state:', Array.from(next));
-                    }
-                    return next;
-                  });
-                }}
-              >
-                <div className={`shrink-0 w-12 h-12 rounded-lg border flex items-center justify-center backdrop-blur-sm transition-all relative ${
-                  selectedDataFormats.has('json')
-                    ? 'bg-linear-to-br from-purple-500/30 to-pink-500/30 border-purple-500/50 shadow-md shadow-purple-500/20'
-                    : 'bg-linear-to-br from-slate-800/60 to-slate-700/60 border-slate-700/50 group-hover/item:border-purple-500/50'
-                }`}>
-                  <FileJson className="w-5 h-5 text-purple-400" />
-                  {selectedDataFormats.has('json') && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center border-2 border-slate-900">
-                      <CheckSquare className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-                </div>
-                        <div className="flex-1 min-w-0 space-y-1">
-                  <div className="flex items-center gap-2 relative">
-                    <p className="text-sm font-medium text-purple-300">
-                            Tüm Veriler (JSON)
-                          </p>
-                    <div className="relative group">
-                      <button
-                        ref={(el) => { hoverButtonRefs.current['json'] = el; }}
-                        onMouseEnter={async (e) => {
-                          e.stopPropagation();
-                          const button = e.currentTarget;
-                          const rect = button.getBoundingClientRect();
-                          // Adjust position to prevent overflow
-                          const popupWidth = 700;
-                          const adjustedX = Math.min(rect.left, window.innerWidth - popupWidth - 20);
-                          setHoverPosition({ x: Math.max(20, adjustedX), y: rect.bottom + 8 });
-                          if (!hoverContent && hoverFormat !== 'json') {
-                            setLoadingHover(true);
-                            setHoverFormat('json');
-                            try {
-                              const res = await fetch(`/api/ihale/export-csv/${id}?format=json`);
-                              const text = await res.text();
-                              // JSON'u formatla
-                              try {
-                                const json = JSON.parse(text);
-                                setHoverContent(JSON.stringify(json, null, 2));
-                              } catch {
-                                setHoverContent(text);
-                              }
-                            } catch {
-                              setHoverContent('Önizleme yüklenemedi');
-                            } finally {
-                              setLoadingHover(false);
-                            }
-                          } else {
-                            setHoverFormat('json');
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          e.stopPropagation();
-                          // Delay kapatma, popup'a geçiş için zaman tanı
-                          if (hoverTimeoutRef.current) {
-                            clearTimeout(hoverTimeoutRef.current);
-                          }
-                          hoverTimeoutRef.current = setTimeout(() => {
-                            setHoverFormat(null);
-                            setHoverContent('');
-                            setHoverPosition(null);
-                          }, 200);
-                        }}
-                        className="bg-transparent border-0 shadow-none p-0 m-0 hover:bg-transparent focus:outline-none focus:ring-0"
-                        title="Önizle"
-                      >
-                        <Eye className="w-4 h-4 text-slate-400 hover:text-purple-400 transition-colors" />
-                      </button>
-                    </div>
-                  </div>
-                          <p className="text-xs text-purple-500/70">
-                            Sections + tables + text (programmatic kullanım)
-                          </p>
-                        </div>
-                <div className="flex items-center gap-1">
-                  {(() => {
-                    const exportKey = `export-json-${id}`;
-                    const isDownloading = downloadingFiles.has(exportKey);
-                    
-                    const handleExport = (e: React.MouseEvent<HTMLButtonElement>) => {
-                      e.stopPropagation();
-                      if (isDownloading) return;
-                      
-                      setDownloadingFiles(prev => new Set(prev).add(exportKey));
-                      const link = document.createElement('a');
-                      link.href = `/api/ihale/export-csv/${id}?format=json`;
-                      link.download = 'ihale-detay.json';
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      
-                      setTimeout(() => {
-                        setDownloadingFiles(prev => {
-                          const next = new Set(prev);
-                          next.delete(exportKey);
-                          return next;
-                        });
-                      }, 2000);
-                    };
-                    
-                    return (
-                      <button
-                        type="button"
-                        onClick={handleExport}
-                        disabled={isDownloading}
-                        className={`p-2 rounded-lg transition-colors ${
-                          isDownloading
-                            ? 'opacity-50 cursor-not-allowed text-slate-500'
-                            : 'hover:bg-purple-500/30 text-purple-400'
-                        }`}
-                        title={isDownloading ? "İndiriliyor..." : "İndir"}
-                      >
-                        {isDownloading ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <Download className="w-5 h-5" />
-                        )}
-                      </button>
-                    );
-                  })()}
-                </div>
-              </div>
-              {/* Preview */}
-              {previewFormat === 'json' && (
-                <div className="bg-slate-900/50 border border-purple-500/30 rounded-lg p-4 max-h-64 overflow-auto">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-purple-400">JSON Önizleme</span>
-                    <button
-                      onClick={() => {
-                        setPreviewFormat(null);
-                        setPreviewContent('');
-                      }}
-                      className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
-                      title="Kapat"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  {loadingPreview ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
-                    </div>
-                  ) : (
-                    <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono">{previewContent}</pre>
-                  )}
-                </div>
-              )}
-            </motion.div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* İhale Dokümanları */}
+        {/* İhale Dokümanları ve Veri Formatları */}
         {(() => {
           // Remove duplicates based on URL, but keep track of all occurrences
           const seenUrls = new Set<string>();
@@ -1904,6 +1379,102 @@ export default function IhaleDetailPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Veri Formatları - Alt Karta Eklendi */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-slate-300">📊 Veri Formatları</h3>
+                    {selectedDataFormats.length > 0 && (
+                      <span className="text-xs text-slate-500">{selectedDataFormats.length} format seçili</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* CSV */}
+                    <div
+                      className={`flex items-center gap-2 p-3 rounded-lg border transition-all cursor-pointer ${
+                        selectedFormatsState.csv
+                          ? 'bg-emerald-500/20 border-emerald-500/50 shadow-lg'
+                          : 'bg-slate-800/50 hover:bg-slate-700/50 border-slate-700/50'
+                      }`}
+                      onClick={() => {
+                        setSelectedFormatsState(prev => {
+                          const next = { ...prev, csv: !prev.csv };
+                          console.log('📊 CSV toggled:', next.csv, 'state:', next);
+                          return next;
+                        });
+                      }}
+                    >
+                      <div className="relative">
+                        <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                        {selectedFormatsState.csv && (
+                          <CheckSquare className="w-3 h-3 text-white absolute -top-1 -right-1" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-emerald-300">CSV</p>
+                        <p className="text-xs text-emerald-500/70">Tablolar</p>
+                      </div>
+                    </div>
+
+                    {/* TXT */}
+                    <div
+                      className={`flex items-center gap-2 p-3 rounded-lg border transition-all cursor-pointer ${
+                        selectedFormatsState.txt
+                          ? 'bg-blue-500/20 border-blue-500/50 shadow-lg'
+                          : 'bg-slate-800/50 hover:bg-slate-700/50 border-slate-700/50'
+                      }`}
+                      onClick={() => {
+                        setSelectedFormatsState(prev => {
+                          const next = { ...prev, txt: !prev.txt };
+                          console.log('📊 TXT toggled:', next.txt, 'state:', next);
+                          return next;
+                        });
+                      }}
+                    >
+                      <div className="relative">
+                        <FileType className="w-5 h-5 text-blue-400" />
+                        {selectedFormatsState.txt && (
+                          <CheckSquare className="w-3 h-3 text-white absolute -top-1 -right-1" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-blue-300">TXT</p>
+                        <p className="text-xs text-blue-500/70">Düz metin</p>
+                      </div>
+                    </div>
+
+                    {/* JSON */}
+                    <div
+                      className={`flex items-center gap-2 p-3 rounded-lg border transition-all cursor-pointer ${
+                        selectedFormatsState.json
+                          ? 'bg-purple-500/20 border-purple-500/50 shadow-lg'
+                          : 'bg-slate-800/50 hover:bg-slate-700/50 border-slate-700/50'
+                      }`}
+                      onClick={() => {
+                        setSelectedFormatsState(prev => {
+                          const next = { ...prev, json: !prev.json };
+                          console.log('📊 JSON toggled:', next.json, 'state:', next);
+                          return next;
+                        });
+                      }}
+                    >
+                      <div className="relative">
+                        <FileJson className="w-5 h-5 text-purple-400" />
+                        {selectedFormatsState.json && (
+                          <CheckSquare className="w-3 h-3 text-white absolute -top-1 -right-1" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-purple-300">JSON</p>
+                        <p className="text-xs text-purple-500/70">Yapısal veri</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ayraç */}
+                <div className="border-t border-slate-700/50 my-4"></div>
+
               <div className="grid grid-cols-1 gap-3 mb-4">
                   {/* Info message for ZIP extracted files */}
                   {expandedDocuments.length > 0 && (
@@ -2116,22 +1687,25 @@ export default function IhaleDetailPage() {
                       ZIP dosyaları açılıyor, lütfen bekleyin...
                     </div>
                   )}
-                  <Link
-                    href="/analysis"
+                  <button
+                    type="button"
                     className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg text-sm font-medium transition-all shadow-md shadow-indigo-500/20 ${
-                      selectedDocuments.size === 0 && selectedDataFormats.size === 0 || isZipProcessing ? 'opacity-50 cursor-not-allowed' : ''
+                      (selectedDocuments.size === 0 && selectedDataFormats.length === 0) || isZipProcessing || isRedirecting ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
-                    onClick={async (e) => {
+                    disabled={(selectedDocuments.size === 0 && selectedDataFormats.length === 0) || isZipProcessing || isRedirecting}
+                    onClick={async () => {
                       if (isZipProcessing) {
-                        e.preventDefault();
                         alert('ZIP dosyaları henüz hazırlanmadı. Lütfen açılmalarını bekleyin.');
                         return;
                       }
-                      if (selectedDocuments.size === 0 && selectedDataFormats.size === 0) {
-                        e.preventDefault();
+                      if (selectedDocuments.size === 0 && selectedDataFormats.length === 0) {
                         alert('Lütfen en az bir döküman veya veri formatı seçin');
                         return;
                       }
+
+                      try {
+                        setIsRedirecting(true);
+
                       // Seçili dökümanları ve formatları storage'a kaydet
                       // Filter out zip: scheme URLs (they are pseudo-URLs for extracted files)
                       // Extract actual URLs from selectionKeys by mapping back to uniqueDocuments
@@ -2162,29 +1736,117 @@ export default function IhaleDetailPage() {
                           }
                           return selectionKey;
                         });
-                      const selectedFormatsArray = Array.from(selectedDataFormats);
-                      const { storage } = await import('@/lib/storage/storage-manager');
-                      storage.setTemp('ihaleSelectedDocs', {
-                        tenderId: id,
-                        documents: selectedDocsArray,
-                        formats: selectedFormatsArray
+                      // BASIT ÇÖZÜM: Formatları URL olarak ekle
+                      const formatUrls: string[] = [];
+                      if (selectedFormatsState.csv) {
+                        formatUrls.push(`format:csv:${id}`);
+                      }
+                      if (selectedFormatsState.txt) {
+                        formatUrls.push(`format:txt:${id}`);
+                      }
+                      if (selectedFormatsState.json) {
+                        formatUrls.push(`format:json:${id}`);
+                      }
+
+                      // Combine documents + formats
+                      const allDocuments = [...selectedDocsArray, ...formatUrls];
+
+                      console.log('📊 [DEBUG] Combined documents + formats:', {
+                        documentsCount: selectedDocsArray.length,
+                        formatsCount: formatUrls.length,
+                        formats: formatUrls,
+                        total: allDocuments.length
                       });
+
+                      // Validate data before storing
+                      if (allDocuments.length === 0) {
+                        throw new Error('Seçili döküman verileri bulunamadı');
+                      }
+
+                      const dataToStore = {
+                        tenderId: id,
+                        documents: allDocuments,
+                        formats: [] // Artık gerek yok, hepsi documents'te
+                      };
+
+                      console.log('💾 [DEBUG] Attempting to store ihaleSelectedDocs:', {
+                        totalCount: allDocuments.length,
+                        dataSize: JSON.stringify(dataToStore).length,
+                        tenderId: id
+                      });
+
+                      // Store data and check if successful
+                      const { storage } = await import('@/lib/storage/storage-manager');
+                      const storageSuccess = storage.setTemp('ihaleSelectedDocs', dataToStore);
+
+                      if (!storageSuccess) {
+                        console.error('❌ [ERROR] Storage failed for ihaleSelectedDocs');
+                        throw new Error('Döküman verileri kaydedilemedi. Lütfen tekrar deneyin.');
+                      }
+
+                      console.log('✅ [DEBUG] Successfully stored ihaleSelectedDocs');
+
+                      // Verify storage immediately
+                      const verifyData = storage.getTemp('ihaleSelectedDocs');
+                      if (!verifyData) {
+                        console.error('❌ [ERROR] Storage verification failed');
+                        throw new Error('Döküman verileri doğrulanamadı. Lütfen tekrar deneyin.');
+                      }
+
+                      console.log('✅ [DEBUG] Storage verified, navigating to analysis page');
+                      await router.push('/analysis');
+                      } catch (err) {
+                        console.error('Analiz sayfasına yönlendirme başarısız:', err);
+                        setIsRedirecting(false);
+                        const errorMessage = err instanceof Error ? err.message : 'Analiz sayfasına yönlendirme sırasında bir hata oluştu. Lütfen tekrar deneyin.';
+                        alert(errorMessage);
+                      }
                     }}
                   >
                     <Brain className="w-4 h-4" />
                     <span>
                       Analize Gönder
-                      {(selectedDocuments.size > 0 || selectedDataFormats.size > 0) && 
-                        ` (${selectedDocuments.size + selectedDataFormats.size})`
+                      {(selectedDocuments.size > 0 || selectedDataFormats.length > 0) && 
+                        ` (${selectedDocuments.size + selectedDataFormats.length})`
                       }
                     </span>
-                  </Link>
+                  </button>
                 </div>
               </div>
             </motion.div>
           );
         })()}
       </div>
+
+      <AnimatePresence>
+        {isRedirecting && (
+          <motion.div
+            key="analysis-redirect-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="glass-card max-w-sm w-full text-center space-y-4 p-8 border border-indigo-500/40"
+            >
+              <div className="flex justify-center">
+                <Loader2 className="w-8 h-8 text-indigo-300 animate-spin" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-white">Analiz sayfası hazırlanıyor...</p>
+                <p className="text-xs text-slate-400">
+                  Seçilen dokümanlar analiz merkezine gönderiliyor. Lütfen bekleyin.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Hover Preview Portal */}
       {typeof window !== 'undefined' && createPortal(

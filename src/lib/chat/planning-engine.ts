@@ -497,7 +497,7 @@ export class PlanningEngine {
    * Start a new planning session
    */
   startPlanning(templateId: string, userId?: string): PlanningState {
-    const template = PLANNING_TEMPLATES[templateId];
+    const template = PLANNING_TEMPLATES[templateId as keyof typeof PLANNING_TEMPLATES];
     if (!template) {
       throw new Error(`Planning template not found: ${templateId}`);
     }
@@ -534,8 +534,8 @@ export class PlanningEngine {
       throw new Error(`Planning session not found: ${planId}`);
     }
 
-    const template = PLANNING_TEMPLATES[state.templateId];
-    return template.steps.find(s => s.id === state.currentStep);
+    const template = PLANNING_TEMPLATES[state.templateId as keyof typeof PLANNING_TEMPLATES];
+    return template.steps.find((s: any) => s.id === state.currentStep);
   }
 
   /**
@@ -552,8 +552,8 @@ export class PlanningEngine {
       throw new Error(`Planning session not found: ${planId}`);
     }
 
-    const template = PLANNING_TEMPLATES[state.templateId];
-    const currentStep = template.steps.find(s => s.id === state.currentStep);
+    const template = PLANNING_TEMPLATES[state.templateId as keyof typeof PLANNING_TEMPLATES];
+    const currentStep = template.steps.find((s: any) => s.id === state.currentStep);
 
     if (!currentStep) {
       throw new Error(`Step not found: ${state.currentStep}`);
@@ -592,7 +592,7 @@ export class PlanningEngine {
       };
     } else {
       state.currentStep = currentStep.nextStep;
-      const nextStep = template.steps.find(s => s.id === currentStep.nextStep);
+      const nextStep = template.steps.find((s: any) => s.id === currentStep.nextStep);
 
       return {
         success: true,
@@ -610,8 +610,8 @@ export class PlanningEngine {
       throw new Error(`Planning session not found: ${planId}`);
     }
 
-    const template = PLANNING_TEMPLATES[state.templateId];
-    const currentStepIndex = template.steps.findIndex(s => s.id === state.currentStep);
+    const template = (PLANNING_TEMPLATES as any)[state.templateId];
+    const currentStepIndex = template.steps.findIndex((s: any) => s.id === state.currentStep);
 
     if (currentStepIndex > 0) {
       const previousStep = template.steps[currentStepIndex - 1];
@@ -640,7 +640,7 @@ export class PlanningEngine {
     const state = this.activePlans.get(planId);
     if (!state) return 0;
 
-    const template = PLANNING_TEMPLATES[state.templateId];
+    const template = (PLANNING_TEMPLATES as any)[state.templateId];
     return (state.completedSteps.length / template.steps.length) * 100;
   }
 
@@ -767,7 +767,7 @@ export class PlanningEngine {
   }
 
   private generatePlanSummary(state: PlanningState): string {
-    const template = PLANNING_TEMPLATES[state.templateId];
+    const template = (PLANNING_TEMPLATES as any)[state.templateId];
     const data = state.collectedData;
 
     let summary = `**${template.name} Özeti**\n\n`;

@@ -98,6 +98,7 @@ export function QuickPipelineAction() {
                 <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden relative">
                   <div
                     className="absolute inset-y-0 left-0 bg-linear-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+                    // Dynamic progress bar width requires inline style
                     style={{ width: `${progress}%` } as React.CSSProperties}
                   />
                 </div>

@@ -7,6 +7,9 @@ import { AILogger } from './logger';
 import { GeminiDocumentClassifier } from './gemini-document-classifier';
 import { EnhancedSmartDetection as EnhancedDetector } from './enhanced-smart-detection';
 
+// Import types for usage
+import type { SmartDetection, DetectionEvidence } from './enhanced-smart-detection';
+
 // Re-export enhanced detection as primary detector
 export { EnhancedSmartDetection as AIDocumentDetector } from './enhanced-smart-detection';
 export type { SmartDetection, DetectionEvidence } from './enhanced-smart-detection';
@@ -67,7 +70,7 @@ export class LegacyDocumentDetector {
   };
 
   // Category mapping
-  private static readonly CATEGORY_MAP: Record<SmartDetection['documentType'], string> = {
+  private static readonly CATEGORY_MAP: Record<string, string> = {
     'İhale İlanı': 'İhale Belgeleri',
     'İdari Şartname': 'İdari Belgeler',
     'Teknik Şartname': 'Teknik Dokümanlar',
@@ -88,7 +91,7 @@ export class LegacyDocumentDetector {
   static async detect(
     file: File,
     firstPageText?: string
-  ): Promise<SmartDetection> {
+  ): Promise<SmartDetectionLegacy> {
     // Get text sample for analysis
     const textSample = firstPageText || await this.extractTextSample(file);
     
@@ -161,7 +164,7 @@ export class LegacyDocumentDetector {
   /**
    * Detect document type based on keywords
    */
-  private static detectDocumentType(text: string): SmartDetection['documentType'] {
+  private static detectDocumentType(text: string): SmartDetectionLegacy['documentType'] {
     const lowerText = text.toLowerCase();
     const scores: Record<string, number> = {};
     
@@ -175,12 +178,12 @@ export class LegacyDocumentDetector {
     
     // Find type with highest score
     let maxScore = 0;
-    let detectedType: SmartDetection['documentType'] = 'Diğer';
+    let detectedType: SmartDetectionLegacy['documentType'] = 'Diğer';
     
     for (const [type, score] of Object.entries(scores)) {
       if (score > maxScore) {
         maxScore = score;
-        detectedType = type as SmartDetection['documentType'];
+        detectedType = type as SmartDetectionLegacy['documentType'];
       }
     }
     
@@ -195,7 +198,7 @@ export class LegacyDocumentDetector {
   /**
    * Detect language
    */
-  private static detectLanguage(text: string): SmartDetection['language'] {
+  private static detectLanguage(text: string): SmartDetectionLegacy['language'] {
     const turkishChars = /[ğüşıöçĞÜŞİÖÇ]/g;
     const turkishWords = /\b(ve|veya|ile|için|olan|olarak|bu|bir|de|da)\b/gi;
     
@@ -278,7 +281,7 @@ export class LegacyDocumentDetector {
   /**
    * Assess document quality
    */
-  private static assessQuality(file: File, text: string): SmartDetection['quality'] {
+  private static assessQuality(file: File, text: string): SmartDetectionLegacy['quality'] {
     let qualityScore = 0;
     
     // Check file size (optimal: 100KB - 5MB)
@@ -406,7 +409,7 @@ export class LegacyDocumentDetector {
     return Math.round(confidence * 100) / 100;
   }
 
-  private static normalizeDocumentType(value: string): SmartDetection['documentType'] | null {
+  private static normalizeDocumentType(value: string): SmartDetectionLegacy['documentType'] | null {
     const normalized = value.toLowerCase().replace(/["']/g, '').trim();
     if (normalized.includes('ilan')) return 'İhale İlanı';
     if (normalized.includes('idari')) return 'İdari Şartname';
@@ -426,8 +429,8 @@ export class LegacyDocumentDetector {
    */
   static async detectBatch(
     files: File[]
-  ): Promise<Map<string, SmartDetection>> {
-    const results = new Map<string, SmartDetection>();
+  ): Promise<Map<string, SmartDetectionLegacy>> {
+    const results = new Map<string, SmartDetectionLegacy>();
     
     // Process files in parallel (max 5 at a time)
     const batchSize = 5;

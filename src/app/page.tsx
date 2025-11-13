@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Clock,
   Database,
+  Download,
   FileText,
   LayoutDashboard,
   TrendingUp,
@@ -98,6 +99,7 @@ export default function Home() {
   const quickActions = [
     { label: 'Yeni Analiz Başlat', href: '/analysis', icon: Sparkles, color: 'indigo' },
     { label: 'İhale Listesi', href: '/ihale', icon: FileText, color: 'blue' },
+    { label: '🚀 Hızlı Export', href: '/quick-export', icon: Download, color: 'purple' },
     { label: 'Raporlar', href: '/reports', icon: BarChart3, color: 'green' },
   ];
 

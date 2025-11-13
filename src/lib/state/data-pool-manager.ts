@@ -161,10 +161,7 @@ export class DataPoolManager {
         `);
         
         const fileName =
-          dataPool.metadata?.source_document ||
-          dataPool.documents?.[0]?.title ||
           dataPool.documents?.[0]?.name ||
-          dataPool.documents?.[0]?.fileName ||
           'Auto-generated';
         
         const params: (string | number | undefined)[] = [

@@ -157,22 +157,22 @@ export function ExportDialog({ isOpen, onClose, onExport, title = 'Analiz Sonuç
                 <div className="space-y-2">
                   <CheckboxOption
                     label="Grafikleri dahil et"
-                    checked={options.includeCharts}
+                    checked={options.includeCharts || false}
                     onChange={(checked) => setOptions({ ...options, includeCharts: checked })}
                   />
                   <CheckboxOption
                     label="Ham veriyi dahil et"
-                    checked={options.includeRawData}
+                    checked={options.includeRawData || false}
                     onChange={(checked) => setOptions({ ...options, includeRawData: checked })}
                   />
                   <CheckboxOption
                     label="Analiz özetini dahil et"
-                    checked={options.includeAnalysis}
+                    checked={options.includeAnalysis || false}
                     onChange={(checked) => setOptions({ ...options, includeAnalysis: checked })}
                   />
                   <CheckboxOption
                     label="Taslak filigranı ekle"
-                    checked={options.watermark}
+                    checked={options.watermark || false}
                     onChange={(checked) => setOptions({ ...options, watermark: checked })}
                   />
                 </div>

@@ -63,12 +63,12 @@ export function CSVCostAnalysis({ analysis, fileName, onRemove }: CSVCostAnalysi
             <div className="bg-slate-800/50 rounded-lg p-4 border border-blue-500/20">
               <div className="text-xs text-slate-400 mb-1">Risk Seviyesi</div>
               <div className={`text-xl font-bold ${
-                comparison.risk_level === 'low' ? 'text-green-400' :
-                comparison.risk_level === 'medium' ? 'text-yellow-400' :
+                comparison.risk_level === 'safe' ? 'text-green-400' :
+                comparison.risk_level === 'tight' ? 'text-yellow-400' :
                 'text-red-400'
               }`}>
-                {comparison.risk_level === 'low' ? 'Düşük' :
-                 comparison.risk_level === 'medium' ? 'Orta' :
+                {comparison.risk_level === 'safe' ? 'Düşük' :
+                 comparison.risk_level === 'tight' ? 'Orta' :
                  'Yüksek'}
               </div>
             </div>
@@ -76,10 +76,10 @@ export function CSVCostAnalysis({ analysis, fileName, onRemove }: CSVCostAnalysi
             <div className="bg-slate-800/50 rounded-lg p-4 border border-purple-500/20">
               <div className="text-xs text-slate-400 mb-1">Sapma</div>
               <div className={`text-xl font-bold ${
-                comparison.deviation_percent > 0 ? 'text-red-400' : 'text-green-400'
+                comparison.budget_vs_calculated > 0 ? 'text-red-400' : 'text-green-400'
               }`}>
-                {comparison.deviation_percent > 0 ? '+' : ''}
-                {comparison.deviation_percent.toFixed(1)}%
+                {comparison.budget_vs_calculated > 0 ? '+' : ''}
+                {comparison.budget_vs_calculated.toFixed(1)}%
               </div>
             </div>
           </>
@@ -157,7 +157,7 @@ export function CSVCostAnalysis({ analysis, fileName, onRemove }: CSVCostAnalysi
             <div className="flex justify-between mb-1">
               <span>Gelecek Ay Toplam:</span>
               <span className="font-bold">
-                {analysis.forecast.next_month_total.toLocaleString('tr-TR', {
+                {analysis.forecast.next_month.toLocaleString('tr-TR', {
                   style: 'currency',
                   currency: 'TRY',
                   minimumFractionDigits: 0,

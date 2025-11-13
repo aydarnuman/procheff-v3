@@ -175,17 +175,17 @@ export class MemoryManager {
     }
 
     // Contextual analysis
-    if (analysis.contextual) {
-      observations.push(`Risk Seviyesi: ${analysis.contextual.operasyonel_riskler.seviye}`);
-      observations.push(`Maliyet Sapma: ${analysis.contextual.maliyet_sapma_olasiligi.oran}%`);
-      observations.push(`Zaman Uygun: ${analysis.contextual.zaman_uygunlugu.yeterli ? 'Evet' : 'Hayır'}`);
+    if ((analysis as any).contextual) {
+      observations.push(`Risk Seviyesi: ${(analysis as any).contextual.operasyonel_riskler.seviye}`);
+      observations.push(`Maliyet Sapma: ${(analysis as any).contextual.maliyet_sapma_olasiligi.oran}%`);
+      observations.push(`Zaman Uygun: ${(analysis as any).contextual.zaman_uygunlugu.yeterli ? 'Evet' : 'Hayır'}`);
     }
 
     // Deep analysis decision
-    if (analysis.deep?.karar_onerisi) {
-      observations.push(`Karar: ${analysis.deep.karar_onerisi.karar}`);
-      observations.push(`Puan: ${analysis.deep.karar_onerisi.puan}`);
-      observations.push(`Gerekçe: ${analysis.deep.karar_onerisi.gerekce}`);
+    if ((analysis as any).deep?.karar_onerisi) {
+      observations.push(`Karar: ${(analysis as any).deep.karar_onerisi.karar}`);
+      observations.push(`Puan: ${(analysis as any).deep.karar_onerisi.puan}`);
+      observations.push(`Gerekçe: ${(analysis as any).deep.karar_onerisi.gerekce}`);
     }
 
     return observations;

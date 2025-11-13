@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AILogger } from "./logger";
-import { getCachedResponse, setCachedResponse, type CacheMetadata } from "./semantic-cache";
+import { getCachedResponse, setCachedResponse } from "./semantic-cache";
 
 /**
  * Configuration for Claude API calls
@@ -93,9 +93,10 @@ export class AIProviderFactory {
         this.claudeClient = new Anthropic({ apiKey });
         console.log('✅ Claude client initialized successfully');
         console.log(`   → API key format: ${apiKey.slice(0, 15)}... (${apiKey.length} chars)`);
-      } catch (error: any) {
-        console.error('❌ [CRITICAL] Failed to initialize Claude client:', error?.message || String(error));
-        throw new Error(`Claude client initialization failed: ${error?.message || String(error)}`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('❌ [CRITICAL] Failed to initialize Claude client:', message);
+        throw new Error(`Claude client initialization failed: ${message}`);
       }
     }
     return this.claudeClient;
@@ -188,14 +189,16 @@ export class AIProviderFactory {
           max_tokens: maxTokens,
           messages: [{ role: "user", content: prompt }],
           // 🎯 STRUCTURED OUTPUT - Guarantees valid JSON
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: schema.name,
-              strict: true,
-              schema: schema.schema,
+          ...(schema ? {
+            response_format: {
+              type: "json_schema" as const,
+              json_schema: {
+                name: schema.name,
+                strict: true,
+                schema: schema.schema,
+              },
             },
-          },
+          } : {}),
         },
         {
           // ✅ Timeout in request options (prevents hanging!)

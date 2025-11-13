@@ -81,4 +81,4 @@ async function handleContextualAnalysis(request: NextRequest) {
     });
 }
 
-export const POST = errorHandler(handleContextualAnalysis);
+export const POST = errorHandler(handleContextualAnalysis as any);

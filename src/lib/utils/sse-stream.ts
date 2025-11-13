@@ -122,8 +122,8 @@ export function createSSEResponse(
       };
       
       // Handle abort signal if available
-      if (controller.signal) {
-        controller.signal.addEventListener('abort', cleanup);
+      if ((controller as any).signal) {
+        (controller as any).signal.addEventListener('abort', cleanup);
       }
       
       try {

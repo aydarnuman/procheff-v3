@@ -445,7 +445,7 @@ export class CostExpert {
   ): any {
     const currentSeason = season || this.getCurrentSeason();
     let totalCost = 0;
-    const breakdown = [];
+    const breakdown: any[] = [];
 
     menuItems.forEach(item => {
       const recipe = this.findRecipe(item);
@@ -483,10 +483,10 @@ export class CostExpert {
    */
   calculateRecipeCost(recipe: any, qualityLevel: string, season: string): any {
     let ingredientCost = 0;
-    const ingredientBreakdown = [];
+    const ingredientBreakdown: any[] = [];
 
     recipe.ingredients.forEach((ing: any) => {
-      const ingredient = INGREDIENT_PRICES[ing.item];
+      const ingredient = (INGREDIENT_PRICES as any)[ing.item];
       if (ingredient) {
         const basePrice = ingredient.quality[qualityLevel] || ingredient.basePrice;
         const seasonalPrice = basePrice * (ingredient.seasonalVariation[season] || 1);
@@ -527,7 +527,7 @@ export class CostExpert {
   optimizeMenuCost(currentMenu: any[], targetReduction: number = 0.15): any {
     const currentCost = this.calculateTotalMenuCost(currentMenu);
     const targetCost = currentCost * (1 - targetReduction);
-    const optimizations = [];
+    const optimizations: any[] = [];
 
     // Try different optimization strategies
     Object.values(OPTIMIZATION_STRATEGIES).forEach(strategy => {
@@ -568,10 +568,10 @@ export class CostExpert {
     mealType: string,
     personCount: number
   ): any {
-    const standards = PORTION_STANDARDS[institutionType] || PORTION_STANDARDS['fabrika'];
+    const standards = (PORTION_STANDARDS as any)[institutionType] || PORTION_STANDARDS['fabrika'];
     const portions = standards.portions;
     let totalCost = 0;
-    const breakdown = [];
+    const breakdown: any[] = [];
 
     Object.entries(portions).forEach(([category, portion]: [string, any]) => {
       const ingredientCost = this.estimatePortionIngredientCost(category, portion.standard);
@@ -603,7 +603,7 @@ export class CostExpert {
    */
   forecastSeasonalCosts(menuItems: string[], personCount: number): any {
     const seasons = ['summer', 'autumn', 'winter', 'spring'];
-    const forecasts = [];
+    const forecasts: any[] = [];
 
     seasons.forEach(season => {
       const cost = this.calculateMealCost(menuItems, personCount, 'standard', season as any);
@@ -645,7 +645,7 @@ export class CostExpert {
 
   private findRecipe(itemName: string): any {
     const normalized = itemName.toLowerCase().replace(/\s+/g, '_');
-    return RECIPE_TEMPLATES[normalized] || null;
+    return (RECIPE_TEMPLATES as any)[normalized] || null;
   }
 
   private calculateLaborCost(minutes: number, servings: number): number {
@@ -665,7 +665,7 @@ export class CostExpert {
       profit: 0.15
     };
 
-    const breakdown = {};
+    const breakdown: any = {};
     let total = 0;
 
     Object.entries(overheadRates).forEach(([category, rate]) => {
@@ -701,7 +701,7 @@ export class CostExpert {
   }
 
   private getImplementationSteps(strategy: any): string[] {
-    const steps = [];
+    const steps: any[] = [];
 
     if (strategy.methods) {
       strategy.methods.forEach((method: string) => {
@@ -771,7 +771,7 @@ export class CostExpert {
 
   private estimatePortionIngredientCost(category: string, portionSize: number): number {
     // Rough estimates based on category
-    const costPerGram = {
+    const costPerGram: any = {
       corba: 0.02,
       ana_yemek_et: 0.25,
       ana_yemek_sebze: 0.08,

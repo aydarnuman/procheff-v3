@@ -126,7 +126,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           <span
             key={ripple.id}
             className="absolute rounded-full bg-white/30 animate-ripple pointer-events-none ripple"
-            // CSS variables for ripple position - ESLint exception needed  
+            // CSS variables for ripple animation position - requires inline styles for dynamic positioning
             style={{
               '--ripple-x': `${ripple.x}px`,
               '--ripple-y': `${ripple.y}px`,

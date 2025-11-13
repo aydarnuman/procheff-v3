@@ -682,7 +682,7 @@ export default function IhalePage() {
                         <p className="text-slate-400 text-sm">
                           {searchTerm ? (
                             <>
-                              "<span className="text-indigo-400 font-semibold">{searchTerm}</span>" için sonuç bulunamadı
+                              <span className="text-indigo-400 font-semibold">&ldquo;{searchTerm}&rdquo;</span> için sonuç bulunamadı
                             </>
                           ) : (
                             'İhale bulunamadı'
@@ -716,7 +716,7 @@ export default function IhalePage() {
                 </div>
                 <div>
                   <p className="text-slate-400 text-lg font-semibold mb-2">Henüz ihale bulunamadı</p>
-                  <p className="text-slate-500 text-sm">"Yenile" butonuna basarak ihaleleri çekebilirsiniz</p>
+                  <p className="text-slate-500 text-sm">&ldquo;Yenile&rdquo; butonuna basarak ihaleleri çekebilirsiniz</p>
                 </div>
             </div>
             </motion.div>

@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { Inter } from "next/font/google";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { QuickPipelineAction } from "@/components/ui/QuickPipelineAction";
+import { FloatingChatWidgetWrapper } from "@/components/chat/FloatingChatWidgetWrapper";
 import { ErrorSuppressor } from "@/components/ErrorSuppressor";
 import "./globals.css";
 
@@ -63,6 +64,7 @@ export default function RootLayout({
             <div className="relative z-10">
               <AppShell>{children}</AppShell>
               <QuickPipelineAction />
+              <FloatingChatWidgetWrapper />
             </div>
           </ToastProvider>
         </SessionProvider>

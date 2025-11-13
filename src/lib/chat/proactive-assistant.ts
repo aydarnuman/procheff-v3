@@ -440,7 +440,7 @@ export class ProactiveAssistant {
             type: 'insight',
             priority: 'medium',
             title: 'Kurum Önerisi',
-            message: profile[1].tips[0],
+            message: (profile[1] as any).tips?.[0] || 'Kurum hakkında bilgi mevcut',
             icon: '🏢',
             metadata: {
               source: 'tender_expert',
@@ -457,7 +457,7 @@ export class ProactiveAssistant {
       const currentMonth = new Date().getMonth() + 1;
 
       const inSeasonItems = Object.entries(seasonalItems)
-        .filter(([_, months]) => months.includes(currentMonth))
+        .filter(([_, months]) => Array.isArray(months) && months.includes(currentMonth))
         .slice(0, 3);
 
       if (inSeasonItems.length > 0) {

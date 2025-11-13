@@ -1,7 +1,7 @@
 'use client';
 
 import { FileText, Info, Calendar, Building2, MapPin, Hash, Clock } from 'lucide-react';
-import { sanitizeHtml } from '@/lib/ihale/html-sanitize';
+import { sanitizeForSnapshot as sanitizeHtml } from '@/lib/ihale/html-sanitize';
 
 interface TenderDetailSection {
   title: string;

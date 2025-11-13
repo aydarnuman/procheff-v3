@@ -54,41 +54,15 @@ const WEB_MOCK_DATA: Record<string, { unit_price: number; unit: string; vendor: 
 
 /**
  * Web'den fiyat getir
+ * Gerçek web scraping provider'a yönlendir
  */
 export async function webQuote(product_key: string): Promise<MarketQuote | null> {
   try {
-    // TODO: Gerçek web scraping veya API entegrasyonu
-    // - Playwright/Puppeteer ile scraping
-    // - Hal fiyatları API
-    // - E-ticaret sitesi API'leri
-
-    // Mock data
-    const mockData = WEB_MOCK_DATA[product_key];
-
-    if (!mockData) {
-      return null;
-    }
-
-    // Rastgele varyasyon ekle (±5%) - gerçekçi simülasyon için
-    const variance = (Math.random() - 0.5) * 0.1; // -5% ile +5% arası
-    const adjustedPrice = mockData.unit_price * (1 + variance);
-
-    return {
-      product_key,
-      raw_query: product_key,
-      unit: mockData.unit,
-      unit_price: Number(adjustedPrice.toFixed(2)),
-      currency: 'TRY',
-      asOf: new Date().toISOString().slice(0, 10),
-      source: 'WEB',
-      meta: {
-        vendor: mockData.vendor,
-        url: mockData.url,
-        reliability: 'medium',
-      },
-    };
+    // Gerçek scraping provider'ı kullan
+    const { webQuote: realWebQuote } = await import('./web-real');
+    return await realWebQuote(product_key);
   } catch (error) {
-    console.error('[WEB Provider] Hata:', error);
+    console.error('[WEB] Real scraping failed, falling back to null:', error);
     return null;
   }
 }

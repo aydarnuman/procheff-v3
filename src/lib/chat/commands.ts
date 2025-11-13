@@ -1,9 +1,8 @@
 /**
  * Chat Command System
  * Simple command parser for chat interface
+ * Note: SQLite-dependent modules are imported dynamically to avoid client-side loading
  */
-
-import { exportHandler } from './export-handler';
 
 export interface CommandResult {
   type: 'success' | 'error' | 'info' | 'export';
@@ -169,6 +168,9 @@ async function exportCommand(args: string[]): Promise<CommandResult> {
   }
 
   try {
+    // Dynamic import to avoid SQLite loading on client-side
+    const { exportHandler } = await import('./export-handler');
+
     // Determine export type and options
     const options: any = {
       format: format as 'pdf' | 'excel' | 'csv' | 'json'

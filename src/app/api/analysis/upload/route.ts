@@ -26,6 +26,17 @@ const ALLOWED_TYPES = [
 export async function POST(request: NextRequest) {
   const sessionId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
+  // Defensive: Check request size limit (100MB max for batch)
+  const contentLength = request.headers.get('content-length');
+  const MAX_SIZE = 100 * 1024 * 1024; // 100MB for batch uploads
+  
+  if (contentLength && parseInt(contentLength) > MAX_SIZE) {
+    return NextResponse.json(
+      { error: 'Request too large', message: 'Toplam dosya boyutu 100MB\'ı aşamaz' },
+      { status: 413 }
+    );
+  }
+  
   // Check if client wants SSE streaming
   const acceptHeader = request.headers.get('accept') || '';
   const wantsStreaming = acceptHeader.includes('text/event-stream') || 
@@ -137,7 +148,7 @@ export async function POST(request: NextRequest) {
       let result;
       try {
         result = await buildDataPool(files, {
-          ocr_enabled: false, // Will implement OCR later
+          ocr_enabled: true, // Enable OCR for PDFs with low text density
           extract_tables: true,
           extract_dates: true,
           extract_amounts: true,
@@ -355,9 +366,7 @@ export async function POST(request: NextRequest) {
       // Determine representative filename
       const primaryFileName =
         files[0]?.name ||
-        dataPool.documents?.[0]?.title ||
         dataPool.documents?.[0]?.name ||
-        dataPool.documents?.[0]?.fileName ||
         'Auto-generated';
 
       // Create analysis record
@@ -563,7 +572,7 @@ function createStreamingResponse(sessionId: string, request: NextRequest): Respo
           let buildResult;
           try {
             buildResult = await buildDataPool(files, {
-              ocr_enabled: false,
+              ocr_enabled: true, // Enable OCR for PDFs with low text density
               extract_tables: true,
               extract_dates: true,
               extract_amounts: true,

@@ -100,7 +100,7 @@ export function EnhancedTabNavigation({
                   layoutId="activeTab"
                   className={`absolute inset-0 bg-linear-to-r ${tab.color} opacity-10 rounded-lg`}
                   transition={{
-                    type: "spring",
+                    type: "spring" as const,
                     stiffness: 300,
                     damping: 30
                   }}

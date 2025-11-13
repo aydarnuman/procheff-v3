@@ -109,6 +109,7 @@ export function LiveLogFeed({ jobId, maxLogs = 10 }: LiveLogFeedProps) {
         ref={containerRef}
         onScroll={handleScroll}
         className="h-[calc(100%-56px)] overflow-y-auto px-4 py-3 font-mono text-xs"
+        // Dynamic scroll behavior based on state
         style={{
           scrollBehavior: isAutoScroll ? "smooth" : "auto",
         }}

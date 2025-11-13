@@ -2,10 +2,9 @@ import { AILogger } from "@/lib/ai/logger";
 import { IHALE_ANALYSIS_PROMPT } from "@/lib/ai/prompts";
 import { AIProviderFactory } from "@/lib/ai/provider-factory";
 import { IHALE_ANALYSIS_SCHEMA, type IhaleAnalysisResponse } from "@/lib/ai/schemas";
-import { AnalysisRepository } from "@/lib/db/analysis-repository";
 import { auth } from "@/lib/auth";
+import { AnalysisRepository } from "@/lib/db/analysis-repository";
 import { jobManager } from "@/lib/jobs/job-manager";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import crypto from "crypto";
 import { fileTypeFromBuffer } from "file-type";
 import mammoth from "mammoth";
@@ -57,32 +56,40 @@ function textDensity(str: string): number {
   return alpha / Math.max(1, sample.length);
 }
 
-/** Gemini 2.0 Vision OCR */
+/** OCR with multi-engine fallback support (+optional PDF rasterization) */
 async function runOCRGemini(buf: Buffer): Promise<string> {
-  if (!process.env.GOOGLE_API_KEY) {
-    throw new Error("GOOGLE_API_KEY not configured");
+  const { OCRService } = await import('@/lib/document-processor/ocr-service');
+
+  const provider = (process.env.OCR_PROVIDER || 'auto') as 'auto' | 'gemini' | 'tesseract';
+  const language = process.env.OCR_LANGUAGE || 'tur+eng';
+  const timeout = parseInt(process.env.OCR_TIMEOUT || '120000', 10);
+
+  // Detect PDF buffer
+  const isPdf = buf.length >= 5 && buf.subarray(0, 5).toString('ascii') === '%PDF-';
+  const rasterizeEnabled = (process.env.OCR_PDF_RASTERIZE || 'false').toLowerCase() === 'true';
+
+  if (isPdf && rasterizeEnabled) {
+    try {
+      const dpi = parseInt(process.env.OCR_DPI || '200', 10);
+      const maxPages = parseInt(process.env.OCR_MAX_PAGES || '5', 10);
+      const { renderPdfToImages } = await import('@/lib/document-processor/pdf-image-renderer');
+      const raster = await renderPdfToImages(buf, { dpi, maxPages });
+      if (raster.images.length > 0) {
+        const results = await OCRService.batchOCR(raster.images, { provider, language, timeout });
+        const text = results.map(r => r.text || '').filter(t => t.length > 0).join('\n\n');
+        if (text.trim().length > 0) return text;
+      }
+    } catch {
+      // Fallback to direct performOCR below
+    }
   }
 
-  const gemini = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-  const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-  
-  const img = {
-    inlineData: {
-      data: buf.toString("base64"),
-      mimeType: "application/pdf",
-    },
-  };
-
-  const result = await model.generateContent([
-    {
-      inlineData: img.inlineData,
-    },
-    {
-      text: "Bu görsel/dokümandaki metni UTF-8 düz metin olarak çıkar. Ek yorum ekleme.",
-    },
-  ]);
-
-  return result.response.text();
+  const result = await OCRService.performOCR(buf, { provider, language, timeout });
+  if (result.error) {
+    // Return empty to allow caller decide whether to keep original text
+    return '';
+  }
+  return result.text;
 }
 
 /** Main POST handler */
@@ -93,6 +100,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
+  // Defensive: Check request size limit (50MB max)
+  const contentLength = req.headers.get('content-length');
+  const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+  
+  if (contentLength && parseInt(contentLength) > MAX_SIZE) {
+    return NextResponse.json(
+      { success: false, error: 'File too large', message: 'Dosya boyutu 50MB\'ı aşamaz' },
+      { status: 413 }
+    );
+  }
+
   const jobId = crypto.randomUUID();
 
   try {
@@ -100,8 +118,29 @@ export async function POST(req: NextRequest) {
     jobManager.createJob(jobId);
     jobManager.updateJob(jobId, { status: 'processing', progress: 10 });
 
-    // Parse multipart form data using Next.js built-in formData
-    const formData = await req.formData();
+    // Parse multipart form data with timeout (30 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
+    let formData: FormData;
+    try {
+      formData = await req.formData();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      jobManager.updateJob(jobId, {
+        status: 'error',
+        error: 'FormData parsing failed',
+        progress: 0
+      });
+      AILogger.error('FormData parsing failed', { error, jobId });
+      return NextResponse.json(
+        { success: false, error: 'Invalid form data', message: 'Geçersiz dosya formatı' },
+        { status: 400 }
+      );
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    
     const file = formData.get("file") as File;
 
     if (!file) {
@@ -148,8 +187,18 @@ export async function POST(req: NextRequest) {
       });
       
       jobManager.updateJob(jobId, { status: 'ocr', progress: 50 });
-      text = await runOCRGemini(buf);
-      ocrUsed = true;
+      const ocrText = await runOCRGemini(buf);
+      const wordCount = ocrText.trim().split(/\s+/).filter(Boolean).length;
+      if (ocrText.trim().length > 500 || wordCount > 50) {
+        text = ocrText;
+        ocrUsed = true;
+      } else {
+        AILogger.warn("OCR metni yetersiz, orijinal extraction kullanılacak", {
+          jobId,
+          ocrLength: ocrText.length,
+          wordCount
+        });
+      }
     }
 
     if (!text || text.trim().length < 100) {
@@ -164,9 +213,90 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    // 🆕 Step 1: Preprocess text (clean OCR artifacts)
+    jobManager.updateJob(jobId, { status: 'preprocess', progress: 55 });
+    const { preprocessPDFText, needsPreprocessing } = await import('@/lib/document-processor/pdf-cleaner');
+
+    let processedText = text;
+    let preprocessingStats;
+    let extractedEntities;
+
+    // Always preprocess for OCR'd documents or documents with potential issues
+    const shouldPreprocess = ocrUsed || needsPreprocessing(text) || mime === "application/pdf";
+
+    AILogger.info('Preprocessing decision', {
+      jobId,
+      ocrUsed,
+      needsPreprocessing: needsPreprocessing(text),
+      mime,
+      shouldPreprocess
+    });
+
+    if (shouldPreprocess) {
+      AILogger.info('Text needs preprocessing, cleaning...', { jobId });
+      const preprocessResult = await preprocessPDFText(text, {
+        removeHeaders: true,
+        removeFooters: true,
+        removePageNumbers: true,
+        mergeHyphenatedWords: true,
+        normalizeWhitespace: true,
+        removeDuplicateLines: true,
+        preserveTables: true,
+        detectSections: true,
+      });
+      processedText = preprocessResult.cleanedText;
+      preprocessingStats = preprocessResult.statistics;
+
+      AILogger.success('Text preprocessing completed', {
+        jobId,
+        originalLength: preprocessingStats.originalLength,
+        cleanedLength: preprocessingStats.cleanedLength,
+        sectionsDetected: preprocessResult.sections.length,
+      });
+
+      // 🆕 Step 2: Chunk document
+      jobManager.updateJob(jobId, { status: 'chunk', progress: 60 });
+      const { chunkDocument } = await import('@/lib/document-processor/document-chunker');
+      const chunkResult = chunkDocument(processedText, preprocessResult.sections, {
+        maxChunkSize: 12000,
+        minChunkSize: 2000,
+        overlapSize: 500,
+        chunkBySection: true,
+      });
+
+      AILogger.info('Document chunked', {
+        jobId,
+        totalChunks: chunkResult.chunks.length,
+        avgChunkSize: chunkResult.statistics.avgChunkSize,
+      });
+
+      // 🆕 Step 3: Extract entities from chunks
+      jobManager.updateJob(jobId, { status: 'extract', progress: 65 });
+      const { extractEntitiesFromChunks } = await import('@/lib/document-processor/entity-extractor');
+      const entities = await extractEntitiesFromChunks(chunkResult.chunks);
+
+      AILogger.info('Entities extracted', {
+        jobId,
+        kurum: entities.kurum || 'not found',
+        dates: entities.dates.length,
+        confidence: entities.confidence,
+      });
+
+      // Combine first 2 chunks for AI analysis (to stay within token limits)
+      const combinedChunks = chunkResult.chunks
+        .slice(0, 2)
+        .map(c => c.content)
+        .join('\n\n--- BÖLÜM ---\n\n');
+
+      processedText = combinedChunks;
+    }
+
     // Claude analysis
     jobManager.updateJob(jobId, { status: 'analyze', progress: 70 });
-    const prompt = `${IHALE_ANALYSIS_PROMPT}\n\nDOKÜMAN METNİ:\n${text.slice(0, 20000)}`;
+
+    // Limit to 20000 characters for AI analysis
+    const analysisText = processedText.slice(0, 20000);
+    const prompt = `${IHALE_ANALYSIS_PROMPT}\n\nDOKÜMAN METNİ:\n${analysisText}`;
 
     // 🎯 Use structured output for guaranteed valid JSON
     const { data, metadata } = await AIProviderFactory.createStructuredMessage<IhaleAnalysisResponse>(
@@ -213,6 +343,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         ...jobManager.getJob(jobId)?.metadata,
         ocr_used: ocrUsed,
+        preprocessing_applied: !!preprocessingStats,
       },
     });
 
@@ -230,6 +361,8 @@ export async function POST(req: NextRequest) {
         ocr_used: ocrUsed,
         sha256: hash,
         mime_type: mime,
+        preprocessing_applied: !!preprocessingStats,
+        preprocessing_stats: preprocessingStats || null,
       },
     });
   } catch (err: unknown) {

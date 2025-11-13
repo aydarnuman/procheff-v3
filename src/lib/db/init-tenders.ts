@@ -151,7 +151,7 @@ export function getActiveTenders(filters?: {
   return rows.map((row) => ({
     ...row,
     partialBidAllowed: Boolean(row.partialBidAllowed),
-  }));
+  })) as any[];
 }
 
 /**

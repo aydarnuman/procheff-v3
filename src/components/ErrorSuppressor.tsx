@@ -23,6 +23,17 @@ export function ErrorSuppressor() {
         message.includes('Unchecked runtime.lastError') ||
         message.includes('Could not establish connection') ||
         message.includes('Receiving end does not exist') ||
+        message.includes('Cannot read properties of undefined') ||
+        message.includes('reading \'control\'') ||
+        message.includes('shouldOfferCompletionListForField') ||
+        message.includes('elementWasFocused') ||
+        message.includes('focusInEventHandler') ||
+        message.includes('Array.some') ||
+        message.includes('at content_script.js') ||
+        message.includes('content_script.js') ||
+        message.includes('chrome-extension://') ||
+        message.includes('extension context invalidated') ||
+        message.includes('Extension context') ||
         message.includes('sandbox') ||
         message.includes('plugin') ||
         message.includes('Failed to load') ||
@@ -32,6 +43,11 @@ export function ErrorSuppressor() {
         message.includes('Uncaught ReferenceError: $') ||
         fullMessage.includes('DataTable is not defined') ||
         fullMessage.includes('$ is not defined') ||
+        fullMessage.includes('shouldOfferCompletionListForField') ||
+        fullMessage.includes('elementWasFocused') ||
+        fullMessage.includes('focusInEventHandler') ||
+        fullMessage.includes('Array.some') ||
+        fullMessage.includes('at content_script.js') ||
         message.includes('trusted-types') ||
         message.includes('ERR_ABORTED 404') ||
         message.includes('about:srcdoc') ||
@@ -206,6 +222,12 @@ export function ErrorSuppressor() {
         message.includes('Failed to read') ||
         message.includes('Failed to get') ||
         message.includes('named property') ||
+        message.includes('shouldOfferCompletionListForField') ||
+        message.includes('elementWasFocused') ||
+        message.includes('focusInEventHandler') ||
+        message.includes('Array.some') ||
+        message.includes('Cannot read properties of undefined') ||
+        message.includes('reading \'control\'') ||
         message.includes('from \'Location\'') ||
         message.includes('from \'Window\'') ||
         message.includes('from \'Document\'') ||

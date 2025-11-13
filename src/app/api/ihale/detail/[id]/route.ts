@@ -212,18 +212,18 @@ export async function GET(
         const errorStack = err instanceof Error ? err.stack : 'No stack trace';
         
         // Check for authentication errors
-        const isAuthError = errorMessage?.includes('authentication') || 
+        const isAuthError = errorMessage?.includes('authentication') ||
                            errorMessage?.includes('401') ||
                            errorMessage?.includes('invalid x-api-key') ||
-                           err?.name === 'APIError';
-        
-        AILogger.error('AI parsing error', { 
-          error: errorMessage, 
+                           (err as any)?.name === 'APIError';
+
+        AILogger.error('AI parsing error', {
+          error: errorMessage,
           stack: errorStack,
           tenderId: id,
           elapsedTime: `${elapsedTime}ms`,
           isAuthError,
-          errorName: err?.name || 'UnknownError'
+          errorName: (err as any)?.name || 'UnknownError'
         });
         
         // Log critical auth errors separately
@@ -422,7 +422,7 @@ export async function GET(
       }
     }
 
-    return new Response(JSON.stringify({ error: e.message }), {
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : 'Unknown error occurred' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });

@@ -1,12 +1,60 @@
 import express from 'express';
-import { chromium, BrowserContext } from 'playwright';
+import { chromium, BrowserContext, Browser } from 'playwright';
 import * as cheerio from 'cheerio';
 import { toCSV, toJSON, toTXT } from './utils/exporters';
+
+// Türkçe logger
+const Log = {
+  basla: (msg: string, detay?: any) => {
+    console.log(`\x1b[36m🔄 [${new Date().toLocaleTimeString('tr-TR')}] ${msg} başlatılıyor...\x1b[0m`);
+    if (detay) console.log(`\x1b[2m   📋 Detay:`, detay, '\x1b[0m');
+  },
+  basarili: (msg: string, detay?: any) => {
+    console.log(`\x1b[32m✅ [${new Date().toLocaleTimeString('tr-TR')}] ${msg} tamamlandı\x1b[0m`);
+    if (detay) console.log(`\x1b[2m   📊 Sonuç:`, detay, '\x1b[0m');
+  },
+  hata: (msg: string, err?: any) => {
+    console.error(`\x1b[31m❌ [${new Date().toLocaleTimeString('tr-TR')}] ${msg} başarısız\x1b[0m`);
+    if (err) console.error(`\x1b[2m   🐛 Hata:`, err, '\x1b[0m');
+  },
+  bilgi: (msg: string, detay?: any) => {
+    console.log(`\x1b[34mℹ️  [${new Date().toLocaleTimeString('tr-TR')}] ${msg}\x1b[0m`);
+    if (detay) console.log(`\x1b[2m   📋 Detay:`, detay, '\x1b[0m');
+  },
+  uyari: (msg: string, detay?: any) => {
+    console.log(`\x1b[33m⚠️  [${new Date().toLocaleTimeString('tr-TR')}] ${msg}\x1b[0m`);
+    if (detay) console.log(`\x1b[2m   📋 Detay:`, detay, '\x1b[0m');
+  },
+  ilerleme: (yuzde: number, islem: string) => {
+    const bar = '█'.repeat(Math.floor(yuzde / 5)) + '░'.repeat(20 - Math.floor(yuzde / 5));
+    console.log(`📈 [${new Date().toLocaleTimeString('tr-TR')}] ${islem}: [${bar}] %${yuzde}`);
+  }
+};
 
 const BASE = 'https://www.ihalebul.com';
 
 type Session = { storageState: any; createdAt: number };
 const SESSIONS = new Map<string, Session>();
+
+// Track active browsers for cleanup
+const ACTIVE_BROWSERS: Set<Browser> = new Set();
+
+// Cleanup function for graceful shutdown
+export async function cleanupBrowsers() {
+  Log.basla(`Tarayıcılar temizleniyor`, { aktifTarayıcı: ACTIVE_BROWSERS.size });
+  
+  const closePromises = Array.from(ACTIVE_BROWSERS).map(async (browser) => {
+    try {
+      await browser.close();
+    } catch (error) {
+      Log.hata('Tarayıcı kapatılamadı', error);
+    }
+  });
+  
+  await Promise.all(closePromises);
+  ACTIVE_BROWSERS.clear();
+  Log.basarili('Tüm tarayıcılar kapatıldı');
+}
 
 // Session cleanup - 8 saat sonra sil (1 iş günü için yeterli)
 setInterval(() => {
@@ -14,7 +62,7 @@ setInterval(() => {
   for (const [sid, session] of SESSIONS.entries()) {
     if (now - session.createdAt > 28800000) { // 8 saat = 8 * 60 * 60 * 1000
       SESSIONS.delete(sid);
-      console.log(`🗑️  Session expired: ${sid}`);
+      Log.uyari(`Oturum süresidoldu`, { sessionId: sid });
     }
   }
 }, 600000); // Her 10 dakikada kontrol (session artık uzun ömürlü olduğu için daha seyrek kontrol)
@@ -25,11 +73,21 @@ async function makeContext(sessionId: string) {
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
   });
+  
+  // Track browser for cleanup
+  ACTIVE_BROWSERS.add(browser);
+  
   const context = await browser.newContext({
     storageState: session?.storageState ?? undefined,
     viewport: { width: 1920, height: 1080 },
     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
   });
+  
+  // Remove from tracking when closed
+  browser.on('disconnected', () => {
+    ACTIVE_BROWSERS.delete(browser);
+  });
+  
   return { browser, context };
 }
 
@@ -37,20 +95,20 @@ async function doLogin(context: BrowserContext, username: string, password: stri
   const page = await context.newPage();
 
   try {
-    console.log('🔐 Logging in to ihalebul.com...');
+    Log.basla('ihalebul.com giriş işlemi');
     await page.goto(`${BASE}/signin`, { waitUntil: 'networkidle', timeout: 60000 }); // 60 saniye (ihalebul.com yavaş olabiliyor)
 
     // ID'li formu kullan (3 form var, ID'li olan ana form)
     await page.waitForSelector('input#kul_adi', { state: 'visible', timeout: 10000 });
 
-    console.log('📝 Filling username...');
+    Log.bilgi('Kullanıcı adı giriliyor');
     await page.fill('input#kul_adi', username);
 
-    console.log('🔒 Filling password...');
+    Log.bilgi('Şifre giriliyor');
     await page.fill('input#sifre', password);
 
     // Login butonuna tıkla (form#form içindeki butonu seç)
-    console.log('🚀 Clicking login button...');
+    Log.bilgi('Giriş butonu tıklanıyor');
     await page.click('form#form button[type="submit"]');
     await page.waitForLoadState('networkidle', { timeout: 60000 }); // 60 saniye (ihalebul.com yavaş olabiliyor)
 
@@ -58,13 +116,13 @@ async function doLogin(context: BrowserContext, username: string, password: stri
 
     // Login başarılı mı kontrol et
     if (html.includes('Çıkış') || html.includes('çıkış') || !html.includes('kul_adi')) {
-      console.log('✅ Login successful');
+      Log.basarili('Giriş başarılı');
       return await context.storageState();
     }
 
-    throw new Error('Login başarısız - Kullanıcı adı veya şifre hatalı');
+    throw new Error('Giriş başarısız - Kullanıcı adı veya şifre hatalı');
   } catch (error) {
-    console.error('❌ Login error:', error);
+    Log.hata('Giriş hatası', error);
     throw error;
   } finally {
     await page.close();
@@ -361,7 +419,7 @@ function parseList(html: string) {
     });
   });
 
-  console.log(`📋 Parsed ${out.length} tenders from list`);
+  Log.bilgi(`İhale listesinden kayıt ayrıştırıldı`, { toplamKayıt: out.length });
   return out;
 }
 
@@ -413,7 +471,7 @@ function extractDocuments(html: string) {
     });
   });
 
-  console.log(`📄 Found ${docs.length} documents`);
+  Log.bilgi(`Belgeler bulundu`, { toplamBelge: docs.length });
   return docs;
 }
 
@@ -428,7 +486,7 @@ export function mountIhalebul(app: express.Express) {
         return res.status(400).json({ error: 'username and password required' });
       }
 
-      console.log(`🔑 Login attempt for user: ${username}`);
+      Log.basla(`Kullanıcı girişi`, { kullanıcı: username });
 
       const { browser, context } = await makeContext('tmp');
       const storageState = await doLogin(context, username, password);
@@ -441,11 +499,11 @@ export function mountIhalebul(app: express.Express) {
         createdAt: Date.now()
       });
 
-      console.log(`✅ Session created: ${sessionId}`);
+      Log.basarili(`Oturum oluşturuldu`, { sessionId });
       res.json({ sessionId, expiresIn: 3600 });
 
     } catch (error: any) {
-      console.error('❌ Login failed:', error.message);
+      Log.hata('Giriş başarısız', error.message);
       res.status(500).json({ error: error.message });
     }
   });
@@ -459,7 +517,7 @@ export function mountIhalebul(app: express.Express) {
         return res.status(401).json({ error: 'invalid_session' });
       }
 
-      console.log(`📋 Fetching ALL tender pages for session: ${sessionId}`);
+      Log.basla(`Tüm ihale sayfaları getiriliyor`, { sessionId });
 
       const { browser, context } = await makeContext(sessionId);
       const page = await context.newPage();
@@ -478,7 +536,7 @@ export function mountIhalebul(app: express.Express) {
         const pageMatch = lastPageHref.match(/page=(\d+)/);
         if (pageMatch) {
           totalPages = parseInt(pageMatch[1], 10);
-          console.log(`📊 Detected ${totalPages} total pages`);
+          Log.bilgi(`Toplam sayfa sayısı tespit edildi`, { toplamSayfa: totalPages });
         }
       }
 
@@ -489,7 +547,7 @@ export function mountIhalebul(app: express.Express) {
           ? `${BASE}/tenders/search?workcategory_in=15`
           : `${BASE}/tenders/search?workcategory_in=15&page=${pageNum}`;
 
-        console.log(`📄 Fetching page ${pageNum}/${totalPages}...`);
+        Log.ilerleme(Math.round((pageNum / totalPages) * 100), `Sayfa getiriliyor: ${pageNum}/${totalPages}`);
 
         await page.goto(url, {
           waitUntil: 'domcontentloaded',
@@ -610,7 +668,7 @@ export function mountIhalebul(app: express.Express) {
 
       // 📄 Check for pagination in tables (Mal/Hizmet Listesi)
       // Look for pagination controls in tables
-      let allTablePages: string[] = [];
+      const allTablePages: string[] = [];
       try {
         // Wait a bit for any dynamic content to load
         await page.waitForTimeout(2000);

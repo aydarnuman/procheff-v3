@@ -1,29 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Brain, 
-  Database, 
-  Sparkles, 
-  FileText,
-  BarChart3,
-  Settings,
-  Download,
-  RefreshCw,
-  ChevronRight,
-  Loader2
-} from 'lucide-react';
+import { AILogger } from '@/lib/ai/logger';
 import type { DataPool } from '@/lib/document-processor/types';
 import type { ContextualAnalysis, MarketAnalysis } from '@/lib/tender-analysis/types';
-import { CSVCostAnalysisGrid } from './CSVCostAnalysisGrid';
-import { EnhancedTabNavigation } from './EnhancedTabNavigation';
-import { AnalysisHeader } from './AnalysisHeader';
-import { DataExtractionTab } from './DataExtractionTab';
-import { ContextualAnalysisTab } from './ContextualAnalysisTab';
-import { DeepAnalysisTab } from './DeepAnalysisTab';
 import { useEnhancedAnalysisStore } from '@/store/enhancedAnalysisStore';
-import { AILogger } from '@/lib/ai/logger';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  ChevronRight,
+  Download,
+  Loader2,
+  RefreshCw
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { AnalysisHeader } from './AnalysisHeader';
+import { ContextualAnalysisTab } from './ContextualAnalysisTab';
+import { CSVCostAnalysisGrid } from './CSVCostAnalysisGrid';
+import { DataExtractionTab } from './DataExtractionTab';
+import { DeepAnalysisTab } from './DeepAnalysisTab';
+import { EnhancedTabNavigation } from './EnhancedTabNavigation';
 
 export type TabType = 'extraction' | 'contextual' | 'deep';
 export type ViewMode = 'compact' | 'detailed' | 'fullscreen';
@@ -149,16 +143,14 @@ export function EnhancedAnalysisResults({
       opacity: 1,
       y: 0,
       transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 15
+        duration: 0.3
       }
     }
   };
 
   // Extract CSV files from dataPool
   const csvFiles = dataPool.documents.filter(doc => 
-    doc.filename.toLowerCase().endsWith('.csv')
+    doc.name?.toLowerCase().endsWith('.csv')
   );
 
   return (
@@ -250,7 +242,7 @@ export function EnhancedAnalysisResults({
             >
               <ContextualAnalysisTab
                 dataPool={dataPool}
-                analysis={contextualAnalysis}
+                analysis={contextualAnalysis ?? null}
                 expandedCards={expandedCards}
                 onToggleCard={toggleCard}
                 onTriggerAnalysis={() => onAnalysisUpdate?.('contextual')}

@@ -8,7 +8,7 @@ import { vi } from 'vitest';
 // Mock environment variables
 process.env.ANTHROPIC_API_KEY = 'sk-ant-test-12345678901234567890123456789012345678901234567890';
 process.env.ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
-process.env.NODE_ENV = 'test';
+Object.defineProperty(process.env, 'NODE_ENV', { value: 'test', writable: false });
 
 // Mock console methods to reduce noise in tests
 global.console = {

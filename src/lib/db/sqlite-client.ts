@@ -2,17 +2,29 @@ import Database from "better-sqlite3";
 import { initAuthSchema } from "./init-auth";
 import { runMigrations } from "./run-migration";
 
-let db: Database.Database;
+let db: Database.Database | null = null;
+let isInitialized = false;
+let isInitializing = false;
 let isShuttingDown = false;
 
 /**
- * Get database instance (Singleton Pattern)
- * - Single connection reused across application
- * - WAL mode enabled for better concurrency
- * - Prepared statements cached automatically
+ * Initialize database once and only once
+ * Prevents race conditions and multiple initialization
  */
-export function getDB(): Database.Database {
-  if (!db) {
+async function initializeDatabase(): Promise<void> {
+  // Prevent multiple simultaneous initialization
+  if (isInitialized || isInitializing) {
+    // Wait for initialization to complete
+    while (isInitializing && !isInitialized) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    return;
+  }
+
+  isInitializing = true;
+
+  try {
+    // Create database connection
     db = new Database("procheff.db");
     
     // Enable WAL mode for better concurrency
@@ -23,54 +35,168 @@ export function getDB(): Database.Database {
     db.pragma("cache_size = -64000"); // 64MB cache
     db.pragma("temp_store = MEMORY"); // Store temp tables in memory
 
-    // Initialize auth schema on first connection
+    // Initialize auth schema - only if not exists
     try {
-      initAuthSchema();
-    } catch {
-      // Tables may already exist, ignore errors
-      console.log("Auth schema already initialized");
-    }
-
-    // Run migrations
-    try {
-      runMigrations();
-    } catch {
-      // Migrations may already be applied, ignore errors
-      console.log("Migrations already applied");
-    }
-
-    // Initialize semantic cache
-    try {
-      // Dynamic import to avoid circular dependencies
-      import("@/lib/ai/semantic-cache").then(({ initSemanticCache }) => {
-        initSemanticCache();
-      }).catch(() => {
-        console.log("Semantic cache already initialized");
-      });
-    } catch {
-      console.log("Semantic cache already initialized");
-    }
-
-    // Initialize DataPoolManager auto cleanup (only in Node.js environment)
-    if (typeof setInterval !== 'undefined') {
-      try {
-        // Dynamic import to avoid circular dependencies
-        import('@/lib/state/data-pool-manager').then(({ DataPoolManager }) => {
-          DataPoolManager.initializeAutoCleanup();
-        }).catch(() => {
-          // Ignore if module not available or in browser
-        });
-      } catch {
-        // Ignore if module not available or in browser
+      const userTableExists = db.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+      ).get();
+      
+      if (!userTableExists) {
+        initAuthSchema();
+        console.log("✅ Auth schema initialized");
       }
+    } catch (error) {
+      console.error("❌ Auth schema initialization error:", error);
     }
-    
-    // Register graceful shutdown handlers
-    if (typeof process !== 'undefined') {
-      setupGracefulShutdown();
+
+    // Run migrations - only once
+    try {
+      const migrationTableExists = db.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='_migrations'"
+      ).get();
+      
+      if (!migrationTableExists) {
+        // Create migration tracking table
+        db.prepare(`
+          CREATE TABLE IF NOT EXISTS _migrations (
+            name TEXT PRIMARY KEY,
+            applied_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run();
+      }
+      
+      runMigrations();
+    } catch (error) {
+      console.error("❌ Migration error:", error);
+    }
+
+    // Initialize semantic cache - async, don't block
+    import("@/lib/ai/semantic-cache").then(({ initSemanticCache }) => {
+      try {
+        initSemanticCache();
+      } catch {
+        // Already initialized, ignore
+      }
+    }).catch(() => {
+      // Module not found or already initialized, ignore
+    });
+
+    isInitialized = true;
+    console.log("✅ Database fully initialized");
+  } catch (error) {
+    console.error("❌ Database initialization failed:", error);
+    throw error;
+  } finally {
+    isInitializing = false;
+  }
+}
+
+/**
+ * Get database instance (Singleton Pattern)
+ * - Single connection reused across application
+ * - Thread-safe initialization
+ * - Automatic retry on connection loss
+ */
+export function getDB(): Database.Database {
+  // Quick path for already initialized database
+  if (db && isInitialized) {
+    try {
+      // Test connection is still alive
+      db.prepare("SELECT 1").get();
+      return db;
+    } catch {
+      // Connection lost, reset and reinitialize
+      console.log("⚠️ Database connection lost, reinitializing...");
+      db = null;
+      isInitialized = false;
     }
   }
+
+  // Initialize if needed (synchronous wrapper)
+  if (!isInitialized) {
+    // Use sync initialization for compatibility
+    const initSync = () => {
+      if (isInitialized || isInitializing) return;
+      
+      isInitializing = true;
+      try {
+        // Create database connection
+        db = new Database("procheff.db");
+        
+        // Enable WAL mode for better concurrency
+        db.pragma("journal_mode = WAL");
+        
+        // Performance optimizations
+        db.pragma("synchronous = NORMAL");
+        db.pragma("cache_size = -64000");
+        db.pragma("temp_store = MEMORY");
+
+        // Check and init auth schema
+        const userTableExists = db.prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+        ).get();
+        
+        if (!userTableExists) {
+          initAuthSchema();
+        }
+
+        // Check and run migrations
+        const migrationTableExists = db.prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='_migrations'"
+        ).get();
+        
+        if (!migrationTableExists) {
+          db.prepare(`
+            CREATE TABLE IF NOT EXISTS _migrations (
+              name TEXT PRIMARY KEY,
+              applied_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+        }
+        
+        try {
+          runMigrations();
+        } catch {
+          // Migrations already applied
+        }
+
+        isInitialized = true;
+      } finally {
+        isInitializing = false;
+      }
+    };
+    
+    initSync();
+  }
+
+  if (!db) {
+    throw new Error("Database initialization failed");
+  }
+
   return db;
+}
+
+/**
+ * Initialize DataPoolManager auto cleanup (only in Node.js environment)
+ */
+function initializeAutoCleanup() {
+  if (typeof setInterval !== 'undefined') {
+    try {
+      // Dynamic import to avoid circular dependencies
+      import('@/lib/state/data-pool-manager').then(({ DataPoolManager }) => {
+        DataPoolManager.initializeAutoCleanup();
+      }).catch(() => {
+        // Ignore if module not available or in browser
+      });
+    } catch {
+      // Ignore if module not available or in browser
+    }
+  }
+  
+  // Register graceful shutdown handlers
+  if (typeof process !== 'undefined') {
+    setupGracefulShutdown();
+  }
 }
 
 /**
@@ -87,7 +213,7 @@ export function getDB(): Database.Database {
  */
 export function transaction<T extends (...args: any[]) => any>(fn: T): T {
   const db = getDB();
-  return db.transaction(fn) as T;
+  return db.transaction(fn) as unknown as T;
 }
 
 /**

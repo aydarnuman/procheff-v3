@@ -88,52 +88,52 @@ async function extractTextFromPDF(file: File): Promise<string> {
  * @returns Extracted text from OCR
  */
 export async function runOCRWithGemini(file: File): Promise<string> {
-  const googleApiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-  
-  if (!googleApiKey) {
-    AILogger.warn('Gemini API key not configured for OCR');
-    return '';
-  }
-  
   try {
-    // Convert file to base64
-    const base64 = await fileToBase64(file);
+    // Import OCR service
+    const { OCRService } = await import('@/lib/document-processor/ocr-service');
     
-    // Dynamic import to avoid bundling issues
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    // Convert file to buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
     
-    const genAI = new GoogleGenerativeAI(googleApiKey.trim());
-    const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_VISION_MODEL || 'gemini-1.5-flash',
+    // Get OCR configuration from environment
+    const provider = (process.env.OCR_PROVIDER || 'auto') as 'auto' | 'gemini' | 'tesseract';
+    const language = process.env.OCR_LANGUAGE || 'tur+eng';
+    const timeout = parseInt(process.env.OCR_TIMEOUT || '120000', 10);
+    
+    AILogger.info('Running OCR with fallback support', {
+      fileName: file.name,
+      provider,
+      language,
+      timeout,
     });
     
-    const prompt = `
-      Bu görüntüdeki tüm metni çıkar. 
-      Sadece metni ver, başka açıklama yapma.
-      Tablo varsa düzenli bir formatta göster.
-      Türkçe karakterlere dikkat et.
-    `;
+    // Perform OCR with fallback
+    const result = await OCRService.performOCR(buffer, {
+      provider,
+      language,
+      timeout,
+    });
     
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          mimeType: file.type,
-          data: base64
-        }
-      }
-    ]);
-    
-    const text = result.response.text();
+    if (result.error) {
+      AILogger.error('All OCR providers failed', {
+        fileName: file.name,
+        error: result.error,
+      });
+      return '';
+    }
     
     AILogger.info('OCR completed successfully', {
       fileName: file.name,
-      extractedLength: text.length
+      provider: result.provider,
+      extractedLength: result.text.length,
+      confidence: result.confidence,
+      processingTime: result.processingTime,
     });
     
-    return text;
+    return result.text;
   } catch (error) {
-    AILogger.error('Gemini OCR failed', {
+    AILogger.error('OCR handler failed', {
       fileName: file.name,
       error: error instanceof Error ? error.message : String(error)
     });

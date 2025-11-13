@@ -99,10 +99,10 @@ export function AnalysisHeader({
 
           <QuickActionsDropdown
             actions={[
-              { label: 'PDF İndir', icon: Download, onClick: onExport },
-              { label: 'Paylaş', icon: Share2, onClick: onShare },
-              { label: 'Arşivle', icon: Archive, onClick: onArchive }
-            ].filter(a => a.onClick)}
+              onExport && { label: 'PDF İndir', icon: Download, onClick: onExport },
+              onShare && { label: 'Paylaş', icon: Share2, onClick: onShare },
+              onArchive && { label: 'Arşivle', icon: Archive, onClick: onArchive }
+            ].filter(Boolean) as any[]}
           />
         </div>
       </div>

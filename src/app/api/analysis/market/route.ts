@@ -108,4 +108,4 @@ async function handleMarketAnalysis(request: NextRequest) {
     });
 }
 
-export const POST = errorHandler(handleMarketAnalysis);
+export const POST = errorHandler(handleMarketAnalysis as any);

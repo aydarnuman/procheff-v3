@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { ihbList } from '@/lib/ihale/client';
 import { initTendersTable, upsertTender, getActiveTenders, archiveExpiredTenders } from '@/lib/db/init-tenders';
 import { AILogger } from '@/lib/ai/logger';
+import { TurkceLogger as Log } from '@/lib/utils/turkce-logger';
 
 export async function GET(req: NextRequest) {
   const sessionId = req.cookies.get('ihale_session')?.value;
@@ -16,7 +17,8 @@ export async function GET(req: NextRequest) {
     // If refresh requested, fetch from worker
     if (refresh && sessionId) {
       try {
-        AILogger.info('Fetching fresh data from ihalebul.com', { sessionId });
+        Log.ihale.listeGetir();
+        AILogger.info('İhale listesi güncelleniyor', { kaynak: 'ihalebul.com', sessionId });
 
         // Fetch from worker
         const items = await ihbList(sessionId);
@@ -29,9 +31,10 @@ export async function GET(req: NextRequest) {
         let newCount = 0;
         let updatedCount = 0;
         
-        AILogger.info('Saving tenders to database', { 
-          total: items.length, 
-          existing: existingIds.size 
+        Log.veritabani.kaydet('ihaleler', items.length);
+        AILogger.info('Veritabanına kaydediliyor', { 
+          toplam: items.length, 
+          mevcut: existingIds.size 
         });
         
         for (const item of items) {
@@ -77,15 +80,17 @@ export async function GET(req: NextRequest) {
           });
         }
         
-        AILogger.info('Tenders saved', { 
-          new: newCount, 
-          updated: updatedCount, 
-          total: items.length 
+        Log.veritabani.kayitBasarili('ihaleler', items.length);
+        AILogger.info('İhaleler kaydedildi', { 
+          yeni: newCount, 
+          guncellenen: updatedCount, 
+          toplam: items.length 
         });
 
         // Archive expired tenders
         const archivedCount = archiveExpiredTenders();
-        AILogger.info('Archived expired tenders', { count: archivedCount });
+        Log.bilgi(`Süresi dolan ihaleler arşivlendi`, { adet: archivedCount });
+        AILogger.info('Süresi dolanlar arşivlendi', { sayı: archivedCount });
 
         // Return from database (includes newly added items)
         const tenders = getActiveTenders();
@@ -110,8 +115,9 @@ export async function GET(req: NextRequest) {
         });
 
       } catch (workerError: any) {
-        AILogger.warn('Worker fetch failed, falling back to database', {
-          error: workerError.message
+        Log.uyari('Worker\'dan veri alınamadı, veritabanından dönülüyor', { hata: workerError.message });
+        AILogger.warn('Önbellekten veri dönülüyor', {
+          hata: workerError.message
         });
         // Continue to database fallback below
       }
@@ -129,7 +135,8 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (e: any) {
-    AILogger.error('Tender list fetch failed', { error: e.message });
+    Log.hata('İhale listesi alınamadı', e);
+    AILogger.error('İhale listesi hatası', { hata: e.message });
     return new Response(JSON.stringify({ error: e.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

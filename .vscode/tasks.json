@@ -2,9 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Dev Server",
+      "label": "🚀 Başlat (Temiz)",
       "type": "shell",
-      "command": "npm run dev",
+      "command": "npm run basla",
       "isBackground": true,
       "problemMatcher": {
         "pattern": {
@@ -22,279 +22,115 @@
       "group": {
         "kind": "build",
         "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": false
       }
     },
     {
-      "label": "Build Production",
+      "label": "🤖 Worker Başlat",
+      "type": "shell",
+      "command": "npm run worker",
+      "isBackground": true,
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "🏗️ Build Yap",
       "type": "shell",
       "command": "npm run build",
       "group": "build",
-      "problemMatcher": ["$tsc"]
-    },
-    {
-      "label": "Type Check",
-      "type": "shell",
-      "command": "npx tsc --noEmit",
-      "problemMatcher": ["$tsc"]
-    },
-    {
-      "label": "Lint",
-      "type": "shell",
-      "command": "npm run lint",
-      "problemMatcher": ["$eslint-stylish"]
-    },
-    {
-      "label": "� Fresh Start",
-      "type": "shell",
-      "command": "./scripts/fresh-start.sh",
-      "args": ["--quick"],
-      "group": "build",
+      "problemMatcher": ["$tsc"],
       "presentation": {
-        "echo": false,
+        "echo": true,
         "reveal": "always",
-        "focus": true,
-        "panel": "new",
+        "focus": false,
+        "panel": "shared",
         "showReuseMessage": false,
-        "clear": true
+        "clear": false
       }
     },
     {
-      "label": "�🚀 Procheff Menu",
+      "label": "🔍 Tip Kontrol",
       "type": "shell",
-      "command": "./scripts/menu.sh",
-      "group": "test",
+      "command": "npm run tip-kontrol",
+      "problemMatcher": ["$tsc"],
       "presentation": {
-        "echo": false,
+        "echo": true,
         "reveal": "always",
-        "focus": true,
-        "panel": "new",
+        "focus": false,
+        "panel": "shared",
         "showReuseMessage": false,
-        "clear": true
+        "clear": false
       }
     },
     {
-      "label": "📊 System Monitor",
-      "type": "shell", 
-      "command": "./scripts/monitor.sh",
-      "args": ["all"],
-      "group": "test",
-      "presentation": {
-        "echo": false,
-        "reveal": "always",
-        "focus": true,
-        "panel": "new",
-        "showReuseMessage": false
-      }
-    },
-    {
-      "label": "📈 Live Monitor", 
+      "label": "🔧 Lint Düzelt",
       "type": "shell",
-      "command": "./scripts/monitor.sh",
-      "args": ["live"],
-      "isBackground": true,
-      "group": "test",
+      "command": "npm run duzelt",
+      "problemMatcher": ["$eslint-stylish"],
       "presentation": {
-        "echo": false,
-        "reveal": "always",
-        "focus": true,
-        "panel": "new",
-        "showReuseMessage": false
-      }
-    },
-    {
-      "label": "📋 Git Status",
-      "type": "shell",
-      "command": "./scripts/git-helpers.sh",
-      "args": ["status"],
-      "group": "test",
-      "presentation": {
-        "echo": false,
+        "echo": true,
         "reveal": "always",
         "focus": false,
         "panel": "shared",
-        "showReuseMessage": false
+        "showReuseMessage": false,
+        "clear": false
       }
     },
     {
-      "label": "💾 Quick Commit",
+      "label": "🧹 Cache Temizle",
       "type": "shell",
-      "command": "./scripts/git-helpers.sh",
-      "args": ["commit", "${input:commitMessage}"],
-      "group": "test",
-      "presentation": {
-        "echo": false,
-        "reveal": "always",
-        "focus": true,
-        "panel": "shared",
-        "showReuseMessage": false
-      }
-    },
-    {
-      "label": "🌟 New Feature Branch",
-      "type": "shell",
-      "command": "./scripts/git-helpers.sh", 
-      "args": ["feature", "${input:featureName}"],
-      "group": "test",
-      "presentation": {
-        "echo": false,
-        "reveal": "always",
-        "focus": true,
-        "panel": "shared",
-        "showReuseMessage": false
-      }
-    },
-    {
-      "label": "🔄 Merge Feature",
-      "type": "shell",
-      "command": "./scripts/git-helpers.sh",
-      "args": ["merge-feature"],
-      "group": "test",
-      "presentation": {
-        "echo": false,
-        "reveal": "always",
-        "focus": true,
-        "panel": "shared",
-        "showReuseMessage": false
-      }
-    },
-    {
-      "label": "🔧 Development Setup",
-      "type": "shell",
-      "command": "./scripts/dev-utils.sh",
-      "args": ["setup"],
+      "command": "npm run temizle",
       "group": "build",
       "presentation": {
-        "echo": false,
-        "reveal": "always",
-        "focus": true,
-        "panel": "shared",
-        "showReuseMessage": false
-      }
-    },
-    {
-      "label": "🧹 Clean Cache",
-      "type": "shell",
-      "command": "./scripts/dev-utils.sh",
-      "args": ["clean"],
-      "group": "build",
-      "presentation": {
-        "echo": false,
+        "echo": true,
         "reveal": "always",
         "focus": false,
         "panel": "shared",
-        "showReuseMessage": false
+        "showReuseMessage": false,
+        "clear": false
       }
     },
     {
-      "label": "🗄️ Reset Database",
+      "label": "📝 Kod Düzenle",
       "type": "shell",
-      "command": "./scripts/dev-utils.sh",
-      "args": ["db-reset"],
+      "command": "npm run duzenle",
       "group": "build",
       "presentation": {
-        "echo": false,
-        "reveal": "always",
-        "focus": true,
-        "panel": "shared",
-        "showReuseMessage": false
-      }
-    },
-    {
-      "label": "💾 Project Backup",
-      "type": "shell",
-      "command": "./scripts/dev-utils.sh",
-      "args": ["backup"],
-      "group": "test",
-      "presentation": {
-        "echo": false,
+        "echo": true,
         "reveal": "always",
         "focus": false,
         "panel": "shared",
-        "showReuseMessage": false
+        "showReuseMessage": false,
+        "clear": false
       }
     },
     {
-      "label": "📋 View Logs",
+      "label": "📋 Git Durumu",
       "type": "shell",
-      "command": "./scripts/dev-utils.sh",
-      "args": ["logs"],
-      "isBackground": true,
+      "command": "git status",
       "group": "test",
       "presentation": {
-        "echo": false,
+        "echo": true,
         "reveal": "always",
-        "focus": true,
-        "panel": "new",
-        "showReuseMessage": false
-      }
-    },
-    {
-      "label": "🐳 Docker Build",
-      "type": "shell",
-      "command": "./scripts/docker-build.sh",
-      "group": "build",
-      "presentation": {
-        "echo": false,
-        "reveal": "always",
-        "focus": true,
+        "focus": false,
         "panel": "shared",
-        "showReuseMessage": false
+        "showReuseMessage": false,
+        "clear": false
       }
-    },
-    {
-      "label": "🚀 Deploy Production",
-      "type": "shell",
-      "command": "./scripts/deploy-digitalocean.sh",
-      "args": ["production"],
-      "group": "build",
-      "presentation": {
-        "echo": false,
-        "reveal": "always",
-        "focus": true,
-        "panel": "new",
-        "showReuseMessage": false
-      }
-    },
-    {
-      "label": "🎯 Deploy Staging", 
-      "type": "shell",
-      "command": "./scripts/deploy-digitalocean.sh",
-      "args": ["staging"],
-      "group": "build",
-      "presentation": {
-        "echo": false,
-        "reveal": "always",
-        "focus": true,
-        "panel": "new",
-        "showReuseMessage": false
-      }
-    },
-    {
-      "label": "⚙️ Terminal Setup",
-      "type": "shell",
-      "command": "./scripts/terminal-setup.sh",
-      "group": "test",
-      "presentation": {
-        "echo": false,
-        "reveal": "always",
-        "focus": true,
-        "panel": "new",
-        "showReuseMessage": false
-      }
-    }
-  ],
-  "inputs": [
-    {
-      "id": "commitMessage",
-      "description": "Commit message",
-      "default": "Quick update",
-      "type": "promptString"
-    },
-    {
-      "id": "featureName", 
-      "description": "Feature branch name",
-      "default": "new-feature",
-      "type": "promptString"
     }
   ]
 }

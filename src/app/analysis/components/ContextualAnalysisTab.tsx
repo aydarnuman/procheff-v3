@@ -325,6 +325,7 @@ export function ContextualAnalysisTab({
                                   <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
                                     <div 
                                       className={`h-full ${item.color} rounded-full`}
+                                      // Dynamic width requires inline style for progress bars
                                       style={{ width: `${item.value}%` }}
                                     />
                                   </div>

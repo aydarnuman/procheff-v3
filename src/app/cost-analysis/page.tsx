@@ -130,6 +130,7 @@ export default function CostAnalysisPage() {
           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+              // Dynamic progress width requires inline style
               style={{ width: `${getProgress()}%` }}
             />
           </div>

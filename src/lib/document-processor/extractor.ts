@@ -353,68 +353,49 @@ async function extractFromPDF(
   let rawText = '';
 
   try {
-    // Dynamically import pdfjs-dist to avoid server-side issues
-    // Use namespace import to handle both ESM and CJS exports
-    const pdfjsModule = await import('pdfjs-dist');
-    const pdfjs = (pdfjsModule as any).default || pdfjsModule;
-    
-    // Configure worker only in browser (optional, not critical for server-side)
-    if (typeof window !== 'undefined' && pdfjs && pdfjs.GlobalWorkerOptions) {
-      try {
-        const version = pdfjs.version || '3.11.174';
-        pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
-      } catch (e) {
-        // Ignore worker configuration errors
+    // ✅ Use pdf-parse (more stable for server-side)
+    onProgress?.(`📄 PDF işleniyor...`);
+
+    AILogger.info('Starting PDF extraction', {
+      docId,
+      bufferSize: buffer.byteLength,
+      fileName: file?.name,
+      ocrEnabled: options.ocr_enabled
+    });
+
+    const pdfParse = (await import('pdf-parse') as any).default || (await import('pdf-parse'));
+    const pdfData = await pdfParse(Buffer.from(buffer));
+
+    rawText = pdfData.text;
+    const numPages = pdfData.numpages;
+
+    AILogger.info('PDF parsed successfully', {
+      docId,
+      numPages,
+      textLength: rawText.length,
+      hasText: rawText.trim().length > 0
+    });
+
+    onProgress?.(`📄 PDF: ${numPages} sayfa işlendi`);
+
+    // Split text into paragraphs (by double newlines or significant breaks)
+    const paragraphs = rawText
+      .split(/\n\n+/)
+      .map(p => p.trim())
+      .filter(p => p.length > 0);
+
+    // Create text blocks from paragraphs
+    paragraphs.forEach((paragraph, index) => {
+      if (paragraph.length > 0) {
+        textBlocks.push({
+          block_id: `${docId}:p${index}`,
+          text: paragraph,
+          doc_id: docId,
+          source: docId,
+          page: undefined, // pdf-parse doesn't provide page numbers
+        });
       }
-    }
-    
-    // Try pdfjs-dist first
-    if (!pdfjs || !pdfjs.getDocument) {
-      throw new Error('pdfjs-dist module not properly loaded');
-    }
-    
-    const pdf = await pdfjs.getDocument({ data: buffer }).promise;
-    const numPages = pdf.numPages;
-    onProgress?.(`📄 PDF: ${numPages} sayfa işleniyor...`);
-
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-
-      let pageText = '';
-      let blockIndex = 0;
-
-      for (const item of textContent.items) {
-        if ('str' in item && item.str) {
-          const text = item.str;
-          pageText += text + ' ';
-
-          textBlocks.push({
-            block_id: `${docId}:${pageNum}.${blockIndex}`,
-            text: text,
-            doc_id: docId,
-            source: docId,
-            page: pageNum,
-            bbox: item.transform ? {
-              x: item.transform[4],
-              y: item.transform[5],
-              width: item.width || 0,
-              height: item.height || 0
-            } : undefined
-          });
-
-          blockIndex++;
-        }
-      }
-
-      rawText += pageText + '\n';
-
-      // Extract tables if enabled
-      if (options.extract_tables) {
-        const pageTables = await extractTablesFromPDFPage(page, docId, pageNum);
-        tables.push(...pageTables);
-      }
-    }
+    });
 
     // Check if text extraction was successful
     if (rawText.trim().length < 100) {
@@ -663,7 +644,7 @@ async function extractFromDOCX(
             headers: headers.length > 0 ? headers : rows[0] || [],
             rows: headers.length > 0 ? rows : rows.slice(1),
             metadata: {}
-          });
+          } as any);
 
           // Add table data to rawText
           rawText += `\n\n--- Tablo ${tableIndex + 1} ---\n`;
@@ -1062,7 +1043,7 @@ async function extractFromDOC(
 
   try {
     // Try antiword first (if available)
-    if (typeof process !== 'undefined' && process.platform !== 'browser') {
+    if (typeof process !== 'undefined' && (process as any).platform !== 'browser') {
       const { exec } = await import('child_process');
       const { promisify } = await import('util');
       const execAsync = promisify(exec);
@@ -1351,7 +1332,7 @@ async function extractFromCSV(
           delimiter,
           totalRows: dataRows.length
         }
-      });
+      } as any);
 
       // Add to rawText
       rawText = text;
@@ -1442,11 +1423,8 @@ async function extractFromText(
             block_id: `${docId}_html_cleaned`,
             text: rawText,
             page: 1,
-            source: {
-              filename: fileName,
-              page_number: 1
-            }
-          });
+            source: fileName
+          } as any);
           
           return { textBlocks, rawText };
         } else {
@@ -1481,30 +1459,67 @@ async function extractFromText(
 }
 
 /**
- * Extract text with OCR (Tesseract)
- * Note: This requires Tesseract to be installed on the system
+ * Extract text with OCR (Multi-engine with fallback)
+ * Supports Gemini Vision and Tesseract.js
  */
 async function extractTextWithOCR(
   file: File,
   onProgress?: ProgressCallback
 ): Promise<string> {
-  // This is a placeholder - OCR implementation would require
-  // Tesseract.js or system-level Tesseract installation
-  // For now, return empty string and log warning
-  
-  AILogger.warn('OCR requested but not fully implemented', {
+  try {
+    // Import OCR service
+    const { OCRService } = await import('./ocr-service');
+
+    onProgress?.('🔍 OCR başlatılıyor...');
+
+    // Convert File to Buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Get OCR provider from environment
+    const provider = (process.env.OCR_PROVIDER || 'auto') as 'auto' | 'gemini' | 'tesseract';
+    const language = process.env.OCR_LANGUAGE || 'tur+eng';
+    const timeout = parseInt(process.env.OCR_TIMEOUT || '120000', 10);
+
+    AILogger.info('Starting OCR extraction', {
     filename: file.name,
-    note: 'Tesseract OCR integration requires additional setup'
-  });
+      size: buffer.length,
+      provider,
+      language,
+      timeout,
+    });
 
-  onProgress?.('⚠️ OCR henüz tam olarak entegre edilmedi');
+    // Perform OCR with fallback support
+    const result = await OCRService.performOCR(
+      buffer,
+      { provider, language, timeout },
+      onProgress
+    );
 
-  // TODO: Implement Tesseract OCR integration
-  // This would require:
-  // 1. Installing tesseract.js or using system tesseract
-  // 2. Converting PDF to images
-  // 3. Running OCR on each image
-  // 4. Combining results
+    if (result.error) {
+      AILogger.error('❌ OCR failed, using original text', {
+        filename: file.name,
+        error: result.error,
+      });
+      return '';
+    }
 
+    AILogger.info('✅ OCR completed successfully', {
+      filename: file.name,
+      ocrTextLength: result.text.length,
+      wordCount: result.text.split(/\s+/).length,
+      provider: result.provider,
+      confidence: result.confidence,
+      processingTime: result.processingTime,
+    });
+
+    return result.text;
+  } catch (error: any) {
+    AILogger.error('OCR extraction failed', {
+      filename: file.name,
+      error: error.message,
+    });
+    onProgress?.('❌ OCR başarısız oldu');
   return '';
+  }
 }

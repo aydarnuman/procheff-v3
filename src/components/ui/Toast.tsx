@@ -9,6 +9,8 @@ interface ToastProps {
   type: ToastType;
   title: string;
   description?: string;
+  progress?: number; // 0-100
+  persistent?: boolean; // Don't auto-dismiss
   onClose: () => void;
 }
 
@@ -47,7 +49,7 @@ const toastConfig = {
   },
 };
 
-export function Toast({ type, title, description, onClose }: ToastProps) {
+export function Toast({ type, title, description, progress, persistent, onClose }: ToastProps) {
   const config = toastConfig[type];
   const Icon = config.icon;
 
@@ -84,6 +86,22 @@ export function Toast({ type, title, description, onClose }: ToastProps) {
           {description && (
             <p className="text-xs text-gray-300 leading-relaxed">{description}</p>
           )}
+          {/* Progress percentage */}
+          {progress !== undefined && (
+            <div className="mt-2 flex items-center gap-2">
+              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.3 }}
+                  className={`h-full bg-gradient-to-r ${config.gradient} opacity-80`}
+                />
+              </div>
+              <span className="text-xs text-gray-400 font-medium min-w-[3ch] text-right">
+                {Math.round(progress)}%
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -96,13 +114,15 @@ export function Toast({ type, title, description, onClose }: ToastProps) {
         <X className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
       </button>
 
-      {/* Progress bar */}
-      <motion.div
-        initial={{ width: "100%" }}
-        animate={{ width: "0%" }}
-        transition={{ duration: 5, ease: "linear" }}
-        className={`absolute bottom-0 left-0 h-0.5 bg-gradient-to-r ${config.gradient}`}
-      />
+      {/* Auto-dismiss progress bar (only if not persistent and no manual progress) */}
+      {!persistent && progress === undefined && (
+        <motion.div
+          initial={{ width: "100%" }}
+          animate={{ width: "0%" }}
+          transition={{ duration: 5, ease: "linear" }}
+          className={`absolute bottom-0 left-0 h-0.5 bg-gradient-to-r ${config.gradient}`}
+        />
+      )}
     </motion.div>
   );
 }

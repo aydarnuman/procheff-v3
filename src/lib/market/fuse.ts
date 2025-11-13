@@ -1,17 +1,16 @@
-import { MarketQuote, MarketFusion, Source } from './schema';
+import { MarketQuote, MarketFusion, Source, BrandPriceOption } from './schema';
+import { calculateMarketPriceConfidence, calculateConfidenceBreakdown } from './confidence';
+import { BASE_SOURCE_WEIGHTS, getDynamicWeights } from './trust-score';
+import { validatePrice } from './price-guard';
+import { AILogger } from '@/lib/ai/logger';
 
 /**
- * Füzyon + Güven Skoru Hesaplama
- * Çoklu kaynaktan gelen fiyatları birleştir ve güven skoru hesapla
+ * Füzyon + Güven Skoru Hesaplama (Geliştirilmiş)
+ * Çoklu kaynaktan gelen fiyatları birleştir ve detaylı güven skoru hesapla
  */
 
-// Kaynak ağırlıkları (öncelik sırası)
-const SOURCE_WEIGHTS: Record<Source, number> = {
-  TUIK: 0.45,   // TÜİK en güvenilir
-  DB: 0.35,     // Kendi geçmiş verilerimiz
-  WEB: 0.20,    // Web scraping
-  AI: 0.10,     // AI tahmini (fallback)
-};
+// Kaynak ağırlıkları (varsayılan - dinamik olarak güncellenebilir)
+let SOURCE_WEIGHTS: Record<Source, number> = { ...BASE_SOURCE_WEIGHTS };
 
 /**
  * IQR (Interquartile Range) ile outlier filtresi
@@ -37,14 +36,24 @@ function filterOutliers(quotes: MarketQuote[]): MarketQuote[] {
 }
 
 /**
- * Ağırlıklı ortalama fiyat hesapla
+ * Ağırlıklı ortalama fiyat hesapla (dynamic trust scores ile)
  */
-function calculateWeightedPrice(quotes: MarketQuote[]): number {
+function calculateWeightedPrice(
+  quotes: MarketQuote[],
+  weights?: Record<Source, number>
+): number {
   let weightSum = 0;
   let priceSum = 0;
+  
+  const activeWeights = weights || SOURCE_WEIGHTS;
 
   for (const quote of quotes) {
-    const weight = SOURCE_WEIGHTS[quote.source] ?? 0.1;
+    // Kaynak ağırlığı + sourceTrust'ı birleştir
+    let weight = activeWeights[quote.source] ?? 0.1;
+    if (quote.sourceTrust !== undefined) {
+      weight = (weight + quote.sourceTrust) / 2; // Ortalama
+    }
+    
     weightSum += weight;
     priceSum += weight * quote.unit_price;
   }
@@ -94,11 +103,26 @@ function calculateConfidence(quotes: MarketQuote[], weightedPrice: number): numb
 }
 
 /**
- * Ana füzyon fonksiyonu
+ * Ana füzyon fonksiyonu (Geliştirilmiş)
  */
-export function fuse(quotes: MarketQuote[]): MarketFusion | null {
+export async function fuse(
+  quotes: MarketQuote[],
+  options?: {
+    enableValidation?: boolean;
+    enableBrandPrices?: boolean;
+    useDynamicTrust?: boolean;
+    priceHistory?: number[];
+  }
+): Promise<MarketFusion | null> {
+  const {
+    enableValidation = true,
+    enableBrandPrices = true,
+    useDynamicTrust = false,
+    priceHistory
+  } = options || {};
+  
   // Boş/null değerleri filtrele
-  const validQuotes = quotes.filter(q =>
+  let validQuotes = quotes.filter(q =>
     q &&
     typeof q.unit_price === 'number' &&
     !isNaN(q.unit_price) &&
@@ -108,6 +132,31 @@ export function fuse(quotes: MarketQuote[]): MarketFusion | null {
   if (validQuotes.length === 0) {
     return null;
   }
+  
+  // YENİ: PriceGuard validation
+  if (enableValidation) {
+    const validated = validQuotes.filter(q => {
+      const validation = validatePrice(q, priceHistory);
+      if (!validation.isValid) {
+        AILogger.warn('[Fuse] Quote rejected by PriceGuard', {
+          product: q.product_key,
+          price: q.unit_price,
+          source: q.source
+        });
+        return false;
+      }
+      return true;
+    });
+    
+    if (validated.length === 0) {
+      AILogger.warn('[Fuse] All quotes failed validation', {
+        product_key: validQuotes[0]?.product_key
+      });
+      return null;
+    }
+    
+    validQuotes = validated;
+  }
 
   // Outlier filtresi
   const filtered = filterOutliers(validQuotes);
@@ -115,14 +164,70 @@ export function fuse(quotes: MarketQuote[]): MarketFusion | null {
   if (filtered.length === 0) {
     return null;
   }
+  
+  // YENİ: Dinamik trust scores kullan
+  let weights: Record<Source, number> | undefined;
+  if (useDynamicTrust) {
+    try {
+      weights = await getDynamicWeights();
+    } catch (error) {
+      AILogger.warn('[Fuse] Dynamic weights alınamadı, static kullanılıyor');
+    }
+  }
 
   // Ağırlıklı ortalama hesapla
-  const price = calculateWeightedPrice(filtered);
+  const price = calculateWeightedPrice(filtered, weights);
 
   // İlk geçerli birimi al
   const unit = filtered[0].unit;
 
-  // Güven skoru hesapla
+  // Güven skoru hesapla (eski method - backward compatible)
+  const conf = calculateConfidence(filtered, price);
+  
+  // YENİ: Detaylı confidence breakdown
+  const marketPriceConf = calculateMarketPriceConfidence(filtered);
+  const confidenceBreakdown = calculateConfidenceBreakdown(
+    { score: 0.8, category: '', alternatives: [], method: 'exact' }, // Placeholder
+    { score: 0.7, variant: '', alternatives: [], matchType: 'partial' }, // Placeholder
+    marketPriceConf
+  );
+  
+  // YENİ: Brand-based pricing
+  let priceByBrand: BrandPriceOption[] | undefined;
+  if (enableBrandPrices) {
+    priceByBrand = extractBrandPrices(filtered);
+  }
+
+  return {
+    product_key: filtered[0].product_key,
+    unit,
+    price: Number(price.toFixed(2)),
+    conf,
+    sources: filtered,
+    confidenceBreakdown,
+    priceByBrand
+  };
+}
+
+/**
+ * Backward compatible sync version
+ */
+export function fuseSync(quotes: MarketQuote[]): MarketFusion | null {
+  // Sync wrapper - validation ve dynamic trust olmadan
+  const validQuotes = quotes.filter(q =>
+    q &&
+    typeof q.unit_price === 'number' &&
+    !isNaN(q.unit_price) &&
+    q.unit_price > 0
+  );
+
+  if (validQuotes.length === 0) return null;
+
+  const filtered = filterOutliers(validQuotes);
+  if (filtered.length === 0) return null;
+
+  const price = calculateWeightedPrice(filtered);
+  const unit = filtered[0].unit;
   const conf = calculateConfidence(filtered, price);
 
   return {
@@ -135,10 +240,36 @@ export function fuse(quotes: MarketQuote[]): MarketFusion | null {
 }
 
 /**
+ * YENİ: Brand bazlı fiyatları çıkar
+ */
+function extractBrandPrices(quotes: MarketQuote[]): BrandPriceOption[] {
+  const brandMap = new Map<string, MarketQuote>();
+  
+  for (const quote of quotes) {
+    if (quote.brand) {
+      // Aynı marka için en iyi fiyatı tut
+      const existing = brandMap.get(quote.brand);
+      if (!existing || quote.unit_price < existing.unit_price) {
+        brandMap.set(quote.brand, quote);
+      }
+    }
+  }
+  
+  return Array.from(brandMap.values()).map(quote => ({
+    brand: quote.brand!,
+    price: quote.unit_price,
+    availability: 'in_stock', // TODO: Gerçek availability check
+    source: quote.source,
+    packaging: quote.packaging,
+    lastUpdated: quote.asOf
+  }));
+}
+
+/**
  * Füzyon sonucunu debug et
  */
-export function debugFusion(quotes: MarketQuote[]): string {
-  const fusion = fuse(quotes);
+export async function debugFusion(quotes: MarketQuote[]): Promise<string> {
+  const fusion = await fuse(quotes);
 
   if (!fusion) {
     return 'Füzyon başarısız - geçerli veri yok';

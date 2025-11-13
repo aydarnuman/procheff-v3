@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 /**
@@ -71,9 +71,11 @@ type Item = {
 const primary: Item[] = [
   { id: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
   { id: "analysis", label: "Analiz Merkezi", href: "/analysis", icon: TrendingUp },
-  { id: "ihale", label: "İhale Listesi", href: "/ihale", icon: FileText },
-  { id: "reports", label: "Raporlar", href: "/reports", icon: FileBarChart },
-  { id: "admin", label: "Admin Panel", href: "/admin", icon: Shield },
+  { id: "tools", label: "Araçlar Merkezi", href: "/tools", icon: Layers },
+  { id: "batch", label: "Toplu İşleme", href: "/batch", icon: UploadCloud, children: [
+    { id: "batch-upload", label: "Yeni Yükleme", href: "/batch", icon: UploadCloud },
+    { id: "batch-jobs", label: "İşlem Geçmişi", href: "/batch/jobs", icon: Database }
+  ]},
 ];
 
 const tasksChildren: Item[] = [

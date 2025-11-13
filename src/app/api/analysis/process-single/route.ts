@@ -24,9 +24,35 @@ async function sha256(buf: Buffer): Promise<string> {
 }
 
 /** Detect MIME type */
-async function detectMime(buf: Buffer): Promise<string> {
+async function detectMime(buf: Buffer, filename?: string): Promise<string> {
+  // Try file-type detection first
   const ft = await fileTypeFromBuffer(buf);
-  return ft?.mime ?? 'application/octet-stream';
+  if (ft?.mime) return ft.mime;
+  
+  // Fallback: Check file extension for text-based files
+  if (filename) {
+    const ext = filename.toLowerCase().split('.').pop();
+    if (ext === 'csv') return 'text/csv';
+    if (ext === 'json') return 'application/json';
+    if (ext === 'txt') return 'text/plain';
+    if (ext === 'html' || ext === 'htm') return 'text/html';
+    if (ext === 'xml') return 'text/xml';
+  }
+  
+  // Try to detect if it's UTF-8 text
+  try {
+    const text = buf.toString('utf8');
+    if (text.length > 0 && text.length < 1000000) { // Max 1MB for text detection
+      const validChars = text.match(/[\x20-\x7E\n\r\t\u00A0-\uFFFF]/g);
+      if (validChars && validChars.length / text.length > 0.9) {
+        return 'text/plain';
+      }
+    }
+  } catch {
+    // Not valid UTF-8
+  }
+  
+  return 'application/octet-stream';
 }
 
 /** Text extraction based on MIME type */
@@ -43,7 +69,17 @@ async function extractText(buf: Buffer, mime: string): Promise<string> {
     const res = await mammoth.extractRawText({ buffer: buf });
     return res.value;
   }
-  if (mime.startsWith('text/')) return buf.toString('utf8');
+  
+  // Support text-based formats
+  if (
+    mime.startsWith('text/') || 
+    mime === 'application/json' || 
+    mime === 'text/csv' ||
+    mime === 'application/csv'
+  ) {
+    return buf.toString('utf8');
+  }
+  
   return '';
 }
 
@@ -54,43 +90,91 @@ function textDensity(str: string): number {
   return alpha / Math.max(1, sample.length);
 }
 
-/** Gemini 2.0 Vision OCR - Always runs for PDFs */
+/** OCR with multi-engine fallback support */
 async function runOCRGemini(buf: Buffer): Promise<string> {
-  if (!process.env.GOOGLE_API_KEY) {
-    throw new Error('GOOGLE_API_KEY not configured');
-  }
+  // Import OCR service
+  const { OCRService } = await import('@/lib/document-processor/ocr-service');
 
-  const gemini = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-  const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-  
-  const img = {
-    inlineData: {
-      data: buf.toString('base64'),
-      mimeType: 'application/pdf',
-    },
-  };
+  // Get OCR configuration from environment
+  const provider = (process.env.OCR_PROVIDER || 'auto') as 'auto' | 'gemini' | 'tesseract';
+  const language = process.env.OCR_LANGUAGE || 'tur+eng';
+  const timeout = parseInt(process.env.OCR_TIMEOUT || '120000', 10);
 
-  // Add timeout for OCR (60 seconds)
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('OCR timeout: 60 seconds exceeded')), 60000);
+  AILogger.info('Starting OCR with fallback support', {
+    provider,
+    language,
+    timeout,
+    bufferSize: buf.length,
   });
 
-  const ocrPromise = model.generateContent([
-    {
-      inlineData: img.inlineData,
-    },
-    {
-      text: 'Bu görsel/dokümandaki metni UTF-8 düz metin olarak çıkar. Ek yorum ekleme.',
-    },
-  ]).then(result => result.response.text());
+  // If buffer is a PDF and feature flag is enabled, rasterize pages and run batch OCR
+  const isPdf = buf.length >= 5 && buf.subarray(0, 5).toString('ascii') === '%PDF-';
+  const rasterizeEnabled = (process.env.OCR_PDF_RASTERIZE || 'false').toLowerCase() === 'true';
 
-  const result = await Promise.race([ocrPromise, timeoutPromise]);
-  return result;
+  if (isPdf && rasterizeEnabled) {
+    try {
+      const dpi = parseInt(process.env.OCR_DPI || '200', 10);
+      const maxPages = parseInt(process.env.OCR_MAX_PAGES || '5', 10);
+      const { renderPdfToImages } = await import('@/lib/document-processor/pdf-image-renderer');
+      const raster = await renderPdfToImages(buf, { dpi, maxPages });
+
+      if (raster.images.length === 0) {
+        AILogger.warn('PDF rasterization returned no images, falling back to direct OCR');
+      } else {
+        AILogger.info('Running batch OCR on rasterized PDF images', {
+          pages: raster.images.length,
+          dpi
+        });
+        const results = await OCRService.batchOCR(raster.images, { provider, language, timeout });
+        const text = results.map(r => r.text || '').filter(t => t.length > 0).join('\n\n');
+        if (text.trim().length > 0) {
+          return text;
+        }
+        AILogger.warn('Batch OCR returned empty text, falling back to direct OCR');
+      }
+    } catch (err) {
+      AILogger.error('Rasterize+batch OCR failed, falling back', {
+        error: err instanceof Error ? err.message : String(err)
+      });
+    }
+  }
+
+  // Perform OCR with fallback
+  const result = await OCRService.performOCR(buf, {
+    provider,
+    language,
+    timeout,
+  });
+
+  if (result.error) {
+    AILogger.error('All OCR providers failed', { error: result.error });
+    throw new Error(result.error);
+  }
+
+  AILogger.info('OCR completed successfully', {
+    provider: result.provider,
+    textLength: result.text.length,
+    confidence: result.confidence,
+    processingTime: result.processingTime,
+  });
+
+  return result.text;
 }
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const sessionId = `process-single_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Defensive: Check request size limit (50MB max)
+  const contentLength = request.headers.get('content-length');
+  const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+  
+  if (contentLength && parseInt(contentLength) > MAX_SIZE) {
+    return NextResponse.json(
+      { error: 'File too large', message: 'Dosya boyutu 50MB\'ı aşamaz' },
+      { status: 413 }
+    );
+  }
   
   // Check if client wants SSE streaming
   const acceptHeader = request.headers.get('accept') || '';
@@ -106,7 +190,24 @@ export async function POST(request: NextRequest) {
   try {
     AILogger.sessionStart(sessionId);
     
-    const formData = await request.formData();
+    // Defensive: Add timeout for formData parsing (30 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      AILogger.error('FormData parsing failed', { error, sessionId });
+      return NextResponse.json(
+        { error: 'Invalid form data', message: 'Geçersiz dosya formatı' },
+        { status: 400 }
+      );
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    
     const file = formData.get('file') as File;
 
     if (!file) {
@@ -118,7 +219,7 @@ export async function POST(request: NextRequest) {
     }
 
     const buf = Buffer.from(await file.arrayBuffer());
-    const mime = await detectMime(buf);
+    const mime = await detectMime(buf, file.name);
     const hash = await sha256(buf);
 
     AILogger.info('Single file processing started', {
@@ -132,55 +233,86 @@ export async function POST(request: NextRequest) {
     let text = await extractText(buf, mime);
     const density = textDensity(text);
 
-    // Step 2: Always run OCR for PDFs (user requested)
+    // Step 2: Check if we need OCR (low density or PDF)
     let ocrUsed = false;
     let fileToProcess = file;
     let ocrTextResult: string | null = null;
-    
+
+    // For PDFs, check text density and run OCR if needed
     if (mime === 'application/pdf') {
-      AILogger.info('Running OCR for PDF', { filename: file.name, density, originalTextLength: text.length });
-      
+      const needsOCR = density < 0.25 || text.trim().length < 100;
+
+      AILogger.info('PDF processing decision', {
+        filename: file.name,
+        density,
+        originalTextLength: text.length,
+        needsOCR,
+        reason: needsOCR ?
+          (density < 0.25 ? 'Low text density' : 'Insufficient text') :
+          'Sufficient text extracted'
+      });
+
+      if (needsOCR) {
+        try {
+          AILogger.info('Starting OCR for PDF', { filename: file.name });
+          const ocrText = await runOCRGemini(buf);
+          const ocrTextTrimmed = ocrText?.trim() || '';
+
+          AILogger.info('OCR result received', {
+            filename: file.name,
+            ocrTextLength: ocrTextTrimmed.length,
+            firstChars: ocrTextTrimmed.substring(0, 200)
+          });
+        
+          // Check if OCR text is meaningful (at least 500 characters or 50 words)
+          const wordCount = ocrTextTrimmed.split(/\s+/).filter(w => w.length > 0).length;
+
+          if (ocrTextTrimmed.length > 500 || wordCount > 50) {
+            ocrTextResult = ocrTextTrimmed;
+            ocrUsed = true;
+            // Create a new File with OCR text encoded as UTF-8
+            const encoder = new TextEncoder();
+            const encodedText = encoder.encode(ocrTextTrimmed);
+            fileToProcess = new File([encodedText], file.name.replace('.pdf', '.txt'), { type: 'text/plain' });
+
+            AILogger.success('OCR completed successfully', {
+              filename: file.name,
+              ocrTextLength: ocrTextTrimmed.length,
+              wordCount
+            });
+          } else {
+            AILogger.warn('OCR returned insufficient text, using original extraction', {
+              filename: file.name,
+              ocrTextLength: ocrTextTrimmed.length,
+              wordCount,
+              threshold: '500 chars or 50 words'
+            });
+            // Continue with original file extraction
+          }
+        } catch (ocrError) {
+          AILogger.error('OCR failed, using original text', {
+            filename: file.name,
+            error: ocrError instanceof Error ? ocrError.message : String(ocrError),
+            stack: ocrError instanceof Error ? ocrError.stack : undefined
+          });
+          // Continue with original file
+        }
+      }
+    } else if (density < 0.25 && mime.startsWith('image/')) {
+      // Also handle image files with OCR
+      AILogger.info('Image file detected, running OCR', { filename: file.name, mime });
       try {
         const ocrText = await runOCRGemini(buf);
-        const ocrTextTrimmed = ocrText?.trim() || '';
-        
-        AILogger.info('OCR result received', { 
-          filename: file.name,
-          ocrTextLength: ocrTextTrimmed.length,
-          firstChars: ocrTextTrimmed.substring(0, 200)
-        });
-        
-        // Check if OCR text is meaningful (at least 500 characters or 50 words)
-        const wordCount = ocrTextTrimmed.split(/\s+/).filter(w => w.length > 0).length;
-        
-        if (ocrTextTrimmed.length > 500 || wordCount > 50) {
-          ocrTextResult = ocrTextTrimmed;
+        if (ocrText.trim().length > 100) {
+          ocrTextResult = ocrText.trim();
           ocrUsed = true;
-          // Create a new File with OCR text encoded as UTF-8
           const encoder = new TextEncoder();
-          const encodedText = encoder.encode(ocrTextTrimmed);
-          fileToProcess = new File([encodedText], file.name.replace('.pdf', '.txt'), { type: 'text/plain' });
-          
-          AILogger.success('OCR completed successfully', { 
-            filename: file.name,
-            ocrTextLength: ocrTextTrimmed.length,
-            wordCount
-          });
-        } else {
-          AILogger.warn('OCR returned insufficient text, using original extraction', {
-            filename: file.name,
-            ocrTextLength: ocrTextTrimmed.length,
-            wordCount,
-            threshold: '500 chars or 50 words'
-          });
-          // Continue with original file extraction
+          const encodedText = encoder.encode(ocrTextResult);
+          fileToProcess = new File([encodedText], file.name.replace(/\.\w+$/, '.txt'), { type: 'text/plain' });
+          AILogger.success('OCR completed for image', { filename: file.name, textLength: ocrTextResult.length });
         }
       } catch (ocrError) {
-        AILogger.error('OCR failed, using original text', {
-          filename: file.name,
-          error: ocrError instanceof Error ? ocrError.message : String(ocrError)
-        });
-        // Continue with original file
+        AILogger.error('Image OCR failed', { filename: file.name, error: ocrError });
       }
     }
 
@@ -237,6 +369,20 @@ export async function POST(request: NextRequest) {
     dataPool.metadata.ocr_used = ocrUsed;
 
     const duration = Date.now() - startTime;
+
+    // Special logging for PDFs
+    if (mime === 'application/pdf') {
+      AILogger.info('PDF processing results', {
+        filename: file.name,
+        ocrUsed,
+        ocrTextLength: ocrTextResult?.length || 0,
+        finalTextBlocks: dataPool.textBlocks.length,
+        finalRawTextLength: dataPool.rawText.length,
+        finalWords: dataPool.metadata.total_words,
+        extractedTables: dataPool.tables.length,
+        hasContent: dataPool.rawText.trim().length > 0
+      });
+    }
 
     AILogger.success('Single file processing completed', {
       filename: file.name,
@@ -308,7 +454,7 @@ function createStreamingResponse(sessionId: string, request: NextRequest): Respo
       stream.sendProgress('processing', 10, `📄 ${file.name} işleniyor...`);
 
         const buf = Buffer.from(await file.arrayBuffer());
-        const mime = await detectMime(buf);
+        const mime = await detectMime(buf, file.name);
         const hash = await sha256(buf);
 
         AILogger.info('Single file processing started', {
@@ -326,16 +472,28 @@ function createStreamingResponse(sessionId: string, request: NextRequest): Respo
         let ocrUsed = false;
         let fileToProcess = file;
         let ocrTextResult: string | null = null;
-        
+
+        // For PDFs, check text density and run OCR if needed
         if (mime === 'application/pdf') {
-          stream.sendProgress('ocr', 30, '🔍 OCR çalışıyor...');
-          AILogger.info('Running OCR for PDF', { filename: file.name, density, originalTextLength: text.length });
-          
-          try {
-            const ocrText = await runOCRGemini(buf);
-            const ocrTextTrimmed = ocrText?.trim() || '';
-            
-            stream.sendProgress('ocr', 50, '✅ OCR tamamlandı');
+          const needsOCR = density < 0.25 || text.trim().length < 100;
+
+          AILogger.info('PDF processing decision (streaming)', {
+            filename: file.name,
+            density,
+            originalTextLength: text.length,
+            needsOCR,
+            reason: needsOCR ?
+              (density < 0.25 ? 'Low text density' : 'Insufficient text') :
+              'Sufficient text extracted'
+          });
+
+          if (needsOCR) {
+            stream.sendProgress('ocr', 30, '🔍 OCR çalışıyor...');
+            try {
+              const ocrText = await runOCRGemini(buf);
+              const ocrTextTrimmed = ocrText?.trim() || '';
+
+              stream.sendProgress('ocr', 50, '✅ OCR tamamlandı');
             
             const wordCount = ocrTextTrimmed.split(/\s+/).filter(w => w.length > 0).length;
             
@@ -358,12 +516,29 @@ function createStreamingResponse(sessionId: string, request: NextRequest): Respo
                 wordCount
               });
             }
+            } catch (ocrError) {
+              AILogger.error('OCR failed, using original text', {
+                filename: file.name,
+                error: ocrError instanceof Error ? ocrError.message : String(ocrError)
+              });
+              stream.sendProgress('ocr', 50, '⚠️ OCR başarısız, orijinal metin kullanılıyor');
+            }
+          }
+        } else if (density < 0.25 && mime.startsWith('image/')) {
+          // Also handle image files with OCR
+          stream.sendProgress('ocr', 30, '🔍 Resim için OCR çalışıyor...');
+          try {
+            const ocrText = await runOCRGemini(buf);
+            if (ocrText.trim().length > 100) {
+              ocrTextResult = ocrText.trim();
+              ocrUsed = true;
+              const encoder = new TextEncoder();
+              const encodedText = encoder.encode(ocrTextResult);
+              fileToProcess = new File([encodedText], file.name.replace(/\.\w+$/, '.txt'), { type: 'text/plain' });
+              stream.sendProgress('ocr', 50, '✅ Resim OCR başarılı');
+            }
           } catch (ocrError) {
-            AILogger.error('OCR failed, using original text', {
-              filename: file.name,
-              error: ocrError instanceof Error ? ocrError.message : String(ocrError)
-            });
-            stream.sendProgress('ocr', 50, '⚠️ OCR başarısız, orijinal metin kullanılıyor');
+            stream.sendProgress('ocr', 50, '⚠️ Resim OCR başarısız');
           }
         }
 
@@ -434,16 +609,18 @@ function createStreamingResponse(sessionId: string, request: NextRequest): Respo
         // ✅ FIX: Send dataPool at top level for frontend compatibility
         stream.send({
           type: 'success',
-          success: true,
-          filename: file.name,
-          hash,
-          mime,
-          ocrUsed,
-          analysisId: tempAnalysisId,
-          dataPool: dataPool, // ✅ Top-level for frontend: data.dataPool
-          duration_ms: duration,
           message: 'Dosya başarıyla işlendi',
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          data: {
+            success: true,
+            filename: file.name,
+            hash,
+            mime,
+            ocrUsed,
+            analysisId: tempAnalysisId,
+            dataPool: dataPool, // ✅ Top-level for frontend: data.dataPool
+            duration_ms: duration
+          }
         });
 
         AILogger.sessionEnd(sessionId, 'completed');

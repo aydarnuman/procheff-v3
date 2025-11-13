@@ -14,7 +14,10 @@ import { TablesView } from '@/components/analysis/TablesView';
 import { ExportButtons } from '@/components/ui/ExportButtons';
 import { ToastContainer, useToast } from '@/components/ui/ToastNotification';
 import type { DataPool } from '@/lib/document-processor/types';
-import type { ContextualAnalysis, MarketAnalysis } from '@/lib/tender-analysis/types';
+import type { 
+  ContextualAnalysis, 
+  MarketAnalysis 
+} from '@/lib/tender-analysis/types';
 import { useAnalysisStore, useLoadAnalysis } from '@/store/analysisStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -29,6 +32,7 @@ import {
   Grid3x3,
   Hash,
   Loader2,
+  RefreshCw,
   Search,
   Shield
 } from 'lucide-react';
@@ -60,8 +64,25 @@ export default function AnalysisResultPage() {
   // UI state (not data state)
   const [activeTab, setActiveTab] = useState<TabType>('data-pool');
   const [analysisLoading, setAnalysisLoading] = useState<'contextual' | 'market' | 'deep' | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { toasts, removeToast, success, error: showError } = useToast();
+
+  // ========================================
+  // Refresh Handler
+  // ========================================
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Force reload from API by calling the hook again
+      // Since useLoadAnalysis uses the id, we can trigger a re-fetch
+      window.location.reload();
+    } catch (error) {
+      showError('Yenileme başarısız', 'Lütfen tekrar deneyin');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // ========================================
   // Loading State
@@ -124,10 +145,10 @@ export default function AnalysisResultPage() {
   // ========================================
   if (analysis.status === 'pending' || analysis.status === 'processing') {
     // ✅ REAL Progress: Based on actual backend completion
-    const hasDataPool = !!analysis.dataPool;
-    const hasContextual = !!analysis.contextual_analysis;
-    const hasMarket = !!analysis.market_analysis;
-    const isCompleted = analysis.status === 'completed';
+    const hasDataPool = !!analysis?.dataPool;
+    const hasContextual = !!analysis?.contextual_analysis;
+    const hasMarket = !!analysis?.market_analysis;
+    const isCompleted = (analysis?.status as string) === 'completed';
     
     const progressSteps = [
       { 
@@ -484,7 +505,21 @@ export default function AnalysisResultPage() {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 hover:text-indigo-300 transition-all border border-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Zustand store'u yenile ve API'den tekrar yükle"
+            >
+              {isRefreshing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              <span className="text-sm font-medium">Yenile</span>
+            </button>
+
             <ExportButtons analysisId={id} type="analysis" />
           </div>
         </div>
@@ -515,6 +550,7 @@ export default function AnalysisResultPage() {
               {/* Active indicator glow */}
               {isActive && (
                 <div className="absolute inset-0 rounded-2xl blur-xl opacity-50 -z-10"
+                  // Dynamic gradient requires inline style for tab-specific colors
                   style={{
                     background: `linear-gradient(135deg, ${
                       tab.id === 'data-pool' ? 'rgba(99, 102, 241, 0.4)' :
@@ -722,7 +758,7 @@ function ContextualTab({
   loading
 }: {
   dataPool: DataPool;
-  analysis: ContextualAnalysis | null | undefined;
+  analysis?: ContextualAnalysis | null;
   onTriggerAnalysis: () => void;
   loading: boolean;
 }) {
@@ -772,9 +808,9 @@ function DeepTab({
   loading
 }: {
   dataPool: DataPool;
-  contextualAnalysis: ContextualAnalysis | null | undefined;
-  marketAnalysis: MarketAnalysis | null | undefined;
-  deepAnalysis: any;
+  contextualAnalysis?: ContextualAnalysis | null;
+  marketAnalysis?: MarketAnalysis | null;
+  deepAnalysis?: any;
   onTriggerAnalysis: () => void;
   loading: boolean;
 }) {

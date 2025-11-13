@@ -145,7 +145,7 @@ export async function parseTenderHTMLWithAI(
         console.error('❌ [AI PARSING] Screenshot is not a string!', {
           type: typeof screenshot,
           isArray: Array.isArray(screenshot),
-          constructor: screenshot?.constructor?.name,
+          constructor: (screenshot as any)?.constructor?.name,
           value: String(screenshot).slice(0, 100)
         });
         AILogger.error('Screenshot validation failed', {

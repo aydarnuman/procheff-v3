@@ -421,7 +421,7 @@ export class TenderExpert {
     const tenderCharacteristics = this.analyzeTenderCharacteristics(tenderData);
     const competitiveLandscape = this.analyzeCompetition(competitorData);
     const strategyType = this.selectOptimalStrategy(tenderCharacteristics, competitiveLandscape);
-    const strategy = WINNING_STRATEGIES[strategyType];
+    const strategy = (WINNING_STRATEGIES as any)[strategyType];
 
     return {
       recommendedStrategy: strategy,
@@ -489,14 +489,14 @@ export class TenderExpert {
 
   private findInstitutionProfile(normalizedName: string): any {
     // Check exact match
-    if (INSTITUTION_PROFILES[normalizedName]) {
-      return INSTITUTION_PROFILES[normalizedName];
+    if ((INSTITUTION_PROFILES as any)[normalizedName]) {
+      return (INSTITUTION_PROFILES as any)[normalizedName];
     }
 
     // Check partial matches
     for (const key in INSTITUTION_PROFILES) {
       if (normalizedName.includes(key) || key.includes(normalizedName)) {
-        return INSTITUTION_PROFILES[key];
+        return (INSTITUTION_PROFILES as any)[key];
       }
     }
 
@@ -550,7 +550,7 @@ export class TenderExpert {
   }
 
   private generateRecommendations(profile: any): string[] {
-    const recommendations = [];
+    const recommendations: any[] = [];
 
     profile.commonRequirements.forEach((req: string) => {
       recommendations.push(`Gerekli belge: ${req}`);
@@ -617,7 +617,7 @@ export class TenderExpert {
   }
 
   private suggestMitigation(riskLevel: string, factors: string[]): string[] {
-    const pattern = RISK_PATTERNS[`${riskLevel}_risk`];
+    const pattern = (RISK_PATTERNS as any)[`${riskLevel}_risk`];
     return pattern ? pattern.mitigation_strategies : [];
   }
 

@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import clsx from 'clsx';
 import { AlertCircle, ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import styles from './ReplicaFrame.module.css';
 
 interface ReplicaFrameProps {
   html: string;
@@ -17,6 +19,7 @@ export function ReplicaFrame({
   maxHeight = '800px'
 }: ReplicaFrameProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [actualHeight, setActualHeight] = useState<number>(600);
@@ -25,89 +28,94 @@ export function ReplicaFrame({
   const hasPDFContent = html.includes('.pdf') || html.includes('application/pdf') || html.includes('pluginspage');
 
   useEffect(() => {
-    if (!iframeRef.current || !html) return;
+    const iframe = iframeRef.current;
+    if (!iframe || !html) return;
 
-    try {
-      // Suppress iframe errors from browser extensions
-      const suppressIframeErrors = (event: ErrorEvent) => {
-        const message = event.message || '';
-        const source = event.filename || '';
-        const error = event.error?.toString() || '';
-        const stack = event.error instanceof Error ? event.error.stack : '';
-        
-        // Check for VM pattern in source or stack
-        const hasVMContentScript = 
-          source.match(/VM\d+.*content_script/) ||
-          stack?.match(/VM\d+.*content_script/) ||
-          message.match(/VM\d+.*content_script/);
-        
-        // Suppress known browser extension errors
-        if (
-          message.includes('SecurityError') ||
-          message.includes('Failed to read a named property') ||
-          message.includes('Blocked a frame with origin') ||
-          message.includes('cross-origin frame') ||
-          message.includes('origin "null"') ||
-          source.includes('content_script') ||
-          source.includes('chrome-extension://') ||
-          source.includes('about:srcdoc') ||
-          source.includes('about:blank') ||
-          error.includes('SecurityError') ||
-          error.includes('cross-origin') ||
-          message.includes('runtime.lastError') ||
-          message.includes('Could not establish connection') ||
-          message.includes('Error handling response') ||
-          stack?.includes('content_script_compiled.js') ||
-          stack?.includes('chrome-extension://') ||
-          hasVMContentScript
-        ) {
-          event.preventDefault();
-          event.stopPropagation();
-          return true;
-        }
-        return false;
-      };
+    // Suppress iframe errors from browser extensions
+    const suppressIframeErrors = (event: ErrorEvent) => {
+      const message = event.message || '';
+      const source = event.filename || '';
+      const error = event.error?.toString() || '';
+      const stack = event.error instanceof Error ? event.error.stack : '';
+      
+      // Check for VM pattern in source or stack
+      const hasVMContentScript = 
+        source.match(/VM\d+.*content_script/) ||
+        stack?.match(/VM\d+.*content_script/) ||
+        message.match(/VM\d+.*content_script/);
+      
+      // Suppress known browser extension errors
+      if (
+        message.includes('SecurityError') ||
+        message.includes('Failed to read a named property') ||
+        message.includes('Blocked a frame with origin') ||
+        message.includes('cross-origin frame') ||
+        message.includes('origin "null"') ||
+        source.includes('content_script') ||
+        source.includes('chrome-extension://') ||
+        source.includes('about:srcdoc') ||
+        source.includes('about:blank') ||
+        error.includes('SecurityError') ||
+        error.includes('cross-origin') ||
+        message.includes('runtime.lastError') ||
+        message.includes('Could not establish connection') ||
+        message.includes('Error handling response') ||
+        stack?.includes('content_script_compiled.js') ||
+        stack?.includes('chrome-extension://') ||
+        hasVMContentScript
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        return true;
+      }
+      return false;
+    };
 
-      // Set srcdoc to render HTML content
-      iframeRef.current.srcdoc = html;
-      setLoadError(false);
+    // Set srcdoc to render HTML content
+    iframe.srcdoc = html;
 
-      // Listen for iframe load to adjust height
-      const handleLoad = () => {
-        if (!iframeRef.current) return;
-
-        try {
-          // Try to get the actual content height
-          const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
-          if (iframeDoc) {
-            const contentHeight = iframeDoc.documentElement.scrollHeight || iframeDoc.body.scrollHeight;
-            setActualHeight(Math.min(contentHeight + 40, parseInt(maxHeight)));
+    // Listen for iframe load to adjust height
+    const handleLoad = () => {
+      try {
+        // Try to get the actual content height
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (iframeDoc) {
+          const contentHeight = iframeDoc.documentElement.scrollHeight || iframeDoc.body.scrollHeight;
+          const newHeight = Math.min(contentHeight + 40, parseInt(maxHeight));
+          setActualHeight(newHeight);
+          if (wrapperRef.current && !isFullscreen) {
+            wrapperRef.current.style.height = `${newHeight}px`;
           }
-        } catch (e) {
-          // Cross-origin error - use default height (suppress this warning)
-          // Silently ignore - this is expected for srcdoc iframes
+          setLoadError(false);
         }
-      };
+      } catch {
+        // Cross-origin error - use default height (suppress this warning)
+        // Silently ignore - this is expected for srcdoc iframes
+      }
+    };
 
-      // Suppress iframe errors
-      const handleError = (event: ErrorEvent) => {
-        suppressIframeErrors(event);
-      };
+    // Suppress iframe errors
+    const handleError = (event: ErrorEvent) => {
+      suppressIframeErrors(event);
+    };
 
-      iframeRef.current.addEventListener('load', handleLoad);
-      window.addEventListener('error', handleError, true); // Use capture phase
+    iframe.addEventListener('load', handleLoad);
+    window.addEventListener('error', handleError, true); // Use capture phase
 
-      return () => {
-        if (iframeRef.current) {
-          iframeRef.current.removeEventListener('load', handleLoad);
-        }
-        window.removeEventListener('error', handleError, true);
-      };
-    } catch (error) {
-      console.error('Error setting iframe content:', error);
-      setLoadError(true);
+    return () => {
+      iframe.removeEventListener('load', handleLoad);
+      window.removeEventListener('error', handleError, true);
+    };
+  }, [html, maxHeight, isFullscreen]);
+
+  useEffect(() => {
+    if (!wrapperRef.current) return;
+    if (isFullscreen) {
+      wrapperRef.current.style.height = 'calc(100vh - 32px)';
+    } else {
+      wrapperRef.current.style.height = `${actualHeight}px`;
     }
-  }, [html, maxHeight]);
+  }, [isFullscreen, actualHeight]);
 
   const handleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
@@ -176,16 +184,13 @@ export function ReplicaFrame({
 
       {/* iframe Container */}
       <div
-        className={`
-          bg-white rounded-b-lg border border-t-0 border-slate-700/50 overflow-hidden
-          ${isFullscreen ? 'fixed inset-4 z-50 rounded-lg' : ''}
-        `}
-        style={{ height: isFullscreen ? 'calc(100vh - 32px)' : `${actualHeight}px` }}
+        ref={wrapperRef}
+        className={clsx(styles.wrapper, { [styles.fullscreen]: isFullscreen })}
       >
         <iframe
           ref={iframeRef}
           title={title}
-          className="w-full h-full"
+          className={styles.frame}
           // Security: Use allow-scripts only for non-PDF content to avoid sandbox escape warning
           // For PDF content, we need allow-same-origin for plugins, but this creates a security warning
           // The warning is acceptable for trusted content from ihalebul.com
@@ -194,11 +199,6 @@ export function ReplicaFrame({
             ? "allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-downloads"
             : "allow-scripts allow-popups allow-forms"
           }
-          style={{
-            border: 'none',
-            background: 'white',
-            colorScheme: 'light'
-          }}
         />
       </div>
 

@@ -151,4 +151,4 @@ async function processAnalysisInBackground(
   }
 }
 
-export const POST = errorHandler(handleProcess);
+export const POST = errorHandler(handleProcess as any);

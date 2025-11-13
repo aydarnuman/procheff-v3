@@ -144,7 +144,7 @@ export class ZipExtractor {
       return {
         success: false,
         files: [],
-        error: error.message || 'ZIP dosyası açılamadı',
+        error: error instanceof Error ? error.message : 'ZIP dosyası açılamadı',
         totalFiles: 0,
         totalSize: 0,
       };
