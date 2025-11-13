@@ -292,12 +292,25 @@ export function ModernSidebar() {
         </nav>
       </div>
 
-
       {/* Spacer */}
       <div className="flex-1" />
 
       {/* Bottom gradient fade */}
       <div className="h-16 bg-linear-to-t from-[#0A0F1C]/80 to-transparent pointer-events-none" />
+
+      {/* Separator - Modern decorative divider */}
+      <div className="px-3 py-2 -mt-[30px]">
+        <div className="flex items-center justify-center">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1 h-1 rounded-full bg-[rgba(255,255,255,0.35)]" />
+            <div className="w-8 h-px bg-gradient-to-r from-transparent via-[rgba(255,255,255,0.25)] to-transparent" />
+            <div className="w-1 h-1 rounded-full bg-[rgba(255,255,255,0.35)]" />
+            <div className="w-1 h-1 rounded-full bg-[rgba(255,255,255,0.3)]" />
+            <div className="w-8 h-px bg-gradient-to-r from-transparent via-[rgba(255,255,255,0.25)] to-transparent" />
+            <div className="w-1 h-1 rounded-full bg-[rgba(255,255,255,0.35)]" />
+          </div>
+        </div>
+      </div>
 
       {/* Footer user - ultra minimal + glassmorphism + glow */}
       <div
