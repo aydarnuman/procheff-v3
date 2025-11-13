@@ -70,12 +70,11 @@ type Item = {
 // Data
 const primary: Item[] = [
   { id: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { id: "chat", label: "AI Asistan", href: "/chat", icon: MessageSquare, badge: "NEW" },
   { id: "analysis", label: "Analiz Merkezi", href: "/analysis", icon: TrendingUp },
-  { id: "tools", label: "Araçlar Merkezi", href: "/tools", icon: Layers },
-  { id: "batch", label: "Toplu İşleme", href: "/batch", icon: UploadCloud, children: [
-    { id: "batch-upload", label: "Yeni Yükleme", href: "/batch", icon: UploadCloud },
-    { id: "batch-jobs", label: "İşlem Geçmişi", href: "/batch/jobs", icon: Database }
-  ]},
+  { id: "piyasa", label: "Piyasa Robotu", href: "/piyasa-robotu", icon: TrendingUp },
+  { id: "batch", label: "Toplu İşlem", href: "/batch/jobs", icon: Package },
+  { id: "reports", label: "Raporlar", href: "/reports", icon: FileBarChart },
 ];
 
 const tasksChildren: Item[] = [
@@ -85,15 +84,9 @@ const tasksChildren: Item[] = [
   { id: "done", label: "Done", href: "/decision", icon: Star, colorIndex: 3 },
 ];
 
-const tools: Item[] = [
-  { id: "menu-parser", label: "Menü Parser", href: "/menu-parser", icon: FileText },
-  { id: "cost-analysis", label: "Maliyet Analizi", href: "/cost-analysis", icon: Calculator },
-  { id: "decision", label: "Karar Motoru", href: "/decision", icon: Brain },
-  { id: "market", label: "Piyasa Robotu", href: "/piyasa-robotu", icon: TrendingUp },
-];
+// Tools kaldırıldı - kullanıcı bunları istemiyordu
 
 const secondary: Item[] = [
-  { id: "chat", label: "AI Asistan", href: "/chat", icon: MessageSquare, badge: "NEW" },
   { id: "notifications", label: "Bildirimler", href: "/notifications", icon: Bell, badge: "3" },
   { id: "monitoring", label: "Monitoring", href: "/monitor", icon: Activity },
   { id: "settings", label: "Ayarlar", href: "/settings", icon: Settings },
