@@ -5,25 +5,15 @@ import {
   Activity,
   BarChart4,
   Bell,
-  Brain,
-  Calculator,
-  ChevronRight,
-  Database,
   FileBarChart,
-  FileSpreadsheet,
   FileText,
-  Layers,
   LayoutDashboard,
   Menu,
   MessageSquare,
-  Palette,
-  ScrollText,
-  Settings,
-  Shield,
+  Package,
   Star,
   TrendingUp,
-  UploadCloud,
-  User
+  UploadCloud
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -41,7 +31,7 @@ import { createPortal } from "react-dom";
 
 // Premium Design System Constants
 const HOVER = "hover:bg-[rgba(255,255,255,0.05)]";
-const ACTIVE = "bg-[#1E212A]"; // surface-2
+const ACTIVE = "bg-black"; // surface-2
 
 function cn(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
@@ -85,24 +75,11 @@ const tasksChildren: Item[] = [
 ];
 
 // Tools kaldırıldı - kullanıcı bunları istemiyordu
+// Ayarlar TopBar'a taşındı - sidebar'dan kaldırıldı
 
 const secondary: Item[] = [
   { id: "notifications", label: "Bildirimler", href: "/notifications", icon: Bell, badge: "3" },
   { id: "monitoring", label: "Monitoring", href: "/monitor", icon: Activity },
-  { id: "settings", label: "Ayarlar", href: "/settings", icon: Settings },
-];
-
-const settingsChildren: Item[] = [
-  { id: "profile", label: "Profil", href: "/settings/profile", icon: User },
-  { id: "pipeline", label: "Pipeline", href: "/settings/pipeline", icon: Settings },
-  { id: "ai", label: "AI Model", href: "/settings/ai", icon: Brain },
-  { id: "notifications", label: "Bildirimler", href: "/settings/notifications", icon: Bell },
-  { id: "appearance", label: "Görünüm", href: "/settings/appearance", icon: Palette },
-  { id: "database", label: "Veritabanı", href: "/settings/database", icon: Database },
-  { id: "reports-settings", label: "Raporlar", href: "/settings/reports", icon: FileSpreadsheet },
-  { id: "security", label: "Güvenlik", href: "/settings/security", icon: Shield },
-  { id: "logs", label: "Loglar", href: "/settings/logs", icon: ScrollText },
-  { id: "api", label: "API", href: "/settings/api", icon: Layers },
 ];
 
 export function ModernSidebar() {
@@ -114,17 +91,7 @@ export function ModernSidebar() {
   const [hoverPanel, setHoverPanel] = useState<string | null>(null);
   const [hoverPanelY, setHoverPanelY] = useState<number>(180);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const toggleMenu = (menuId: string) => {
-    if (!open) return; // Collapsed modda accordion çalışmasın
-    setExpandedMenus(prev =>
-      prev.includes(menuId)
-        ? prev.filter(id => id !== menuId)
-        : [...prev, menuId]
-    );
-  };
 
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
@@ -159,24 +126,20 @@ export function ModernSidebar() {
       data-sidebar="true"
       className={cn(
         "fixed left-0 top-0 h-screen select-none z-50",
-        // Premium ton-based surface (Material 3)
-        "bg-[#16181F]",
+        // Premium black surface
+        "bg-black",
         "backdrop-blur-xl",
         // Hairline border (Fluent)
         "border-r border-[rgba(255,255,255,0.06)]",
         // Low-opacity shadow for elevation
         "shadow-[0_8px_24px_rgba(0,0,0,0.35)]",
-        "cursor-pointer will-change-[width] overflow-x-hidden overflow-y-auto",
-        // Subtle tonal overlay
-        "before:absolute before:inset-0 before:bg-[rgba(99,102,241,0.04)] before:pointer-events-none",
-        // Refined border glow
-        "after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-linear-to-b after:from-transparent after:via-indigo-500/12 after:to-transparent"
+        "cursor-pointer will-change-[width] overflow-x-hidden overflow-y-auto"
       )}
     >
       {/* Header */}
       <div
         className={cn(
-          "px-4 py-4 flex items-center justify-center bg-[#0A0F1C] border-b border-[rgba(255,255,255,0.06)] overflow-hidden"
+          "px-4 py-4 flex items-center justify-center bg-black border-b border-[rgba(255,255,255,0.06)] overflow-hidden"
         )}
       >
         <div className="flex items-center gap-3 min-w-0">
@@ -234,90 +197,28 @@ export function ModernSidebar() {
             />
           ))}
 
-          {/* Tools Section */}
-          {open && (
-            <div className="px-3 pt-4 pb-2">
-              <div className="text-[11px] font-semibold text-[#9AA1AE] px-2 mb-2 tracking-wide uppercase">
-                Araçlar
-              </div>
-              {tools.map((it) => (
-                <NavItem
-                  key={it.id}
-                  item={it}
-                  active={isActive(it.href)}
-                  open={open}
-                  small={true}
-                  onCollapsedHover={(id, y) => {
-                    if (closeTimeoutRef.current) {
-                      clearTimeout(closeTimeoutRef.current);
-                      closeTimeoutRef.current = null;
-                    }
-                    setHoverPanel("tools");
-                    setHoverPanelY(y);
-                  }}
-                  onCollapsedLeave={() => {
-                    closeTimeoutRef.current = setTimeout(() => {
-                      setHoverPanel(null);
-                    }, 150);
-                  }}
-                />
-              ))}
-            </div>
-          )}
-
           {secondary.map((it) => (
-            <div key={it.id}>
-              <NavItem
-                item={it}
-                active={isActive(it.href)}
-                open={open}
-                hasChildren={it.id === "settings"}
-                isExpanded={expandedMenus.includes("settings")}
-                onToggle={() => toggleMenu("settings")}
-                onCollapsedHover={(id, y) => {
-                  // Clear any pending close timeout
-                  if (closeTimeoutRef.current) {
-                    clearTimeout(closeTimeoutRef.current);
-                    closeTimeoutRef.current = null;
-                  }
-                  if (it.id === "settings") {
-                    setHoverPanel("settings");
-                  } else {
-                    setHoverPanel(id);
-                  }
-                  setHoverPanelY(y);
-                }}
-                onCollapsedLeave={() => {
-                  // Delay closing to allow mouse to move to panel
-                  closeTimeoutRef.current = setTimeout(() => {
-                    setHoverPanel(null);
-                  }, 150);
-                }}
-              />
-
-              {/* Settings Submenu - Accordion */}
-                <AnimatePresence>
-                {open && it.id === "settings" && expandedMenus.includes("settings") && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                    className="ml-6 mt-1 mb-2 space-y-1 overflow-hidden"
-                    >
-                    {settingsChildren.map(child => (
-                          <NavItem
-                            key={child.id}
-                            item={child}
-                            active={isActive(child.href)}
-                            open={open}
-                        small={true}
-                          />
-                        ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-            </div>
+            <NavItem
+              key={it.id}
+              item={it}
+              active={isActive(it.href)}
+              open={open}
+              onCollapsedHover={(id, y) => {
+                // Clear any pending close timeout
+                if (closeTimeoutRef.current) {
+                  clearTimeout(closeTimeoutRef.current);
+                  closeTimeoutRef.current = null;
+                }
+                setHoverPanel(id);
+                setHoverPanelY(y);
+              }}
+              onCollapsedLeave={() => {
+                // Delay closing to allow mouse to move to panel
+                closeTimeoutRef.current = setTimeout(() => {
+                  setHoverPanel(null);
+                }, 150);
+              }}
+            />
           ))}
         </nav>
       </div>
@@ -365,7 +266,7 @@ export function ModernSidebar() {
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-50 w-12 h-12 rounded-xl bg-[#1E212A] border border-[rgba(255,255,255,0.06)] flex items-center justify-center text-[#E6E7EA] shadow-[0_4px_16px_rgba(0,0,0,0.3)] hover:bg-[rgba(255,255,255,0.05)] transition-all duration-150 ease-out"
+        className="md:hidden fixed top-4 left-4 z-50 w-12 h-12 rounded-xl bg-black border border-[rgba(255,255,255,0.06)] flex items-center justify-center text-[#E6E7EA] shadow-[0_4px_16px_rgba(0,0,0,0.3)] hover:bg-[rgba(255,255,255,0.05)] transition-all duration-150 ease-out"
         aria-label="Open menu"
         title="Open menu"
       >
@@ -421,36 +322,6 @@ export function ModernSidebar() {
               yPosition={hoverPanelY}
             />
           )}
-          {!open && hoverPanel === "tools" && (
-            <HoverPanel
-              items={tools}
-              pathname={path}
-              onEnter={() => {
-                if (closeTimeoutRef.current) {
-                  clearTimeout(closeTimeoutRef.current);
-                  closeTimeoutRef.current = null;
-                }
-              }}
-              onLeave={() => setHoverPanel(null)}
-              title="Araçlar"
-              yPosition={hoverPanelY}
-            />
-          )}
-          {!open && hoverPanel === "settings" && (
-            <HoverPanel
-              items={settingsChildren}
-              pathname={path}
-              onEnter={() => {
-                if (closeTimeoutRef.current) {
-                  clearTimeout(closeTimeoutRef.current);
-                  closeTimeoutRef.current = null;
-                }
-              }}
-              onLeave={() => setHoverPanel(null)}
-              title="Ayarlar"
-              yPosition={hoverPanelY}
-            />
-          )}
         </AnimatePresence>,
         document.body
       )}
@@ -463,9 +334,6 @@ function NavItem({
   active,
   open,
   small,
-  hasChildren,
-  isExpanded,
-  onToggle,
   onCollapsedHover,
   onCollapsedLeave,
 }: {
@@ -473,9 +341,6 @@ function NavItem({
   active?: boolean;
   open: boolean;
   small?: boolean;
-  hasChildren?: boolean;
-  isExpanded?: boolean;
-  onToggle?: () => void;
   onCollapsedHover?: (id: string, y: number) => void;
   onCollapsedLeave?: () => void;
 }) {
@@ -516,31 +381,15 @@ function NavItem({
                 {item.badge}
               </span>
             )}
-            {hasChildren && (
-              <ChevronRight
-                className={cn(
-                  "w-4 h-4 transition-transform duration-200 shrink-0",
-                  isExpanded && "rotate-90"
-                )}
-              />
-            )}
           </motion.div>
         )}
       </AnimatePresence>
     </>
   );
 
-  const handleClick = (e: React.MouseEvent) => {
-    if (hasChildren && open) {
-      e.preventDefault();
-      onToggle?.();
-    }
-  };
-
   return (
     <Link
       href={item.href}
-      onClick={handleClick}
       className={cn(
         "group flex items-center gap-3 rounded-xl px-3.5 py-2.5",
         "transition-all duration-150 ease-out no-underline",
@@ -552,8 +401,7 @@ function NavItem({
         // Active state with surface-2
         active && ACTIVE,
         active && "border border-[rgba(255,255,255,0.08)] shadow-[0_2px_8px_rgba(0,0,0,0.2)]",
-        small && "text-[14px]",
-        hasChildren && open && "cursor-pointer"
+        small && "text-[14px]"
       )}
       title={!open ? item.label : undefined}
       onMouseEnter={!open ? (e) => {
@@ -597,7 +445,7 @@ function HoverPanel({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -10 }}
       transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-      className="fixed left-[92px] w-60 rounded-xl bg-[#1E212A] border border-[rgba(255,255,255,0.06)] shadow-[0_12px_40px_rgba(0,0,0,0.45)] p-3 pointer-events-auto backdrop-blur-xl"
+      className="fixed left-[92px] w-60 rounded-xl bg-black border border-[rgba(255,255,255,0.06)] shadow-[0_12px_40px_rgba(0,0,0,0.45)] p-3 pointer-events-auto backdrop-blur-xl"
       style={{
         top: `${yPosition}px`,
         zIndex: 99999
