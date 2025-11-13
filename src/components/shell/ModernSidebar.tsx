@@ -296,27 +296,27 @@ export function ModernSidebar() {
               />
 
               {/* Settings Submenu - Accordion */}
-              <AnimatePresence>
+                <AnimatePresence>
                 {open && it.id === "settings" && expandedMenus.includes("settings") && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
                     className="ml-6 mt-1 mb-2 space-y-1 overflow-hidden"
-                  >
+                    >
                     {settingsChildren.map(child => (
-                      <NavItem
-                        key={child.id}
-                        item={child}
-                        active={isActive(child.href)}
-                        open={open}
+                          <NavItem
+                            key={child.id}
+                            item={child}
+                            active={isActive(child.href)}
+                            open={open}
                         small={true}
-                      />
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                          />
+                        ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
             </div>
           ))}
         </nav>

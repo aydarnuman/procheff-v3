@@ -197,11 +197,11 @@ export function PriceRobotResultV4({
               <Store className="w-4 h-4" />
               Market Karşılaştır
             </button>
-            {expandedSection === 'price' ? (
-              <ChevronUp className="w-5 h-5 text-slate-400" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-slate-400" />
-            )}
+          {expandedSection === 'price' ? (
+            <ChevronUp className="w-5 h-5 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-slate-400" />
+          )}
           </div>
         </button>
 

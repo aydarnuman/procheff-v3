@@ -63,7 +63,7 @@ export async function webQuote(product_key: string): Promise<MarketQuote | null>
     return await realWebQuote(product_key);
   } catch (error) {
     console.error('[WEB] Real scraping failed, falling back to null:', error);
-    return null;
+  return null;
   }
 }
 
