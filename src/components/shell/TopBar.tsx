@@ -2,25 +2,22 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  AlertCircle,
-  Bell,
-  CheckCircle2,
-  Loader2,
-  LogOut,
-  Search,
-  Settings,
-  User,
-  XCircle,
-  Brain,
-  Database,
-  Shield,
-  FileText,
-  Activity,
-  Palette,
-  Zap,
-  Globe,
-  ScrollText,
-  BarChart3
+    Activity,
+    AlertCircle,
+    BarChart3,
+    Bell,
+    Brain,
+    CheckCircle2,
+    Database,
+    Loader2,
+    LogOut,
+    Palette,
+    Search,
+    Settings,
+    Shield,
+    User,
+    XCircle,
+    Zap
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
@@ -232,18 +229,6 @@ export function TopBar() {
       >
         {/* Logo & Page Title */}
         <div className="flex items-center gap-4 min-w-0 pl-4">
-          {/* Logo */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
-              <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-950 animate-pulse"></div>
-            </div>
-            <span className="text-lg md:text-xl font-bold bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent tracking-tight">
-              ProCheff
-            </span>
-          </div>
         </div>
 
         {/* Right Section */}

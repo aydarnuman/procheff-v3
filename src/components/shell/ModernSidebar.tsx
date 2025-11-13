@@ -2,15 +2,13 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Activity,
   BarChart4,
-  Bell,
-  FileBarChart,
+  ChevronRight,
   FileText,
   LayoutDashboard,
   Menu,
-  MessageSquare,
   Package,
+  Shield,
   Star,
   TrendingUp,
   UploadCloud
@@ -60,11 +58,20 @@ type Item = {
 // Data
 const primary: Item[] = [
   { id: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { id: "chat", label: "AI Asistan", href: "/chat", icon: MessageSquare, badge: "NEW" },
   { id: "analysis", label: "Analiz Merkezi", href: "/analysis", icon: TrendingUp },
-  { id: "piyasa", label: "Piyasa Robotu", href: "/piyasa-robotu", icon: TrendingUp },
+  { id: "tools", label: "Araçlar", href: "/menu-parser", icon: Menu },
   { id: "batch", label: "Toplu İşlem", href: "/batch/jobs", icon: Package },
-  { id: "reports", label: "Raporlar", href: "/reports", icon: FileBarChart },
+];
+
+const toolsChildren: Item[] = [
+  { id: "menu", label: "Menu Robotu", href: "/menu-parser", icon: Menu, colorIndex: 0 },
+  { id: "piyasa", label: "Piyasa Robotu", href: "/piyasa-robotu", icon: TrendingUp, colorIndex: 1 },
+];
+
+const analysisChildren: Item[] = [
+  { id: "analysis-center", label: "Analiz Merkezi", href: "/analysis", icon: BarChart4, colorIndex: 0 },
+  { id: "analysis-history", label: "Geçmiş Analizler", href: "/analysis/history", icon: UploadCloud, colorIndex: 1 },
+  { id: "ihale", label: "İhale Listesi", href: "/ihale", icon: FileText, colorIndex: 2 },
 ];
 
 const tasksChildren: Item[] = [
@@ -75,12 +82,9 @@ const tasksChildren: Item[] = [
 ];
 
 // Tools kaldırıldı - kullanıcı bunları istemiyordu
-// Ayarlar TopBar'a taşındı - sidebar'dan kaldırıldı
+// Ayarlar, Raporlar, Monitoring ve Bildirimler TopBar'a taşındı - sidebar'dan kaldırıldı
 
-const secondary: Item[] = [
-  { id: "notifications", label: "Bildirimler", href: "/notifications", icon: Bell, badge: "3" },
-  { id: "monitoring", label: "Monitoring", href: "/monitor", icon: Activity },
-];
+const secondary: Item[] = [];
 
 export function ModernSidebar() {
   const pathname = usePathname();
@@ -91,7 +95,17 @@ export function ModernSidebar() {
   const [hoverPanel, setHoverPanel] = useState<string | null>(null);
   const [hoverPanelY, setHoverPanelY] = useState<number>(180);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const toggleMenu = (menuId: string) => {
+    if (!open) return; // Collapsed modda accordion çalışmasın
+    setExpandedMenus(prev =>
+      prev.includes(menuId)
+        ? prev.filter(id => id !== menuId)
+        : [...prev, menuId]
+    );
+  };
 
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
@@ -136,10 +150,13 @@ export function ModernSidebar() {
         "cursor-pointer will-change-[width] overflow-x-hidden overflow-y-auto"
       )}
     >
+      {/* Spacer - Top padding */}
+      <div className="h-8" />
+
       {/* Header */}
       <div
         className={cn(
-          "px-4 py-4 flex items-center justify-center bg-black border-b border-[rgba(255,255,255,0.06)] overflow-hidden"
+          "px-4 py-4 flex items-center justify-start bg-black border-b border-[rgba(255,255,255,0.06)] overflow-hidden"
         )}
       >
         <div className="flex items-center gap-3 min-w-0">
@@ -170,31 +187,83 @@ export function ModernSidebar() {
       <div className="relative" onClick={(e) => e.stopPropagation()}>
         <nav className="px-3 pt-6 flex flex-col gap-1.5">
           {primary.map((it) => (
-            <NavItem
-              key={it.id}
-              item={it}
-              active={isActive(it.href)}
-              open={open}
-              onCollapsedHover={(id, y) => {
-                // Clear any pending close timeout
-                if (closeTimeoutRef.current) {
-                  clearTimeout(closeTimeoutRef.current);
-                  closeTimeoutRef.current = null;
-                }
-                if (it.id === "analysis") {
-                  setHoverPanel("tasks");
-                } else {
-                  setHoverPanel(id);
-                }
-                setHoverPanelY(y);
-              }}
-              onCollapsedLeave={() => {
-                // Delay closing to allow mouse to move to panel
-                closeTimeoutRef.current = setTimeout(() => {
-                  setHoverPanel(null);
-                }, 150);
-              }}
-            />
+            <div key={it.id}>
+              <NavItem
+                item={it}
+                active={isActive(it.href)}
+                open={open}
+                hasChildren={it.id === "analysis" || it.id === "tools"}
+                isExpanded={expandedMenus.includes(it.id!)}
+                onToggle={() => toggleMenu(it.id!)}
+                onCollapsedHover={(id, y) => {
+                  // Clear any pending close timeout
+                  if (closeTimeoutRef.current) {
+                    clearTimeout(closeTimeoutRef.current);
+                    closeTimeoutRef.current = null;
+                  }
+                  if (it.id === "analysis") {
+                    setHoverPanel("analysis");
+                  } else if (it.id === "tools") {
+                    setHoverPanel("tools");
+                  } else {
+                    setHoverPanel(id);
+                  }
+                  setHoverPanelY(y);
+                }}
+                onCollapsedLeave={() => {
+                  // Delay closing to allow mouse to move to panel
+                  closeTimeoutRef.current = setTimeout(() => {
+                    setHoverPanel(null);
+                  }, 150);
+                }}
+              />
+
+              {/* Analiz Merkezi Submenu - Accordion */}
+              <AnimatePresence>
+                {open && it.id === "analysis" && expandedMenus.includes("analysis") && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                    className="ml-6 mt-1 mb-2 space-y-1 overflow-hidden"
+                  >
+                    {analysisChildren.map(child => (
+                      <NavItem
+                        key={child.id}
+                        item={child}
+                        active={isActive(child.href)}
+                        open={open}
+                        small={true}
+                      />
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Araçlar Merkezi Submenu - Accordion */}
+              <AnimatePresence>
+                {open && it.id === "tools" && expandedMenus.includes("tools") && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                    className="ml-6 mt-1 mb-2 space-y-1 overflow-hidden"
+                  >
+                    {toolsChildren.map(child => (
+                      <NavItem
+                        key={child.id}
+                        item={child}
+                        active={isActive(child.href)}
+                        open={open}
+                        small={true}
+                      />
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           ))}
 
           {secondary.map((it) => (
@@ -236,7 +305,7 @@ export function ModernSidebar() {
         onClick={(e) => e.stopPropagation()}
       >
         <Link
-          href="/settings/profile"
+          href="/admin"
           className={cn(
             "rounded-xl p-2 flex items-center backdrop-blur-md border border-[rgba(255,255,255,0.06)] no-underline",
             open ? "gap-2.5" : "gap-1 justify-center",
@@ -247,13 +316,13 @@ export function ModernSidebar() {
         >
           <div
             className="h-8 w-8 rounded-full ring-1 ring-[rgba(255,255,255,0.12)] bg-linear-to-tr from-[#7c3aed] to-[#2563eb] flex items-center justify-center text-[11px] font-bold text-white shadow-lg"
-            title={!open ? "ProCheff Admin - admin@procheff.com" : undefined}
+            title={!open ? "Admin Panel" : undefined}
           >
-            PC
+            <Shield className="w-4 h-4" />
           </div>
           {open && (
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-semibold text-[#E6E7EA] truncate tracking-[-0.01em]">ProCheff Admin</div>
+              <div className="text-[13px] font-semibold text-[#E6E7EA] truncate tracking-[-0.01em]">Admin Panel</div>
             </div>
           )}
         </Link>
@@ -307,9 +376,9 @@ export function ModernSidebar() {
       {/* Hover Panels - Rendered via Portal to document.body */}
       {typeof window !== 'undefined' && createPortal(
         <AnimatePresence mode="wait">
-          {!open && hoverPanel === "tasks" && (
+          {!open && hoverPanel === "analysis" && (
             <HoverPanel
-              items={tasksChildren}
+              items={analysisChildren}
               pathname={path}
               onEnter={() => {
                 if (closeTimeoutRef.current) {
@@ -319,6 +388,21 @@ export function ModernSidebar() {
               }}
               onLeave={() => setHoverPanel(null)}
               title="Analiz Merkezi"
+              yPosition={hoverPanelY}
+            />
+          )}
+          {!open && hoverPanel === "tools" && (
+            <HoverPanel
+              items={toolsChildren}
+              pathname={path}
+              onEnter={() => {
+                if (closeTimeoutRef.current) {
+                  clearTimeout(closeTimeoutRef.current);
+                  closeTimeoutRef.current = null;
+                }
+              }}
+              onLeave={() => setHoverPanel(null)}
+              title="Araçlar"
               yPosition={hoverPanelY}
             />
           )}
@@ -334,6 +418,9 @@ function NavItem({
   active,
   open,
   small,
+  hasChildren,
+  isExpanded,
+  onToggle,
   onCollapsedHover,
   onCollapsedLeave,
 }: {
@@ -341,6 +428,9 @@ function NavItem({
   active?: boolean;
   open: boolean;
   small?: boolean;
+  hasChildren?: boolean;
+  isExpanded?: boolean;
+  onToggle?: () => void;
   onCollapsedHover?: (id: string, y: number) => void;
   onCollapsedLeave?: () => void;
 }) {
@@ -381,15 +471,31 @@ function NavItem({
                 {item.badge}
               </span>
             )}
+            {hasChildren && (
+              <ChevronRight
+                className={cn(
+                  "w-4 h-4 transition-transform duration-200 shrink-0",
+                  isExpanded && "rotate-90"
+                )}
+              />
+            )}
           </motion.div>
         )}
       </AnimatePresence>
     </>
   );
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (hasChildren && open) {
+      e.preventDefault();
+      onToggle?.();
+    }
+  };
+
   return (
     <Link
       href={item.href}
+      onClick={handleClick}
       className={cn(
         "group flex items-center gap-3 rounded-xl px-3.5 py-2.5",
         "transition-all duration-150 ease-out no-underline",
@@ -401,7 +507,8 @@ function NavItem({
         // Active state with surface-2
         active && ACTIVE,
         active && "border border-[rgba(255,255,255,0.08)] shadow-[0_2px_8px_rgba(0,0,0,0.2)]",
-        small && "text-[14px]"
+        small && "text-[14px]",
+        hasChildren && open && "cursor-pointer"
       )}
       title={!open ? item.label : undefined}
       onMouseEnter={!open ? (e) => {

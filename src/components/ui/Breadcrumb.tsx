@@ -58,7 +58,7 @@ export function Breadcrumb() {
       className="flex items-center gap-2 py-3 text-sm border-b border-white/5 
                  bg-linear-to-r from-white/2 to-transparent
                  pl-8 pr-4 md:pr-6
-                 fixed top-16 right-0 z-[55]
+                 fixed top-12 right-0 z-[55]
                  backdrop-blur-sm"
       style={{
         left: 'var(--sidebar-width, 0px)',
