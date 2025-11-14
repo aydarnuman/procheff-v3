@@ -13,8 +13,8 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
       - run: |
-          ssh -o StrictHostKeyChecking=no root@161.35.217.113 "
-            cd /root/procheff-v3 &&
+          ssh -o StrictHostKeyChecking=no root@104.248.254.171 "
+            cd /var/www/procheff &&
             git pull &&
             npm install &&
             npm run build &&
