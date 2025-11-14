@@ -1,27 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ChevronLeft, Globe, Zap, Plus, RefreshCw, Code, BarChart3, Settings, X, TestTube } from "lucide-react";
-import Link from "next/link";
-import { WebhookCard } from "@/components/integrations/WebhookCard";
 import { ApiEndpointList } from "@/components/integrations/ApiEndpointList";
 import { IntegrationToggle } from "@/components/integrations/IntegrationToggle";
-import { Webhook } from "@/lib/integrations/webhook-service";
+import { WebhookCard } from "@/components/integrations/WebhookCard";
 import { ApiEndpoint, ApiStats } from "@/lib/integrations/api-stats-service";
 import { IntegrationConfig } from "@/lib/integrations/integration-service";
-import { toast } from "sonner";
+import { Webhook } from "@/lib/integrations/webhook-service";
+import { ChevronLeft, Code, Globe, Plus, RefreshCw, X } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
   CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
   Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
 } from "recharts";
+import { toast } from "sonner";
 
 type TabType = "endpoints" | "webhooks" | "integrations" | "stats";
 
@@ -525,11 +523,14 @@ export default function ApiIntegrationsPage() {
                 {editingWebhook ? "Webhook Düzenle" : "Yeni Webhook"}
               </h2>
               <button
+                type="button"
                 onClick={() => {
                   setShowWebhookModal(false);
                   setEditingWebhook(null);
                 }}
                 className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                aria-label="Close modal"
+                title="Close"
               >
                 <X className="w-5 h-5" />
               </button>

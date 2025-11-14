@@ -4,13 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { fadeInUp, scaleIn, staggerContainer } from "@/lib/animations";
-import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Calculator, Info, Lightbulb, TrendingUp, ArrowLeft, ArrowRight, FileText } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { usePipelineStore, PIPELINE_STEPS, type CostAnalysis, type Tender } from "@/store/usePipelineStore";
 import { PipelineNavigator } from "@/components/ui/PipelineNavigator";
+import { fadeInUp, scaleIn, staggerContainer } from "@/lib/animations";
+import { PIPELINE_STEPS, usePipelineStore, type CostAnalysis, type Tender } from "@/store/usePipelineStore";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertTriangle, ArrowLeft, ArrowRight, Calculator, FileText, Info, Lightbulb, TrendingUp } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 // Extended Tender type for legacy compatibility
 type ExtendedTender = Tender & {

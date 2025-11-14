@@ -179,10 +179,12 @@ export default function QuickExportPage() {
             <div className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
               <h3 className="text-green-400 font-medium mb-2">✅ Export Başarılı!</h3>
               <div className="text-xs text-slate-300">
-                <div>Format: {result.format.toUpperCase()}</div>
+                {result.format && <div>Format: {result.format.toUpperCase()}</div>}
                 {result.count && <div>Tablo sayısı: {result.count}</div>}
                 {result.length && <div>Metin uzunluğu: {result.length} karakter</div>}
-                <div>Dosya indirildi: ihale_{result.ihaleId}.{result.format}</div>
+                {result.ihaleId && result.format && (
+                  <div>Dosya indirildi: ihale_{result.ihaleId}.{result.format}</div>
+                )}
               </div>
             </div>
           )}
