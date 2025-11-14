@@ -53,10 +53,12 @@ export async function middleware(request: NextRequest) {
   response.headers.set('Content-Security-Policy', cspHeader);
 
   // 2. Authentication Check
-  const authResponse = await auth(request as any, {} as any) as any;
-  
-  if (authResponse) {
-    return authResponse;
+  const session = await auth();
+
+  // If no session and accessing protected route, let NextAuth handle it
+  if (!session && !request.nextUrl.pathname.startsWith('/api/')) {
+    // NextAuth will handle redirects via its own middleware
+    return response;
   }
 
   return response;

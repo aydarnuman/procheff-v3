@@ -1,0 +1,28 @@
+# Build outputs
+.next/
+dist/
+build/
+out/
+
+# Dependencies
+node_modules/
+
+# Migration scripts (CommonJS - outside of main app)
+scripts/postgres-migration/
+scripts/*migration*.js
+scripts/*migration*.ts
+scripts/auto-workflow.js
+scripts/claude-cursor-bridge.js
+scripts/claude-save.js
+
+# Test files that use CommonJS
+test-*.js
+*.spec.js
+*.test.js
+
+# Generated files
+procheff-v3-enterprise/
+
+# Environment
+.env*
+!.env.example

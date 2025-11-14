@@ -62,8 +62,8 @@ export default async function AdminDashboard() {
           </Link>
         </div>
         <div className="space-y-3">
-          {recentActivity && (recentActivity as any[]).length > 0 ? (
-            (recentActivity as any[]).map((log: any) => (
+          {recentActivity && Array.isArray(recentActivity) && recentActivity.length > 0 ? (
+            recentActivity.map((log: { id: string; user_name?: string; action: string; created_at: string }) => (
               <div key={log.id} className="flex items-start gap-3 p-3 bg-white/5 rounded-lg">
                 <div className="h-2 w-2 rounded-full bg-green-400 mt-2" />
                 <div className="flex-1">

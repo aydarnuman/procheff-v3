@@ -2,7 +2,7 @@
  * Database Adapter - Dual Mode Support
  * Supports both SQLite and PostgreSQL with seamless switching
  * Controlled via DB_MODE environment variable
- * 
+ *
  * Modes:
  * - sqlite: Use SQLite (default, production current)
  * - postgres: Use PostgreSQL only
@@ -10,11 +10,12 @@
  */
 
 import type Database from 'better-sqlite3';
+import type { QueryParams, DatabaseRow } from '@/types/database';
 
 // Dynamic imports to avoid circular dependencies
 let getSQLiteDB: (() => Database) | null = null;
-let pgQuery: ((sql: string, params?: any[]) => Promise<any>) | null = null;
-let getClient: (() => Promise<any>) | null = null;
+let pgQuery: ((sql: string, params?: QueryParams) => Promise<{ rows: DatabaseRow[]; rowCount: number | null }>) | null = null;
+let getClient: (() => Promise<{ query: (sql: string, params?: QueryParams) => Promise<unknown>; release: () => void }>) | null = null;
 
 const DB_MODE = process.env.DB_MODE || 'sqlite'; // 'sqlite' | 'postgres' | 'dual'
 
@@ -26,23 +27,23 @@ export interface UniversalDB {
   /**
    * Execute query and return all rows
    */
-  query: <T = any>(sql: string, params?: any[]) => Promise<T[]>;
-  
+  query: <T = DatabaseRow>(sql: string, params?: QueryParams) => Promise<T[]>;
+
   /**
    * Execute query and return first row
    */
-  queryOne: <T = any>(sql: string, params?: any[]) => Promise<T | undefined>;
-  
+  queryOne: <T = DatabaseRow>(sql: string, params?: QueryParams) => Promise<T | undefined>;
+
   /**
    * Execute statement (INSERT, UPDATE, DELETE)
    */
-  execute: (sql: string, params?: any[]) => Promise<{ changes: number; lastID?: number }>;
-  
+  execute: (sql: string, params?: QueryParams) => Promise<{ changes: number; lastID?: number }>;
+
   /**
    * Execute within transaction
    */
   transaction: <T>(callback: () => Promise<T>) => Promise<T>;
-  
+
   /**
    * Get current mode
    */
@@ -92,7 +93,7 @@ function getSQLiteAdapter(): UniversalDB {
   const db = getSQLiteDB();
   
   return {
-    async query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+    async query<T = DatabaseRow>(sql: string, params: QueryParams = []): Promise<T[]> {
       try {
         return db.prepare(sql).all(...params) as T[];
       } catch (error) {
@@ -100,8 +101,8 @@ function getSQLiteAdapter(): UniversalDB {
         throw error;
       }
     },
-    
-    async queryOne<T = any>(sql: string, params: any[] = []): Promise<T | undefined> {
+
+    async queryOne<T = DatabaseRow>(sql: string, params: QueryParams = []): Promise<T | undefined> {
       try {
         return db.prepare(sql).get(...params) as T | undefined;
       } catch (error) {
@@ -109,11 +110,11 @@ function getSQLiteAdapter(): UniversalDB {
         throw error;
       }
     },
-    
-    async execute(sql: string, params: any[] = []): Promise<{ changes: number; lastID?: number }> {
+
+    async execute(sql: string, params: QueryParams = []): Promise<{ changes: number; lastID?: number }> {
       try {
         const info = db.prepare(sql).run(...params);
-        return { 
+        return {
           changes: info.changes,
           lastID: typeof info.lastInsertRowid === 'number' ? info.lastInsertRowid : undefined
         };
@@ -142,33 +143,33 @@ function getPostgresAdapter(): UniversalDB {
   }
   
   return {
-    async query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+    async query<T = DatabaseRow>(sql: string, params: QueryParams = []): Promise<T[]> {
       try {
         if (!pgQuery) throw new Error('PostgreSQL not initialized');
         const result = await pgQuery(sql, params);
-        return result.rows;
+        return result.rows as T[];
       } catch (error) {
         console.error('[PostgreSQL] Query error:', error);
         throw error;
       }
     },
-    
-    async queryOne<T = any>(sql: string, params: any[] = []): Promise<T | undefined> {
+
+    async queryOne<T = DatabaseRow>(sql: string, params: QueryParams = []): Promise<T | undefined> {
       try {
         if (!pgQuery) throw new Error('PostgreSQL not initialized');
         const result = await pgQuery(sql, params);
-        return result.rows[0] || undefined;
+        return result.rows[0] as T | undefined;
       } catch (error) {
         console.error('[PostgreSQL] QueryOne error:', error);
         throw error;
       }
     },
-    
-    async execute(sql: string, params: any[] = []): Promise<{ changes: number; lastID?: number }> {
+
+    async execute(sql: string, params: QueryParams = []): Promise<{ changes: number; lastID?: number }> {
       try {
         if (!pgQuery) throw new Error('PostgreSQL not initialized');
         const result = await pgQuery(sql, params);
-        return { 
+        return {
           changes: result.rowCount || 0,
           lastID: undefined // PostgreSQL doesn't have lastID
         };
@@ -212,7 +213,7 @@ function getDualAdapter(): UniversalDB {
   const sqliteAdapter = getSQLiteAdapter();
   
   return {
-    async query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+    async query<T = DatabaseRow>(sql: string, params: QueryParams = []): Promise<T[]> {
       try {
         return await pgAdapter.query<T>(sql, params);
       } catch (error) {
@@ -220,8 +221,8 @@ function getDualAdapter(): UniversalDB {
         return await sqliteAdapter.query<T>(sql, params);
       }
     },
-    
-    async queryOne<T = any>(sql: string, params: any[] = []): Promise<T | undefined> {
+
+    async queryOne<T = DatabaseRow>(sql: string, params: QueryParams = []): Promise<T | undefined> {
       try {
         return await pgAdapter.queryOne<T>(sql, params);
       } catch (error) {
@@ -229,8 +230,8 @@ function getDualAdapter(): UniversalDB {
         return await sqliteAdapter.queryOne<T>(sql, params);
       }
     },
-    
-    async execute(sql: string, params: any[] = []): Promise<{ changes: number; lastID?: number }> {
+
+    async execute(sql: string, params: QueryParams = []): Promise<{ changes: number; lastID?: number }> {
       try {
         const result = await pgAdapter.execute(sql, params);
         // Also execute on SQLite for consistency

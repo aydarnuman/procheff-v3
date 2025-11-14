@@ -6,6 +6,7 @@
 import { AILogger } from '@/lib/ai/logger-universal';
 import type { UniversalDB } from '@/lib/db/db-adapter';
 import { getDBAdapter } from '@/lib/db/db-adapter';
+import type { DatabaseRow } from '@/types/database';
 
 export interface ChatMetrics {
   totalMessages: number;
@@ -34,9 +35,7 @@ export interface MessageMetadata {
   error?: string;
 }
 
-interface QueryRow {
-  [key: string]: string | number | null | undefined;
-}
+// Using DatabaseRow from @/types/database for consistency
 
 export interface ConversationAnalysis {
   messageCount: number;
@@ -178,14 +177,14 @@ export class ChatAnalyticsTracker {
       const totalMessagesResult = await db.query(`
         SELECT COUNT(*) as count FROM chat_analytics ${whereClause}
       `, params);
-      const totalMessages = (totalMessagesResult[0] as QueryRow)?.count || 0;
+      const totalMessages = (totalMessagesResult[0] as DatabaseRow)?.count || 0;
 
       // Total conversations
       const totalConversationsResult = await db.query(`
         SELECT COUNT(DISTINCT conversation_id) as count
         FROM chat_analytics ${whereClause}
       `, params);
-      const totalConversations = (totalConversationsResult[0] as QueryRow)?.count || 0;
+      const totalConversations = (totalConversationsResult[0] as DatabaseRow)?.count || 0;
 
       // Average response time
       const whereCondition = whereClause ? `AND ${whereClause.substring(6)}` : '';
@@ -194,7 +193,7 @@ export class ChatAnalyticsTracker {
         FROM chat_analytics
         WHERE response_time IS NOT NULL ${whereCondition}
       `, params);
-      const avgResponseTime = (avgResponseTimeResult[0] as QueryRow)?.avg || 0;
+      const avgResponseTime = (avgResponseTimeResult[0] as DatabaseRow)?.avg || 0;
 
       // Average tokens per message
       const avgTokensResult = await db.query(`
@@ -202,7 +201,7 @@ export class ChatAnalyticsTracker {
         FROM chat_analytics
         WHERE tokens_used IS NOT NULL ${whereCondition}
       `, params);
-      const avgTokensPerMessage = (avgTokensResult[0] as QueryRow)?.avg || 0;
+      const avgTokensPerMessage = (avgTokensResult[0] as DatabaseRow)?.avg || 0;
 
       // Command usage
       const commandUsageResult = await db.query(`
@@ -214,9 +213,10 @@ export class ChatAnalyticsTracker {
       `, params);
       
       const commandUsage: Record<string, number> = {};
-      commandUsageResult.forEach((row: QueryRow) => {
-        if (row.command) {
-          commandUsage[row.command] = Number(row.count) || 0;
+      commandUsageResult.forEach((row) => {
+        const qRow = row as DatabaseRow;
+        if (qRow.command && typeof qRow.command === 'string') {
+          commandUsage[qRow.command] = Number(qRow.count) || 0;
         }
       });
 
@@ -233,9 +233,10 @@ export class ChatAnalyticsTracker {
       for (let i = 0; i < 24; i++) {
         hourlyDistribution[i] = 0;
       }
-      hourlyResult.forEach((row: QueryRow) => {
-        const hour = Number(row.hour) || 0;
-        hourlyDistribution[hour] = Number(row.count) || 0;
+      hourlyResult.forEach((row) => {
+        const qRow = row as DatabaseRow;
+        const hour = Number(qRow.hour) || 0;
+        hourlyDistribution[hour] = Number(qRow.count) || 0;
       });
 
       // Success rate
@@ -246,7 +247,7 @@ export class ChatAnalyticsTracker {
         FROM chat_analytics ${whereClause}
       `, params);
       
-      const successData = successResult[0] as QueryRow;
+      const successData = successResult[0] as DatabaseRow;
       const totalCount = Number(successData?.total_count || 0);
       const successCount = Number(successData?.success_count || 0);
       const successRate = totalCount > 0 
@@ -294,9 +295,10 @@ export class ChatAnalyticsTracker {
       const wordCount: Record<string, number> = {};
       const stopWords = new Set(['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'a', 'an', 'is', 'are', 'was', 'were']);
 
-      result.forEach((row: QueryRow) => {
-        if (row.content && typeof row.content === 'string') {
-          const words = row.content.toLowerCase()
+      result.forEach((row) => {
+        const qRow = row as DatabaseRow;
+        if (qRow.content && typeof qRow.content === 'string') {
+          const words = qRow.content.toLowerCase()
             .replace(/[^\w\s]/g, '')
             .split(/\s+/)
             .filter((word: string) => word.length > 3 && !stopWords.has(word));
@@ -341,19 +343,20 @@ export class ChatAnalyticsTracker {
       let totalResponseTime = 0;
       let responseTimeCount = 0;
 
-      messages.forEach((msg: QueryRow) => {
-        if (msg.tokens_used) {
-          analysis.totalTokens += Number(msg.tokens_used);
+      messages.forEach((msg) => {
+        const qMsg = msg as DatabaseRow;
+        if (qMsg.tokens_used) {
+          analysis.totalTokens += Number(qMsg.tokens_used);
         }
-        if (msg.response_time) {
-          totalResponseTime += Number(msg.response_time);
+        if (qMsg.response_time) {
+          totalResponseTime += Number(qMsg.response_time);
           responseTimeCount++;
         }
-        if (msg.command && typeof msg.command === 'string') {
-          analysis.commands.push(msg.command);
+        if (qMsg.command && typeof qMsg.command === 'string') {
+          analysis.commands.push(qMsg.command);
         }
-        if (msg.error && typeof msg.error === 'string') {
-          analysis.errors.push(msg.error);
+        if (qMsg.error && typeof qMsg.error === 'string') {
+          analysis.errors.push(qMsg.error);
         }
       });
 
@@ -379,19 +382,19 @@ export class ChatAnalyticsTracker {
       const totalResult = await db.query(`
         SELECT COUNT(*) as total FROM chat_analytics
       `);
-      const total = (totalResult[0] as QueryRow)?.total || 0;
+      const total = (totalResult[0] as DatabaseRow)?.total || 0;
 
       const conversationsResult = await db.query(`
         SELECT COUNT(DISTINCT conversation_id) as count FROM chat_analytics
       `);
-      const totalConversations = (conversationsResult[0] as QueryRow)?.count || 0;
+      const totalConversations = (conversationsResult[0] as DatabaseRow)?.count || 0;
 
       // Recent activity (last 24 hours)
       const recentResult = await db.query(`
         SELECT COUNT(*) as count FROM chat_analytics 
         WHERE timestamp >= NOW() - INTERVAL '24 hours'
       `);
-      const recentActivity = (recentResult[0] as QueryRow)?.count || 0;
+      const recentActivity = (recentResult[0] as DatabaseRow)?.count || 0;
 
       return {
         totalMessages: Number(total),
@@ -434,11 +437,12 @@ export class ChatAnalyticsTracker {
         const headers = Object.keys(data[0] || {});
         const csvRows = [
           headers.join(','),
-          ...data.map((row: QueryRow) => 
-            headers.map(header => 
-              JSON.stringify(row[header] || '')
-            ).join(',')
-          )
+          ...data.map((row) => {
+            const qRow = row as DatabaseRow;
+            return headers.map(header => 
+              JSON.stringify(qRow[header] || '')
+            ).join(',');
+          })
         ];
         return csvRows.join('\n');
       }
@@ -453,7 +457,7 @@ export class ChatAnalyticsTracker {
   /**
    * Get conversation history
    */
-  async getConversationHistory(conversationId: string): Promise<QueryRow[]> {
+  async getConversationHistory(conversationId: string): Promise<DatabaseRow[]> {
     try {
       const db = await this.getDB();
       
@@ -463,7 +467,7 @@ export class ChatAnalyticsTracker {
         ORDER BY timestamp ASC
       `, [conversationId]);
 
-      return history;
+      return history as DatabaseRow[];
     } catch (error) {
       AILogger.error('Failed to get conversation history', { error });
       return [];
@@ -473,7 +477,7 @@ export class ChatAnalyticsTracker {
   /**
    * Get user statistics
    */
-  async getUserStatistics(userId: string): Promise<QueryRow> {
+  async getUserStatistics(userId: string): Promise<DatabaseRow> {
     try {
       const db = await this.getDB();
       
@@ -489,7 +493,7 @@ export class ChatAnalyticsTracker {
         WHERE user_id = ?
       `, [userId]);
 
-      return stats[0] || {};
+      return (stats[0] as DatabaseRow) || {};
     } catch (error) {
       AILogger.error('Failed to get user statistics', { error });
       return {};

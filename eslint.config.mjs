@@ -18,6 +18,19 @@ const eslintConfig = [
       // Test files:
       "ihale-worker/test-*.ts",
       "**/test-*.ts",
+      "test-*.js",
+      // Migration scripts (CommonJS - outside of main app):
+      "scripts/postgres-migration/**",
+      "scripts/*migration*.js",
+      "scripts/*migration*.ts",
+      "scripts/auto-workflow.js",
+      "scripts/claude-cursor-bridge.js",
+      "scripts/claude-save.js",
+      "scripts/fix-database.ts",
+      // Generated files:
+      "procheff-v3-enterprise/**",
+      // Test connection scripts:
+      "test-postgres-connection.js",
     ],
   },
   // Relax rules for ihale-worker (external scraper, not Next.js code)

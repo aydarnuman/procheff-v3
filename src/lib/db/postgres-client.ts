@@ -1,4 +1,5 @@
-import { Pool, QueryResult, QueryResultRow } from 'pg';
+import { Pool, QueryResult, QueryResultRow, PoolClient } from 'pg';
+import type { QueryParams, DatabaseRow } from '@/types/database';
 
 // PostgreSQL connection pool
 let pool: Pool | null = null;
@@ -137,9 +138,9 @@ export async function getPool(): Promise<Pool> {
 /**
  * Execute a query using the pool
  */
-export async function query<T extends QueryResultRow = any>(
+export async function query<T extends QueryResultRow = DatabaseRow>(
   text: string,
-  params?: any[]
+  params?: QueryParams
 ): Promise<QueryResult<T>> {
   const pool = await getPool();
   return pool.query<T>(text, params);
@@ -148,7 +149,7 @@ export async function query<T extends QueryResultRow = any>(
 /**
  * Get a client from the pool for transactions
  */
-export async function getClient() {
+export async function getClient(): Promise<PoolClient> {
   const pool = await getPool();
   return pool.connect();
 }
@@ -157,10 +158,10 @@ export async function getClient() {
  * Transaction wrapper for PostgreSQL
  */
 export async function transaction<T>(
-  callback: (client: any) => Promise<T>
+  callback: (client: PoolClient) => Promise<T>
 ): Promise<T> {
   const client = await getClient();
-  
+
   try {
     await client.query('BEGIN');
     const result = await callback(client);
@@ -177,7 +178,7 @@ export async function transaction<T>(
 /**
  * Validate JSON before storing in database
  */
-export function validateJSON(value: any): string {
+export function validateJSON(value: unknown): string {
   try {
     const jsonString = JSON.stringify(value);
     // Verify it can be parsed back
@@ -341,7 +342,7 @@ export const compatibilityLayer = {
   /**
    * Mimic better-sqlite3's prepare().get() pattern
    */
-  async prepareGet<T extends QueryResultRow = any>(sql: string, ...params: any[]): Promise<T | undefined> {
+  async prepareGet<T extends QueryResultRow = DatabaseRow>(sql: string, ...params: QueryParams): Promise<T | undefined> {
     const result = await query<T>(sql, params);
     return result.rows[0];
   },
@@ -349,7 +350,7 @@ export const compatibilityLayer = {
   /**
    * Mimic better-sqlite3's prepare().all() pattern
    */
-  async prepareAll<T extends QueryResultRow = any>(sql: string, ...params: any[]): Promise<T[]> {
+  async prepareAll<T extends QueryResultRow = DatabaseRow>(sql: string, ...params: QueryParams): Promise<T[]> {
     const result = await query<T>(sql, params);
     return result.rows;
   },
@@ -357,7 +358,7 @@ export const compatibilityLayer = {
   /**
    * Mimic better-sqlite3's prepare().run() pattern
    */
-  async prepareRun(sql: string, ...params: any[]): Promise<{ changes: number; lastID: number }> {
+  async prepareRun(sql: string, ...params: QueryParams): Promise<{ changes: number; lastID: number }> {
     const result = await query(sql, params);
     return {
       changes: result.rowCount || 0,
@@ -378,9 +379,9 @@ export const getDB = () => {
   console.warn('⚠️ getDB() is deprecated, use getPool() or query() instead');
   return {
     prepare: (sql: string) => ({
-      get: async (...params: any[]) => compatibilityLayer.prepareGet(sql, ...params),
-      all: async (...params: any[]) => compatibilityLayer.prepareAll(sql, ...params),
-      run: async (...params: any[]) => compatibilityLayer.prepareRun(sql, ...params),
+      get: async (...params: QueryParams) => compatibilityLayer.prepareGet(sql, ...params),
+      all: async (...params: QueryParams) => compatibilityLayer.prepareAll(sql, ...params),
+      run: async (...params: QueryParams) => compatibilityLayer.prepareRun(sql, ...params),
     }),
     exec: compatibilityLayer.exec,
     transaction: transaction
