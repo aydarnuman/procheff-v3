@@ -41,7 +41,7 @@ export async function renderPdfToImages(
 
   try {
     // Dynamic imports to avoid bundling issues
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const pdfjsLib = await import('pdfjs-dist');
     // Prefer napi-rs canvas for Node
     const canvasMod = await import('@napi-rs/canvas');
@@ -81,7 +81,7 @@ export async function renderPdfToImages(
     const factory = new CanvasFactory();
 
     for (let pageNum = 1; pageNum <= pagesToRender; pageNum++) {
-      // eslint-disable-next-line no-await-in-loop
+       
       const page = await pdfDoc.getPage(pageNum);
       const scale = dpi / 72; // 72 DPI base
       const viewport = page.getViewport({ scale });
@@ -89,14 +89,14 @@ export async function renderPdfToImages(
       const { canvas, context } = factory.create(viewport.width, viewport.height);
 
       // Render
-      // eslint-disable-next-line no-await-in-loop
+       
       // pdfjs types vary; use minimal shape known by the library
       const renderTask = page.render({
         canvasContext: context,
         viewport,
         canvasFactory: factory,
       } as any);
-      // eslint-disable-next-line no-await-in-loop
+       
       await renderTask.promise;
 
       // Export as PNG

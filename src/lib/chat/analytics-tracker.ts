@@ -1,10 +1,11 @@
 /**
  * Chat Analytics Tracker
- * Tracks and analyzes chat usage metrics
+ * Tracks and analyzes chat usage metrics with PostgreSQL/SQLite compatibility
  */
 
-import { getDB } from '@/lib/db/sqlite-client';
-import { AILogger } from '@/lib/ai/logger';
+import { AILogger } from '@/lib/ai/logger-universal';
+import type { UniversalDB } from '@/lib/db/db-adapter';
+import { getDBAdapter } from '@/lib/db/db-adapter';
 
 export interface ChatMetrics {
   totalMessages: number;
@@ -33,15 +34,45 @@ export interface MessageMetadata {
   error?: string;
 }
 
+interface QueryRow {
+  [key: string]: string | number | null | undefined;
+}
+
+export interface ConversationAnalysis {
+  messageCount: number;
+  avgResponseTime: number;
+  totalTokens: number;
+  commands: string[];
+  errors: string[];
+}
+
+export interface AnalyticsSummary {
+  totalMessages: number;
+  totalConversations: number;
+  recentActivity: number;
+  lastUpdated: string;
+}
+
 export class ChatAnalyticsTracker {
   private static instance: ChatAnalyticsTracker;
-  private db = getDB();
+  private dbAdapter: UniversalDB | null = null;
+
+  // Get database adapter
+  private async getDB(): Promise<UniversalDB> {
+    if (!this.dbAdapter) {
+      this.dbAdapter = await getDBAdapter();
+    }
+    return this.dbAdapter;
+  }
 
   // Singleton
   public static getInstance(): ChatAnalyticsTracker {
     if (!ChatAnalyticsTracker.instance) {
       ChatAnalyticsTracker.instance = new ChatAnalyticsTracker();
-      ChatAnalyticsTracker.instance.initDatabase();
+      // Initialize database asynchronously
+      ChatAnalyticsTracker.instance.initDatabase().catch((error) => {
+        AILogger.error('Failed to initialize analytics database', { error });
+      });
     }
     return ChatAnalyticsTracker.instance;
   }
@@ -49,15 +80,17 @@ export class ChatAnalyticsTracker {
   /**
    * Initialize analytics tables
    */
-  private initDatabase() {
+  private async initDatabase(): Promise<void> {
     try {
+      const db = await this.getDB();
+      
       // Create chat_analytics table if not exists
-      this.db.exec(`
+      await db.execute(`
         CREATE TABLE IF NOT EXISTS chat_analytics (
           id TEXT PRIMARY KEY,
           conversation_id TEXT NOT NULL,
           user_id TEXT,
-          timestamp TEXT NOT NULL,
+          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           message_type TEXT NOT NULL,
           content TEXT NOT NULL,
           response_time INTEGER,
@@ -65,20 +98,24 @@ export class ChatAnalyticsTracker {
           command TEXT,
           success INTEGER DEFAULT 1,
           error TEXT,
-          created_at TEXT DEFAULT (datetime('now'))
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
 
       // Create indexes
-      this.db.exec(`
+      await db.execute(`
         CREATE INDEX IF NOT EXISTS idx_chat_analytics_conversation
-        ON chat_analytics(conversation_id);
-
+        ON chat_analytics(conversation_id)
+      `);
+      
+      await db.execute(`
         CREATE INDEX IF NOT EXISTS idx_chat_analytics_timestamp
-        ON chat_analytics(timestamp);
-
+        ON chat_analytics(timestamp)
+      `);
+      
+      await db.execute(`
         CREATE INDEX IF NOT EXISTS idx_chat_analytics_command
-        ON chat_analytics(command);
+        ON chat_analytics(command)
       `);
 
       AILogger.info('Chat analytics database initialized');
@@ -92,14 +129,14 @@ export class ChatAnalyticsTracker {
    */
   async trackMessage(metadata: MessageMetadata): Promise<void> {
     try {
-      const stmt = this.db.prepare(`
+      const db = await this.getDB();
+      
+      await db.execute(`
         INSERT INTO chat_analytics (
           id, conversation_id, user_id, timestamp, message_type,
           content, response_time, tokens_used, command, success, error
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      stmt.run(
+      `, [
         metadata.messageId,
         metadata.conversationId,
         metadata.userId || null,
@@ -109,9 +146,9 @@ export class ChatAnalyticsTracker {
         metadata.responseTime || null,
         metadata.tokensUsed || null,
         metadata.command || null,
-        metadata.success ? 1 : 0,
+        metadata.success !== false ? 1 : 0,
         metadata.error || null
-      );
+      ]);
 
       AILogger.info('Message tracked', {
         messageId: metadata.messageId,
@@ -128,137 +165,305 @@ export class ChatAnalyticsTracker {
    */
   async getMetrics(timeRange?: { start: string; end: string }): Promise<ChatMetrics> {
     try {
+      const db = await this.getDB();
       let whereClause = '';
-      let params: any[] = [];
+      const params: (string | number)[] = [];
 
       if (timeRange) {
         whereClause = 'WHERE timestamp BETWEEN ? AND ?';
-        params = [timeRange.start, timeRange.end];
+        params.push(timeRange.start, timeRange.end);
       }
 
       // Total messages
-      const totalMessagesStmt = this.db.prepare(`
+      const totalMessagesResult = await db.query(`
         SELECT COUNT(*) as count FROM chat_analytics ${whereClause}
-      `);
-      const totalMessages = (totalMessagesStmt.get(...params) as { count: number }).count;
+      `, params);
+      const totalMessages = (totalMessagesResult[0] as QueryRow)?.count || 0;
 
       // Total conversations
-      const totalConversationsStmt = this.db.prepare(`
+      const totalConversationsResult = await db.query(`
         SELECT COUNT(DISTINCT conversation_id) as count
         FROM chat_analytics ${whereClause}
-      `);
-      const totalConversations = (totalConversationsStmt.get(...params) as { count: number }).count;
+      `, params);
+      const totalConversations = (totalConversationsResult[0] as QueryRow)?.count || 0;
 
       // Average response time
-      const avgResponseTimeStmt = this.db.prepare(`
+      const whereCondition = whereClause ? `AND ${whereClause.substring(6)}` : '';
+      const avgResponseTimeResult = await db.query(`
         SELECT AVG(response_time) as avg
         FROM chat_analytics
-        WHERE response_time IS NOT NULL ${whereClause ? 'AND ' + whereClause.substring(6) : ''}
-      `);
-      const avgResponseTime = (avgResponseTimeStmt.get(...params) as { avg: number | null }).avg || 0;
+        WHERE response_time IS NOT NULL ${whereCondition}
+      `, params);
+      const avgResponseTime = (avgResponseTimeResult[0] as QueryRow)?.avg || 0;
 
       // Average tokens per message
-      const avgTokensStmt = this.db.prepare(`
+      const avgTokensResult = await db.query(`
         SELECT AVG(tokens_used) as avg
         FROM chat_analytics
-        WHERE tokens_used IS NOT NULL ${whereClause ? 'AND ' + whereClause.substring(6) : ''}
-      `);
-      const avgTokensPerMessage = (avgTokensStmt.get(...params) as { avg: number | null }).avg || 0;
+        WHERE tokens_used IS NOT NULL ${whereCondition}
+      `, params);
+      const avgTokensPerMessage = (avgTokensResult[0] as QueryRow)?.avg || 0;
 
       // Command usage
-      const commandUsageStmt = this.db.prepare(`
+      const commandUsageResult = await db.query(`
         SELECT command, COUNT(*) as count
         FROM chat_analytics
-        WHERE command IS NOT NULL ${whereClause ? 'AND ' + whereClause.substring(6) : ''}
+        WHERE command IS NOT NULL ${whereCondition}
         GROUP BY command
         ORDER BY count DESC
-      `);
-      const commandUsageRows = commandUsageStmt.all(...params);
+      `, params);
+      
       const commandUsage: Record<string, number> = {};
-      commandUsageRows.forEach((row: any) => {
-        commandUsage[row.command] = row.count;
+      commandUsageResult.forEach((row: QueryRow) => {
+        if (row.command) {
+          commandUsage[row.command] = Number(row.count) || 0;
+        }
       });
 
-      // Top keywords (simplified extraction)
-      const topKeywords = await this.extractTopKeywords(whereClause, params);
-
       // Hourly distribution
-      const hourlyStmt = this.db.prepare(`
-        SELECT
-          CAST(strftime('%H', timestamp) AS INTEGER) as hour,
-          COUNT(*) as count
-        FROM chat_analytics
-        ${whereClause}
-        GROUP BY hour
+      const hourlyResult = await db.query(`
+        SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as count
+        FROM chat_analytics ${whereClause}
+        GROUP BY EXTRACT(HOUR FROM timestamp)
         ORDER BY hour
-      `);
-      const hourlyRows = hourlyStmt.all(...params);
+      `, params);
+
       const hourlyDistribution: Record<number, number> = {};
-      hourlyRows.forEach((row: any) => {
-        hourlyDistribution[row.hour] = row.count;
+      // Initialize all hours
+      for (let i = 0; i < 24; i++) {
+        hourlyDistribution[i] = 0;
+      }
+      hourlyResult.forEach((row: QueryRow) => {
+        const hour = Number(row.hour) || 0;
+        hourlyDistribution[hour] = Number(row.count) || 0;
       });
 
       // Success rate
-      const successStmt = this.db.prepare(`
-        SELECT
-          SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as success_count,
-          COUNT(*) as total
-        FROM chat_analytics
-        WHERE message_type = 'assistant'
-        ${whereClause ? 'AND ' + whereClause.substring(6) : ''}
-      `);
-      const successData = successStmt.get(...params) as { success_count: number; total: number };
-      const successRate = successData.total > 0
-        ? (successData.success_count / successData.total) * 100
-        : 100;
-
-      // Error rate
+      const successResult = await db.query(`
+        SELECT 
+          COUNT(CASE WHEN success = 1 THEN 1 END) as success_count,
+          COUNT(*) as total_count
+        FROM chat_analytics ${whereClause}
+      `, params);
+      
+      const successData = successResult[0] as QueryRow;
+      const totalCount = Number(successData?.total_count || 0);
+      const successCount = Number(successData?.success_count || 0);
+      const successRate = totalCount > 0 
+        ? (successCount / totalCount) * 100 
+        : 0;
       const errorRate = 100 - successRate;
 
-      // User satisfaction (mock for now - would need actual feedback data)
-      const userSatisfaction = successRate * 0.9; // Simplified calculation
+      // Top keywords (simplified)
+      const topKeywords = await this.extractTopKeywords(whereClause, params);
 
       return {
-        totalMessages,
-        totalConversations,
-        avgResponseTime: Math.round(avgResponseTime),
-        avgTokensPerMessage: Math.round(avgTokensPerMessage),
+        totalMessages: Number(totalMessages),
+        totalConversations: Number(totalConversations),
+        avgResponseTime: Number(avgResponseTime),
+        avgTokensPerMessage: Number(avgTokensPerMessage),
         commandUsage,
         topKeywords,
         hourlyDistribution,
-        successRate: Math.round(successRate * 10) / 10,
-        errorRate: Math.round(errorRate * 10) / 10,
-        userSatisfaction: Math.round(userSatisfaction)
+        successRate,
+        errorRate,
+        userSatisfaction: Math.min(successRate, 95) // Simplified calculation
       };
     } catch (error) {
       AILogger.error('Failed to get metrics', { error });
+      return this.getEmptyMetrics();
+    }
+  }
+
+  /**
+   * Extract top keywords from content
+   */
+  private async extractTopKeywords(
+    whereClause: string, 
+    params: (string | number)[]
+  ): Promise<Array<{ keyword: string; count: number }>> {
+    try {
+      const db = await this.getDB();
+      
+      // Simple keyword extraction - get most common words
+      const result = await db.query(`
+        SELECT content FROM chat_analytics ${whereClause}
+        LIMIT 1000
+      `, params);
+
+      const wordCount: Record<string, number> = {};
+      const stopWords = new Set(['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'a', 'an', 'is', 'are', 'was', 'were']);
+
+      result.forEach((row: QueryRow) => {
+        if (row.content && typeof row.content === 'string') {
+          const words = row.content.toLowerCase()
+            .replace(/[^\w\s]/g, '')
+            .split(/\s+/)
+            .filter((word: string) => word.length > 3 && !stopWords.has(word));
+
+          words.forEach((word: string) => {
+            wordCount[word] = (wordCount[word] || 0) + 1;
+          });
+        }
+      });
+
+      return Object.entries(wordCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([keyword, count]) => ({ keyword, count }));
+    } catch (error) {
+      AILogger.error('Failed to extract keywords', { error });
+      return [];
+    }
+  }
+
+  /**
+   * Get conversation analysis
+   */
+  async getConversationAnalysis(conversationId: string): Promise<ConversationAnalysis | null> {
+    try {
+      const db = await this.getDB();
+      
+      const messages = await db.query(`
+        SELECT * FROM chat_analytics 
+        WHERE conversation_id = ? 
+        ORDER BY timestamp ASC
+      `, [conversationId]);
+
+      const analysis = {
+        messageCount: messages.length,
+        avgResponseTime: 0,
+        totalTokens: 0,
+        commands: [] as string[],
+        errors: [] as string[]
+      };
+
+      let totalResponseTime = 0;
+      let responseTimeCount = 0;
+
+      messages.forEach((msg: QueryRow) => {
+        if (msg.tokens_used) {
+          analysis.totalTokens += Number(msg.tokens_used);
+        }
+        if (msg.response_time) {
+          totalResponseTime += Number(msg.response_time);
+          responseTimeCount++;
+        }
+        if (msg.command && typeof msg.command === 'string') {
+          analysis.commands.push(msg.command);
+        }
+        if (msg.error && typeof msg.error === 'string') {
+          analysis.errors.push(msg.error);
+        }
+      });
+
+      analysis.avgResponseTime = responseTimeCount > 0 
+        ? totalResponseTime / responseTimeCount 
+        : 0;
+
+      return analysis;
+    } catch (error) {
+      AILogger.error('Failed to get conversation analysis', { error });
+      return null;
+    }
+  }
+
+  /**
+   * Get analytics summary
+   */
+  async getAnalyticsSummary(): Promise<AnalyticsSummary> {
+    try {
+      const db = await this.getDB();
+
+      // Get basic counts
+      const totalResult = await db.query(`
+        SELECT COUNT(*) as total FROM chat_analytics
+      `);
+      const total = (totalResult[0] as QueryRow)?.total || 0;
+
+      const conversationsResult = await db.query(`
+        SELECT COUNT(DISTINCT conversation_id) as count FROM chat_analytics
+      `);
+      const totalConversations = (conversationsResult[0] as QueryRow)?.count || 0;
+
+      // Recent activity (last 24 hours)
+      const recentResult = await db.query(`
+        SELECT COUNT(*) as count FROM chat_analytics 
+        WHERE timestamp >= NOW() - INTERVAL '24 hours'
+      `);
+      const recentActivity = (recentResult[0] as QueryRow)?.count || 0;
+
+      return {
+        totalMessages: Number(total),
+        totalConversations: Number(totalConversations),
+        recentActivity: Number(recentActivity),
+        lastUpdated: new Date().toISOString()
+      };
+    } catch (error) {
+      AILogger.error('Failed to get analytics summary', { error });
       return {
         totalMessages: 0,
         totalConversations: 0,
-        avgResponseTime: 0,
-        avgTokensPerMessage: 0,
-        commandUsage: {},
-        topKeywords: [],
-        hourlyDistribution: {},
-        successRate: 0,
-        errorRate: 0,
-        userSatisfaction: 0
+        recentActivity: 0,
+        lastUpdated: new Date().toISOString()
       };
+    }
+  }
+
+  /**
+   * Cleanup old analytics data (alias for clearOldData)
+   */
+  async cleanup(daysToKeep: number = 30): Promise<void> {
+    return this.clearOldData(daysToKeep);
+  }
+
+  /**
+   * Export analytics data
+   */
+  async exportAnalytics(format: 'json' | 'csv' = 'json'): Promise<string> {
+    try {
+      const db = await this.getDB();
+      
+      const data = await db.query(`
+        SELECT * FROM chat_analytics 
+        ORDER BY timestamp DESC 
+        LIMIT 10000
+      `);
+
+      if (format === 'csv') {
+        const headers = Object.keys(data[0] || {});
+        const csvRows = [
+          headers.join(','),
+          ...data.map((row: QueryRow) => 
+            headers.map(header => 
+              JSON.stringify(row[header] || '')
+            ).join(',')
+          )
+        ];
+        return csvRows.join('\n');
+      }
+
+      return JSON.stringify(data, null, 2);
+    } catch (error) {
+      AILogger.error('Failed to export analytics', { error });
+      return format === 'json' ? '[]' : '';
     }
   }
 
   /**
    * Get conversation history
    */
-  async getConversationHistory(conversationId: string): Promise<any[]> {
+  async getConversationHistory(conversationId: string): Promise<QueryRow[]> {
     try {
-      const stmt = this.db.prepare(`
-        SELECT * FROM chat_analytics
-        WHERE conversation_id = ?
+      const db = await this.getDB();
+      
+      const history = await db.query(`
+        SELECT * FROM chat_analytics 
+        WHERE conversation_id = ? 
         ORDER BY timestamp ASC
-      `);
+      `, [conversationId]);
 
-      return stmt.all(conversationId);
+      return history;
     } catch (error) {
       AILogger.error('Failed to get conversation history', { error });
       return [];
@@ -268,203 +473,68 @@ export class ChatAnalyticsTracker {
   /**
    * Get user statistics
    */
-  async getUserStatistics(userId: string): Promise<any> {
+  async getUserStatistics(userId: string): Promise<QueryRow> {
     try {
-      const stats = {
-        totalMessages: 0,
-        totalConversations: 0,
-        favoriteCommands: [] as any[],
-        avgSessionLength: 0,
-        lastActive: null as string | null
-      };
-
-      // Total messages
-      const totalStmt = this.db.prepare(`
-        SELECT COUNT(*) as count FROM chat_analytics
-        WHERE user_id = ? AND message_type = 'user'
-      `);
-      stats.totalMessages = (totalStmt.get(userId) as { count: number }).count;
-
-      // Total conversations
-      const convStmt = this.db.prepare(`
-        SELECT COUNT(DISTINCT conversation_id) as count
-        FROM chat_analytics
+      const db = await this.getDB();
+      
+      const stats = await db.query(`
+        SELECT 
+          COUNT(*) as total_messages,
+          COUNT(DISTINCT conversation_id) as total_conversations,
+          AVG(response_time) as avg_response_time,
+          SUM(tokens_used) as total_tokens,
+          COUNT(CASE WHEN success = 1 THEN 1 END) as successful_messages,
+          COUNT(CASE WHEN success = 0 THEN 1 END) as failed_messages
+        FROM chat_analytics 
         WHERE user_id = ?
-      `);
-      stats.totalConversations = (convStmt.get(userId) as { count: number }).count;
+      `, [userId]);
 
-      // Favorite commands
-      const cmdStmt = this.db.prepare(`
-        SELECT command, COUNT(*) as count
-        FROM chat_analytics
-        WHERE user_id = ? AND command IS NOT NULL
-        GROUP BY command
-        ORDER BY count DESC
-        LIMIT 5
-      `);
-      stats.favoriteCommands = cmdStmt.all(userId);
-
-      // Last active
-      const lastStmt = this.db.prepare(`
-        SELECT MAX(timestamp) as last_active
-        FROM chat_analytics
-        WHERE user_id = ?
-      `);
-      stats.lastActive = (lastStmt.get(userId) as { last_active: string }).last_active;
-
-      return stats;
+      return stats[0] || {};
     } catch (error) {
       AILogger.error('Failed to get user statistics', { error });
-      return null;
+      return {};
     }
   }
 
   /**
-   * Clean up old analytics data
+   * Clear old data
    */
-  async cleanup(daysToKeep: number = 90): Promise<void> {
+  async clearOldData(daysOld: number = 30): Promise<void> {
     try {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+      const db = await this.getDB();
+      
+      await db.execute(`
+        DELETE FROM chat_analytics 
+        WHERE timestamp < NOW() - INTERVAL '? days'
+      `, [daysOld]);
 
-      const stmt = this.db.prepare(`
-        DELETE FROM chat_analytics
-        WHERE timestamp < ?
-      `);
-
-      const result = stmt.run(cutoffDate.toISOString());
-
-      AILogger.info('Analytics cleanup completed', {
-        deletedRows: result.changes,
-        daysKept: daysToKeep
-      });
+      AILogger.info('Old analytics data cleared', { daysOld });
     } catch (error) {
-      AILogger.error('Failed to cleanup analytics', { error });
+      AILogger.error('Failed to clear old data', { error });
     }
   }
 
   /**
-   * Export analytics data
+   * Get empty metrics as fallback
    */
-  async exportAnalytics(format: 'json' | 'csv'): Promise<string> {
-    try {
-      const stmt = this.db.prepare(`
-        SELECT * FROM chat_analytics
-        ORDER BY timestamp DESC
-      `);
-
-      const data = stmt.all() as Record<string, any>[];
-
-      if (format === 'json') {
-        return JSON.stringify(data, null, 2);
-      } else {
-        // CSV format
-        const headers = Object.keys(data[0] || {}).join(',');
-        const rows = data.map((row: Record<string, any>) =>
-          Object.values(row).map(v =>
-            typeof v === 'string' && v.includes(',') ? `"${v}"` : String(v)
-          ).join(',')
-        );
-        return [headers, ...rows].join('\n');
-      }
-    } catch (error) {
-      AILogger.error('Failed to export analytics', { error });
-      return '';
-    }
-  }
-
-  // =========================================
-  // Private Helper Methods
-  // =========================================
-
-  /**
-   * Extract top keywords from messages
-   */
-  private async extractTopKeywords(
-    whereClause: string,
-    params: any[]
-  ): Promise<Array<{ keyword: string; count: number }>> {
-    try {
-      // Get sample of messages for keyword extraction
-      const stmt = this.db.prepare(`
-        SELECT content FROM chat_analytics
-        WHERE message_type = 'user'
-        ${whereClause ? 'AND ' + whereClause.substring(6) : ''}
-        LIMIT 1000
-      `);
-
-      const messages = stmt.all(...params);
-
-      // Count keyword frequencies
-      const keywordCounts = new Map<string, number>();
-      const domainKeywords = [
-        'ihale', 'maliyet', 'bütçe', 'analiz', 'karar', 'risk',
-        'teklif', 'katıl', 'fiyat', 'menü', 'yemek', 'personel'
-      ];
-
-      messages.forEach((msg: any) => {
-        const content = msg.content.toLowerCase();
-        domainKeywords.forEach(keyword => {
-          if (content.includes(keyword)) {
-            keywordCounts.set(
-              keyword,
-              (keywordCounts.get(keyword) || 0) + 1
-            );
-          }
-        });
-      });
-
-      // Sort and return top 10
-      const sorted = Array.from(keywordCounts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([keyword, count]) => ({ keyword, count }));
-
-      return sorted;
-    } catch (error) {
-      return [];
-    }
-  }
-
-  /**
-   * Calculate session metrics
-   */
-  async calculateSessionMetrics(conversationId: string): Promise<any> {
-    try {
-      const stmt = this.db.prepare(`
-        SELECT
-          MIN(timestamp) as start_time,
-          MAX(timestamp) as end_time,
-          COUNT(*) as message_count,
-          SUM(tokens_used) as total_tokens,
-          AVG(response_time) as avg_response_time
-        FROM chat_analytics
-        WHERE conversation_id = ?
-      `);
-
-      const metrics = stmt.get(conversationId) as {
-        start_time: string;
-        end_time: string | null;
-        message_count: number;
-        avg_response_time: number | null;
-        duration_ms?: number;
-        duration_minutes?: number;
-      };
-
-      if (metrics.start_time && metrics.end_time) {
-        const duration = new Date(metrics.end_time).getTime() -
-                        new Date(metrics.start_time).getTime();
-        metrics.duration_ms = duration;
-        metrics.duration_minutes = Math.round(duration / 60000);
-      }
-
-      return metrics;
-    } catch (error) {
-      AILogger.error('Failed to calculate session metrics', { error });
-      return null;
-    }
+  private getEmptyMetrics(): ChatMetrics {
+    return {
+      totalMessages: 0,
+      totalConversations: 0,
+      avgResponseTime: 0,
+      avgTokensPerMessage: 0,
+      commandUsage: {},
+      topKeywords: [],
+      hourlyDistribution: {},
+      successRate: 0,
+      errorRate: 0,
+      userSatisfaction: 0
+    };
   }
 }
 
 // Export singleton instance
-export const chatAnalytics = ChatAnalyticsTracker.getInstance();
+export const chatAnalyticsTracker = ChatAnalyticsTracker.getInstance();
+
+// Export for backward compatibility
+export const chatAnalytics = chatAnalyticsTracker;

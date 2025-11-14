@@ -77,7 +77,7 @@ export async function preprocessPDFText(
   });
 
   let text = rawText;
-  let stats: Partial<CleaningStatistics> = {
+  const stats: Partial<CleaningStatistics> = {
     originalLength: rawText.length,
     removedLines: 0,
     mergedWords: 0,

@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     db.transaction(() => {
       for (const [name, value] of Object.entries(validated)) {
         // Convert value to string for storage
-        let stringValue = String(value);
+        const stringValue = String(value);
 
         // Check if restart required
         const setting = db

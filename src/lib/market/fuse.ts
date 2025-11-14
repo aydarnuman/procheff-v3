@@ -10,7 +10,7 @@ import { AILogger } from '@/lib/ai/logger';
  */
 
 // Kaynak ağırlıkları (varsayılan - dinamik olarak güncellenebilir)
-let SOURCE_WEIGHTS: Record<Source, number> = { ...BASE_SOURCE_WEIGHTS };
+const SOURCE_WEIGHTS: Record<Source, number> = { ...BASE_SOURCE_WEIGHTS };
 
 /**
  * IQR (Interquartile Range) ile outlier filtresi

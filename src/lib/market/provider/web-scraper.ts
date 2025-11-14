@@ -80,7 +80,7 @@ export async function scrapePrices(
 
     // Target-specific scraping logic
     let price: number | null = null;
-    let unit = 'kg';
+    const unit = 'kg';
 
     switch (target) {
       case 'hal_ankara':

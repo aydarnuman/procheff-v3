@@ -337,7 +337,7 @@ function extractParticipantCount(text: string): number | undefined {
  */
 function extractAuthorizedPerson(text: string): string | undefined {
   // Pattern: "Yetkili: ..." or "İrtibat: ..."
-  let match = text.match(/(?:yetkili|irtibat|sorumlu)\s*[:：]\s*([A-ZĞÜŞİÖÇ][a-zğüşıöç]+\s+[A-ZĞÜŞİÖÇ][a-zğüşıöç]+)/i);
+  const match = text.match(/(?:yetkili|irtibat|sorumlu)\s*[:：]\s*([A-ZĞÜŞİÖÇ][a-zğüşıöç]+\s+[A-ZĞÜŞİÖÇ][a-zğüşıöç]+)/i);
   if (match) return match[1].trim();
 
   return undefined;

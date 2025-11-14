@@ -173,7 +173,7 @@ export default function DecisionPage() {
             <span>{getProgress()}%</span>
           </div>
           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-            {/* eslint-disable-next-line react/forbid-dom-props */}
+            { }
             <div
               className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all duration-500"
               style={{ width: `${getProgress()}%` } as React.CSSProperties}

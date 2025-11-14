@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     });
 
     // ===== STEP 1: FETCH CURRENT MARKET QUOTES =====
-    let quotes: MarketQuote[] = [];
+    const quotes: MarketQuote[] = [];
     try {
       const webData = await webQuote(productKey);
       if (webData) quotes.push(webData);

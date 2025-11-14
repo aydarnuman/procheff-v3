@@ -285,8 +285,8 @@ export class FeedbackService {
     if (!feedback) return;
 
     // Determine action type based on feedback
-    let actionType = 'review_required';
-    let actionDetails = {
+    const actionType = 'review_required';
+    const actionDetails = {
       priority: data.rating === 1 ? 'high' : 'medium',
       category: data.context?.domain || 'general',
       issue: data.feedback || 'Low rating without specific feedback',
