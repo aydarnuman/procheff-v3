@@ -1,8 +1,11 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unused-vars */
 
 /**
- * Schema Comparison Tool
- * Compares SQLite and PostgreSQL schemas
+ * Compare database schemas between SQLite and PostgreSQL
+ * This script analyzes table structures and identifies differences
+ * 
+ * Usage: node compare-schemas.js
  */
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';

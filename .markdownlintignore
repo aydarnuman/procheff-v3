@@ -1,0 +1,18 @@
+# Markdownlint configuration for ProCheff v3
+
+# Ignore patterns for auto-generated or documentation files
+**/DEPLOYMENT-REPORT.md
+**/POSTGRESQL-MIGRATION-PLAN.md
+**/START-HERE-MIGRATION.md
+scripts/postgres-migration/README.md
+
+# Common markdown formatting issues we'll ignore for documentation
+MD022  # Headings should be surrounded by blank lines
+MD032  # Lists should be surrounded by blank lines  
+MD031  # Fenced code blocks should be surrounded by blank lines
+MD040  # Fenced code blocks should have a language specified
+MD034  # Bare URL used
+MD051  # Link fragments should be valid
+MD012  # Multiple consecutive blank lines
+MD024  # Multiple headings with the same content
+MD026  # Trailing punctuation in heading

@@ -1,7 +1,9 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unused-vars */
 
 /**
- * Simple Final Verification
+ * Simple verification script for PostgreSQL migration
+ * Checks basic data integrity and table counts
  */
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';

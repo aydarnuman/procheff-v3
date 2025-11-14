@@ -3,9 +3,25 @@
 
 type LogData = Record<string, unknown> | string | number | boolean | null | undefined | unknown;
 
+interface ServerLogger {
+  info: (message: string, data?: LogData) => void | Promise<void>;
+  success: (message: string, data?: LogData) => void | Promise<void>;
+  error: (message: string, data?: LogData) => void | Promise<void>;
+  warn: (message: string, data?: LogData) => void | Promise<void>;
+  debug: (message: string, data?: LogData) => void | Promise<void>;
+  sessionStart: (sessionId: string) => void | Promise<void>;
+  startSession: (sessionId: string) => void | Promise<void>;
+  sessionEnd: (sessionId: string, status?: "completed" | "failed") => void | Promise<void>;
+  endSession: (sessionId: string, status?: "completed" | "failed") => void | Promise<void>;
+  log: (message: string, data?: LogData) => void | Promise<void>;
+  logAPICall?: (provider: string, model: string, tokensUsed?: number, responseTime?: number) => void | Promise<void>;
+  logAnalysisStart?: (analysisType: string, metadata?: LogData) => void | Promise<void>;
+  logAnalysisComplete?: (analysisType: string, duration: number, metadata?: LogData) => void | Promise<void>;
+}
+
 class UniversalAILogger {
   private isServer = typeof window === 'undefined';
-  private serverLogger: any = null;
+  private serverLogger: ServerLogger | null = null;
   private initialized = false;
 
   private async initializeServerLogger(): Promise<void> {
@@ -38,13 +54,14 @@ class UniversalAILogger {
     }
   }
 
-  private getConsoleLogger() {
+  private getConsoleLogger(): ServerLogger {
     return {
       info: (message: string, data?: LogData) => console.log(`[AI] ${message}`, data),
       success: (message: string, data?: LogData) => console.log(`[AI SUCCESS] ${message}`, data),
       error: (message: string, data?: LogData) => console.error(`[AI ERROR] ${message}`, data),
       warn: (message: string, data?: LogData) => console.warn(`[AI WARN] ${message}`, data),
       debug: (message: string, data?: LogData) => console.debug(`[AI DEBUG] ${message}`, data),
+      log: (message: string, data?: LogData) => console.log(`[AI LOG] ${message}`, data),
       sessionStart: (sessionId: string) => console.log(`[AI SESSION] ${sessionId} başladı`),
       startSession: (sessionId: string) => console.log(`[AI SESSION] ${sessionId} başladı`),
       sessionEnd: (sessionId: string, status?: "completed" | "failed") => console.log(`[AI SESSION] ${sessionId} ${status || 'completed'}`),

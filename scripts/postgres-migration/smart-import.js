@@ -1,8 +1,9 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 /**
- * Smart Data Import with Schema Mapping
- * Maps SQLite data to PostgreSQL schema differences
+ * Smart Data Import Script
+ * Intelligently imports data from SQLite to PostgreSQL with conflict resolution
  */
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';

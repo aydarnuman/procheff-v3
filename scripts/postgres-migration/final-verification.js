@@ -1,7 +1,9 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 /**
- * Final Verification - All Tables
+ * Final Migration Verification Script
+ * Comprehensive validation of PostgreSQL migration
  */
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';

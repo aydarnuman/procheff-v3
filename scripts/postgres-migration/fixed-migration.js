@@ -1,8 +1,10 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 /**
- * Fixed Complete Migration Script
- * Handles schema differences and data type issues
+ * Fixed Data Migration Script
+ * Imports SQLite data to PostgreSQL with proper error handling
+ * and PostgreSQL-compatible syntax.
  */
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 /**
  * PostgreSQL Data Import Script (Unsafe SSL)
@@ -38,9 +39,6 @@ const CRITICAL_TABLES = [
   'recipe_ingredients'
 ];
 
-/**
- * Import data from JSON files to PostgreSQL
- */
 async function importData() {
   console.log('🚀 PostgreSQL Data Import Starting...\n');
   console.log(`📁 Data Directory: ${DATA_DIR}\n`);

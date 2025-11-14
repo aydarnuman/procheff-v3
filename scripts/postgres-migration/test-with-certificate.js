@@ -1,7 +1,8 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 /**
- * PostgreSQL Connection Test with CA Certificate
+ * Test PostgreSQL connection with SSL certificate
  */
 
 const { Pool } = require('pg');
