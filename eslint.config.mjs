@@ -1,24 +1,25 @@
-import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
-const eslintConfig = defineConfig([
+const eslintConfig = [
   ...nextVitals,
   ...nextTs,
   // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-    // Worker compiled output:
-    "ihale-worker/dist/**",
-    "**/dist/**",
-    // Test files:
-    "ihale-worker/test-*.ts",
-    "**/test-*.ts",
-  ]),
+  {
+    ignores: [
+      // Default ignores of eslint-config-next:
+      ".next/**",
+      "out/**",
+      "build/**",
+      "next-env.d.ts",
+      // Worker compiled output:
+      "ihale-worker/dist/**",
+      "**/dist/**",
+      // Test files:
+      "ihale-worker/test-*.ts",
+      "**/test-*.ts",
+    ],
+  },
   // Relax rules for ihale-worker (external scraper, not Next.js code)
   {
     files: ["ihale-worker/**/*.ts", "ihale-worker/**/*.js"],
@@ -34,6 +35,6 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "warn", // warn instead of error
     },
   },
-]);
+];
 
 export default eslintConfig;

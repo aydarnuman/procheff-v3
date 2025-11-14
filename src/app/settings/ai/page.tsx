@@ -2,14 +2,13 @@
 
 import { Brain, ChevronLeft, Save, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 type ModelProvider = "claude" | "gemini";
 type ClaudeModel = "claude-sonnet-4-20250514" | "claude-haiku-4-5-20251001" | "claude-opus-4-20250514";
 type GeminiModel = "gemini-2.0-flash-exp" | "gemini-1.5-pro";
 
 export default function AISettingsPage() {
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Claude Settings
@@ -50,8 +49,6 @@ export default function AISettingsPage() {
       }
     } catch (error) {
       console.error("Failed to load settings:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -83,7 +80,7 @@ export default function AISettingsPage() {
       } else {
         alert("❌ " + data.error);
       }
-    } catch (error) {
+    } catch {
       alert("❌ Ayarlar kaydedilemedi");
     } finally {
       setSaving(false);
@@ -122,14 +119,16 @@ export default function AISettingsPage() {
         <div className="space-y-4">
           {/* Model Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label htmlFor="claude-model-select" className="block text-sm font-medium text-gray-300 mb-2">
               Model
             </label>
             <select
-              value={claudeModel}
-              onChange={(e) => setClaudeModel(e.target.value as ClaudeModel)}
-              className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-            >
+                id="claude-model-select"
+                title="Claude model seçimi"
+                value={claudeModel}
+                onChange={(e) => setClaudeModel(e.target.value as ClaudeModel)}
+                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              >
               <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (Önerilen)</option>
               <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Hızlı)</option>
               <option value="claude-opus-4-20250514">Claude Opus 4 (En Güçlü)</option>
@@ -138,10 +137,11 @@ export default function AISettingsPage() {
 
           {/* Temperature */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label htmlFor="claude-temperature" className="block text-sm font-medium text-gray-300 mb-2">
               Temperature: {claudeTemperature.toFixed(2)}
             </label>
             <input
+              id="claude-temperature"
               type="range"
               min="0"
               max="1"
@@ -158,10 +158,11 @@ export default function AISettingsPage() {
 
           {/* Max Tokens */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label htmlFor="claude-max-tokens" className="block text-sm font-medium text-gray-300 mb-2">
               Max Tokens
             </label>
             <input
+              id="claude-max-tokens"
               type="number"
               min="1024"
               max="8192"
@@ -174,10 +175,11 @@ export default function AISettingsPage() {
 
           {/* Timeout */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label htmlFor="claude-timeout" className="block text-sm font-medium text-gray-300 mb-2">
               Timeout (saniye)
             </label>
             <input
+              id="claude-timeout"
               type="number"
               min="30"
               max="180"
@@ -200,10 +202,11 @@ export default function AISettingsPage() {
         <div className="space-y-4">
           {/* Model Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label htmlFor="gemini-model" className="block text-sm font-medium text-gray-300 mb-2">
               Model
             </label>
             <select
+              id="gemini-model"
               value={geminiModel}
               onChange={(e) => setGeminiModel(e.target.value as GeminiModel)}
               className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
@@ -215,10 +218,11 @@ export default function AISettingsPage() {
 
           {/* Temperature */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label htmlFor="gemini-temperature" className="block text-sm font-medium text-gray-300 mb-2">
               Temperature: {geminiTemperature.toFixed(2)}
             </label>
             <input
+              id="gemini-temperature"
               type="range"
               min="0"
               max="1"
@@ -296,10 +300,11 @@ export default function AISettingsPage() {
 
           {enableFallback && (
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="fallback-model" className="block text-sm font-medium text-gray-300 mb-2">
                 Fallback Model
               </label>
               <select
+                id="fallback-model"
                 value={fallbackModel}
                 onChange={(e) => setFallbackModel(e.target.value as ClaudeModel)}
                 className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"

@@ -24,7 +24,7 @@ export default defineConfig({
     ['html'],
     ['list'],
     ...(process.env.CI ? [['github'] as const] : []),
-  ] as Array<[string] | [string, any]>,
+  ] as Array<[string] | [string, Record<string, unknown>]>,
   
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {

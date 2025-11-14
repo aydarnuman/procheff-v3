@@ -6,11 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { fadeInUp, scaleIn, staggerContainer } from "@/lib/animations";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Calculator, Info, Lightbulb, TrendingUp, ArrowLeft, ArrowRight, FileText, CheckCircle } from "lucide-react";
+import { AlertTriangle, Calculator, Info, Lightbulb, TrendingUp, ArrowLeft, ArrowRight, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { usePipelineStore, PIPELINE_STEPS } from "@/store/usePipelineStore";
+import { usePipelineStore, PIPELINE_STEPS, type CostAnalysis, type Tender } from "@/store/usePipelineStore";
 import { PipelineNavigator } from "@/components/ui/PipelineNavigator";
+
+// Extended Tender type for legacy compatibility
+type ExtendedTender = Tender & {
+  kurum?: string;
+  ihale_turu?: string;
+  butce?: string;
+  ihale_no?: string;
+};
 
 interface CostAnalysisResult {
   gunluk_kisi_maliyeti?: string;
@@ -66,11 +74,12 @@ export default function CostAnalysisPage() {
 
     // Auto-fill from pipeline store
     if (selectedTender) {
+      const tender = selectedTender as ExtendedTender;
       setInput(prev => ({
         ...prev,
-        kurum: (selectedTender as any).kurum || selectedTender.organization || prev.kurum,
-        ihale_turu: (selectedTender as any).ihale_turu || selectedTender.tenderType || prev.ihale_turu,
-        butce: (selectedTender as any).butce || (selectedTender as any).budget || prev.butce,
+        kurum: tender.kurum || tender.organization || prev.kurum,
+        ihale_turu: tender.ihale_turu || tender.tenderType || prev.ihale_turu,
+        butce: tender.butce || tender.budget || prev.butce,
       }));
     }
 
@@ -144,7 +153,7 @@ export default function CostAnalysisPage() {
               <div className="flex-1">
                 <p className="text-sm text-slate-400">Seçili İhale</p>
                 <p className="font-medium text-white">
-                  {(selectedTender as any).kurum || selectedTender.organization} - {(selectedTender as any).ihale_no || selectedTender.id}
+                  {(selectedTender as ExtendedTender).kurum || selectedTender.organization} - {(selectedTender as ExtendedTender).ihale_no || selectedTender.tenderNumber || selectedTender.id}
                 </p>
                 {menuData && menuData.length > 0 && (
                   <p className="text-xs text-slate-400 mt-1">
@@ -512,7 +521,7 @@ export default function CostAnalysisPage() {
             enableNext={result?.success === true}
             onNext={() => {
               if (result) {
-                setCostAnalysis(result.data as any);
+                setCostAnalysis(result.data as CostAnalysis);
                 markStepCompleted(PIPELINE_STEPS.COST_ANALYSIS);
                 router.push('/decision');
               }
@@ -523,7 +532,7 @@ export default function CostAnalysisPage() {
           {result?.success && (
             <button
               onClick={() => {
-                setCostAnalysis(result.data as any);
+                setCostAnalysis(result.data as CostAnalysis);
                 markStepCompleted(PIPELINE_STEPS.COST_ANALYSIS);
                 router.push('/decision');
               }}

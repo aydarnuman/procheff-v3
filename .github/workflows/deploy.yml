@@ -30,6 +30,7 @@ jobs:
       - name: Install dependencies and build
         run: |
           npm ci --ignore-scripts
+          npm rebuild better-sqlite3
           npm run build
         env:
           NEXT_PUBLIC_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -61,7 +62,8 @@ jobs:
             git pull origin main
             
             # Install dependencies
-            npm ci --production
+            npm ci --ignore-scripts
+            npm rebuild better-sqlite3
             
             # Build the application
             npm run build

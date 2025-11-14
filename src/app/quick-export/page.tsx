@@ -1,13 +1,30 @@
 'use client';
 
+import { Download, FileJson, FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { FileSpreadsheet, FileText, FileJson, Download, Loader2 } from 'lucide-react';
+
+interface TableData {
+  title: string;
+  headers: string[];
+  rows: string[][];
+}
 
 export default function QuickExportPage() {
   const [ihaleId, setIhaleId] = useState('1762377106337');
   const [format, setFormat] = useState<'csv' | 'txt' | 'json'>('csv');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+
+  interface ExportResult {
+    success: boolean;
+    data: TableData[] | string | Record<string, unknown>;
+    error?: string;
+    format?: string;
+    count?: number;
+    length?: number;
+    ihaleId?: string;
+  }
+
+  const [result, setResult] = useState<ExportResult | null>(null);
 
   const handleExport = async () => {
     setLoading(true);
@@ -21,9 +38,9 @@ export default function QuickExportPage() {
         setResult(data);
         
         // Auto download
-        if (format === 'csv' && data.data.length > 0) {
-          const csv = data.data.map((table: any) => 
-            [table.title, ...table.headers.join(','), ...table.rows.map((row: string[]) => row.join(','))].join('\n')
+        if (format === 'csv' && Array.isArray(data.data) && data.data.length > 0) {
+          const csv = (data.data as TableData[]).map((table) => 
+            [table.title, ...table.headers.join(','), ...table.rows.map((row) => row.join(','))].join('\n')
           ).join('\n\n');
           
           const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv' });
@@ -35,7 +52,7 @@ export default function QuickExportPage() {
           URL.revokeObjectURL(url);
         }
         
-        if (format === 'txt') {
+        if (format === 'txt' && typeof data.data === 'string') {
           const blob = new Blob([data.data], { type: 'text/plain' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');

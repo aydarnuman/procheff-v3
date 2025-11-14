@@ -5,9 +5,9 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
-import { FileText, Download, Calendar, Eye, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { Calendar, Download, Eye, FileText, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface ReportData {
   analysis?: {
@@ -419,13 +419,25 @@ export default function ReportsPage() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2">
-                      <button className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                      <button 
+                        className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                        aria-label="View report"
+                        title="View report"
+                      >
                         <Eye className="w-5 h-5" />
                       </button>
-                      <button className="p-2 rounded-lg hover:bg-indigo-600/20 text-indigo-400 hover:text-indigo-300 transition-colors">
+                      <button 
+                        className="p-2 rounded-lg hover:bg-indigo-600/20 text-indigo-400 hover:text-indigo-300 transition-colors"
+                        aria-label="Download report"
+                        title="Download report"
+                      >
                         <Download className="w-5 h-5" />
                       </button>
-                      <button className="p-2 rounded-lg hover:bg-red-600/20 text-red-400 hover:text-red-300 transition-colors">
+                      <button 
+                        className="p-2 rounded-lg hover:bg-red-600/20 text-red-400 hover:text-red-300 transition-colors"
+                        aria-label="Delete report"
+                        title="Delete report"
+                      >
                         <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
