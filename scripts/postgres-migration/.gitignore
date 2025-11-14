@@ -1,0 +1,6 @@
+# Migration output files
+data-export/
+validation-report-*.json
+*.log
+*.bak
+

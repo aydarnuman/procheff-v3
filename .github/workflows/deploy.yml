@@ -33,7 +33,8 @@ jobs:
           npm rebuild better-sqlite3
           npm run build
         env:
-          NEXT_PUBLIC_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: claude-sonnet-4-20250514
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}

@@ -24,7 +24,13 @@
     "master:stop": "./scripts/dev-master.sh stop",
     "master:status": "./scripts/dev-master.sh status",
     "master:logs": "./scripts/dev-master.sh logs",
-    "master:monitor": "./scripts/dev-master.sh monitor"
+    "master:monitor": "./scripts/dev-master.sh monitor",
+    "migrate:test": "cd scripts/postgres-migration && node 5-test-connection.js",
+    "migrate:export": "cd scripts/postgres-migration && node 1-export-sqlite-data.js",
+    "migrate:schema": "cd scripts/postgres-migration && node 2-migrate-schema.js",
+    "migrate:import": "cd scripts/postgres-migration && node 3-import-data.js",
+    "migrate:validate": "cd scripts/postgres-migration && node 4-validate-data.js",
+    "migrate:all": "cd scripts/postgres-migration && ./run-all.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
@@ -42,6 +48,7 @@
     "cheerio": "^1.1.2",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",
     "file-type": "^21.1.0",
     "formidable": "^3.5.4",
@@ -59,6 +66,7 @@
     "pdf2json": "^3.1.1",
     "pdfjs-dist": "^5.4.394",
     "pdfkit": "^0.17.2",
+    "pg": "^8.16.3",
     "puppeteer": "^24.29.1",
     "qrcode": "^1.5.4",
     "react": "19.2.0",
@@ -84,6 +92,7 @@
     "@types/formidable": "^3.4.6",
     "@types/node": "^20.19.25",
     "@types/pdfkit": "^0.17.3",
+    "@types/pg": "^8.15.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/tesseract.js": "^0.0.2",

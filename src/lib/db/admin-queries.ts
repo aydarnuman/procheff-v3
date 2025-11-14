@@ -7,7 +7,18 @@ export function getAdminStats() {
   const db = getDB();
 
   const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number };
-  const activeUsers = db.prepare("SELECT COUNT(*) as count FROM users WHERE status = 'active'").get() as { count: number };
+  
+  // Check if status column exists before using it
+  let activeUsers = totalUsers; // Fallback to total users
+  try {
+    const statusCheck = db.prepare("SELECT status FROM users LIMIT 1").get();
+    if (statusCheck !== undefined) {
+      activeUsers = db.prepare("SELECT COUNT(*) as count FROM users WHERE status = 'active'").get() as { count: number };
+    }
+  } catch {
+    // Status column doesn't exist yet, use total users count
+  }
+  
   const totalOrgs = db.prepare("SELECT COUNT(*) as count FROM organizations").get() as { count: number };
 
   const recentLogins = db.prepare(`
@@ -44,9 +55,20 @@ export function getAllUsers(options?: {
   const limit = options?.limit || 20;
   const offset = (page - 1) * limit;
 
+  // Check if status and last_login_at columns exist
+  let hasStatusColumn = false;
+  try {
+    db.prepare("SELECT status, last_login_at FROM users LIMIT 1").get();
+    hasStatusColumn = true;
+  } catch {
+    // Columns don't exist yet
+  }
+
+  const statusField = hasStatusColumn ? ', u.status, u.last_login_at' : '';
+  
   let query = `
     SELECT
-      u.id, u.email, u.name, u.status, u.created_at, u.last_login_at,
+      u.id, u.email, u.name, u.created_at${statusField},
       m.role, o.name as org_name, o.id as org_id
     FROM users u
     LEFT JOIN memberships m ON u.id = m.user_id
@@ -66,7 +88,7 @@ export function getAllUsers(options?: {
     params.push(options.role);
   }
 
-  if (options?.status) {
+  if (options?.status && hasStatusColumn) {
     query += ` AND u.status = ?`;
     params.push(options.status);
   }
@@ -78,7 +100,7 @@ export function getAllUsers(options?: {
 
   const countQuery = `SELECT COUNT(*) as count FROM users u WHERE 1=1` +
     (options?.search ? ` AND (u.name LIKE ? OR u.email LIKE ?)` : '') +
-    (options?.status ? ` AND u.status = ?` : '');
+    (options?.status && hasStatusColumn ? ` AND u.status = ?` : '');
 
   const countParams: any[] = [];
   if (options?.search) {
@@ -103,9 +125,21 @@ export function getAllUsers(options?: {
 
 export function getUserById(userId: string) {
   const db = getDB();
+  
+  // Check if status column exists
+  let hasStatusColumn = false;
+  try {
+    db.prepare("SELECT status, last_login_at, last_ip FROM users LIMIT 1").get();
+    hasStatusColumn = true;
+  } catch {
+    // Columns don't exist yet
+  }
+
+  const statusFields = hasStatusColumn ? ', u.status, u.last_login_at, u.last_ip' : '';
+  
   return db.prepare(`
     SELECT
-      u.id, u.email, u.name, u.status, u.created_at, u.last_login_at, u.last_ip,
+      u.id, u.email, u.name, u.created_at${statusFields},
       m.role, o.name as org_name, o.id as org_id
     FROM users u
     LEFT JOIN memberships m ON u.id = m.user_id
@@ -175,9 +209,21 @@ export function getAllOrganizations() {
 
 export function getOrgMembers(orgId: string) {
   const db = getDB();
+  
+  // Check if status column exists
+  let hasStatusColumn = false;
+  try {
+    db.prepare("SELECT status FROM users LIMIT 1").get();
+    hasStatusColumn = true;
+  } catch {
+    // Column doesn't exist yet
+  }
+
+  const statusField = hasStatusColumn ? ', u.status' : '';
+  
   return db.prepare(`
     SELECT
-      u.id, u.name, u.email, u.status,
+      u.id, u.name, u.email${statusField},
       m.role, m.created_at as joined_at
     FROM users u
     JOIN memberships m ON u.id = m.user_id

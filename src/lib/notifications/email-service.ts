@@ -25,6 +25,9 @@ export class EmailService {
 
   private async initializeTransporter() {
     try {
+      // Check if SMTP credentials are provided
+      const hasSmtpCredentials = process.env.SMTP_USER && process.env.SMTP_PASS;
+      
       if (this.testMode) {
         // Use Ethereal Email for testing
         const testAccount = await nodemailer.createTestAccount();
@@ -41,8 +44,8 @@ export class EmailService {
 
         console.log("📧 Email service initialized in TEST mode (Ethereal)");
         console.log(`Test account: ${testAccount.user}`);
-      } else {
-        // Production email configuration
+      } else if (hasSmtpCredentials) {
+        // Production email configuration (only if credentials are provided)
         const config: any = {
           host: process.env.SMTP_HOST || "smtp.gmail.com",
           port: parseInt(process.env.SMTP_PORT || "587"),
@@ -51,6 +54,10 @@ export class EmailService {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
           },
+          // Add connection timeout to prevent hanging
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          socketTimeout: 10000,
         };
 
         // For Gmail, use specific service
@@ -61,18 +68,27 @@ export class EmailService {
               user: process.env.SMTP_USER,
               pass: process.env.SMTP_PASS, // Use app password for Gmail
             },
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
+            socketTimeout: 10000,
           });
         } else {
           this.transporter = nodemailer.createTransport(config);
         }
 
         console.log("📧 Email service initialized in PRODUCTION mode");
+        
+        // Verify connection in background (non-blocking)
+        this.verifyConnection().catch(err => {
+          console.warn("⚠️  SMTP verification failed (non-critical):", err.message);
+        });
+      } else {
+        console.log("📧 Email service disabled (no SMTP credentials provided)");
+        this.transporter = null;
       }
-
-      // Verify connection
-      await this.verifyConnection();
     } catch (error) {
       console.error("Failed to initialize email transporter:", error);
+      this.transporter = null;
     }
   }
 
@@ -81,11 +97,20 @@ export class EmailService {
    */
   async verifyConnection(): Promise<boolean> {
     if (!this.transporter) {
-      await this.initializeTransporter();
+      console.log("⚠️  Email service not initialized - skipping verification");
+      return false;
     }
 
     try {
-      await this.transporter!.verify();
+      // Add timeout to prevent hanging
+      const verifyWithTimeout = Promise.race([
+        this.transporter.verify(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Verification timeout")), 5000)
+        )
+      ]);
+      
+      await verifyWithTimeout;
       console.log("✅ SMTP connection verified");
       return true;
     } catch (error) {
@@ -103,7 +128,8 @@ export class EmailService {
     }
 
     if (!this.transporter) {
-      return { success: false, error: "Email transporter not initialized" };
+      console.warn("⚠️  Email service not available - skipping email send");
+      return { success: false, error: "Email service not configured (SMTP credentials missing)" };
     }
 
     try {

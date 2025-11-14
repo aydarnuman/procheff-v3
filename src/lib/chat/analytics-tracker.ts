@@ -65,7 +65,7 @@ export class ChatAnalyticsTracker {
           command TEXT,
           success INTEGER DEFAULT 1,
           error TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+          created_at TEXT DEFAULT (datetime('now'))
         )
       `);
 

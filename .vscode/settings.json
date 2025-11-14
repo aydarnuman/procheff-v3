@@ -54,5 +54,20 @@
       "command": "/opt/homebrew/bin/claude",
       "args": ["mcp"]
     }
+  },
+  "terminal.integrated.profiles.osx": {
+    "PostgreSQL Console": {
+      "path": "/bin/bash",
+      "args": ["-c", "./connect-postgres.sh"],
+      "icon": "database"
+    },
+    "bash": {
+      "path": "/bin/bash",
+      "icon": "terminal"
+    },
+    "zsh": {
+      "path": "/bin/zsh",
+      "icon": "terminal"
+    }
   }
 }
