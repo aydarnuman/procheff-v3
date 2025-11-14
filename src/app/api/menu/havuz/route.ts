@@ -3,17 +3,21 @@
  * Returns available menu items from database
  */
 
-import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/db/sqlite-client';
+import { MenuHavuzQuerySchema } from '@/lib/validation/menu-havuz';
+import { NextRequest, NextResponse } from 'next/server';
+import { ZodError } from 'zod';
 
 export async function GET(request: NextRequest) {
   try {
     const db = getDB();
     const { searchParams } = new URL(request.url);
 
-    const category = searchParams.get('category');
-    const mealType = searchParams.get('meal_type');
-    const institutionType = searchParams.get('institution_type');
+    const { category, meal_type, institution_type } = MenuHavuzQuerySchema.parse({
+      category: searchParams.get('category') ?? undefined,
+      meal_type: searchParams.get('meal_type') ?? undefined,
+      institution_type: searchParams.get('institution_type') ?? undefined,
+    });
 
     let query = `
       SELECT
@@ -41,14 +45,14 @@ export async function GET(request: NextRequest) {
       params.push(category);
     }
 
-    if (mealType) {
+    if (meal_type) {
       query += ` AND meal_type = ?`;
-      params.push(mealType);
+      params.push(meal_type);
     }
 
-    if (institutionType) {
+    if (institution_type) {
       query += ` AND (institution_types LIKE ? OR institution_types LIKE ?)`;
-      params.push(`%"${institutionType}"%`, '%"all"%');
+      params.push(`%"${institution_type}"%`, '%"all"%');
     }
 
     query += ` ORDER BY name ASC`;
@@ -66,6 +70,13 @@ export async function GET(request: NextRequest) {
       count: items.length
     });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { success: false, error: 'Validation failed', details: error.issues },
+        { status: 400 }
+      );
+    }
+
     console.error('Menu havuz error:', error);
     return NextResponse.json(
       {

@@ -105,9 +105,31 @@ export function shouldUseAI(
   quotes: MarketQuote[],
   fusionConf?: number
 ): boolean {
-  // REAL DATA MODE: AI her zaman kullanılır (primary source)
-  // Mock data kaldırıldığı için AI ana kaynak olarak çalışıyor
-  return true;
+  // Web kaynağından gerçek fiyat varsa AI kullanma
+  const hasRealWebPrice = quotes.some(q => 
+    q.source === 'WEB' && q.meta?.isRealPrice === true
+  );
+  
+  if (hasRealWebPrice) {
+    return false; // Gerçek fiyat varsa AI'ya gerek yok
+  }
+  
+  // Gerçek fiyat yoksa AI'yı fallback olarak kullan
+  if (quotes.length === 0) return true;
+  if (quotes.length === 1 && (fusionConf || 0) < 0.5) return true;
+  
+  // Varyans kontrolü
+  if (quotes.length > 1) {
+    const prices = quotes.map(q => q.unit_price);
+    const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const variance = prices.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / prices.length;
+    const stdDev = Math.sqrt(variance);
+    const cv = stdDev / mean; // Coefficient of variation
+    
+    if (cv > 0.3) return true; // Yüksek varyans, AI desteği gerekli
+  }
+  
+  return false;
 }
 
 /**

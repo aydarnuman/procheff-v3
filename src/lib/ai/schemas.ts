@@ -311,11 +311,11 @@ export const IHALE_ANALYSIS_SCHEMA = {
 } as const;
 
 /**
- * Menu Parser Response Schema
+ * Menu Robot Response Schema
  * Used for menu parsing from documents
  */
-export const MENU_PARSER_SCHEMA = {
-  name: "menu_parser",
+export const MENU_ROBOT_SCHEMA = {
+  name: "menu_robot",
   schema: {
     type: "array",
     items: {
@@ -424,14 +424,51 @@ export type MenuItemResponse = {
 };
 
 /**
+ * Menu Parser Schema
+ * For parsing menu files (CSV, TXT, Excel)
+ */
+export const MENU_PARSER_SCHEMA = {
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      yemek_adi: {
+        type: "string",
+        description: "Yemek adı (örn: Tavuk Sote)"
+      },
+      kategori: {
+        type: "string",
+        description: "Yemek kategorisi (Ana Yemek, Çorba, Salata, vb.)"
+      },
+      porsiyon: {
+        type: "string",
+        description: "Porsiyon bilgisi (varsa)"
+      },
+      gramaj: {
+        type: "number",
+        description: "Gramaj/miktar bilgisi (gram cinsinden)"
+      },
+      ogun: {
+        type: "string",
+        enum: ["Kahvaltı", "Öğle", "Akşam", "Ara Öğün"] as any,
+        description: "Öğün bilgisi"
+      }
+    },
+    required: ["yemek_adi", "kategori"],
+    additionalProperties: true
+  }
+} as any;
+
+/**
  * Schema registry for easy access
  */
 export const AI_SCHEMAS = {
   cost_analysis: COST_ANALYSIS_SCHEMA,
   decision_analysis: DECISION_ANALYSIS_SCHEMA,
   deep_analysis: DEEP_ANALYSIS_SCHEMA,
-  menu_parser: MENU_PARSER_SCHEMA,
+  menu_robot: MENU_ROBOT_SCHEMA,
   ihale_analysis: IHALE_ANALYSIS_SCHEMA,
+  menu_parser: MENU_PARSER_SCHEMA,
 } as const;
 
 export type SchemaName = keyof typeof AI_SCHEMAS;

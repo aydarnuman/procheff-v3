@@ -223,15 +223,15 @@ export function PriceRobotResultV4({
               </div>
             )}
 
-            {/* Volatility indicator */}
-            {data.volatility && (
+            {/* Volatility indicator - Temporarily disabled for new VolatilityIndicator component */}
+            {/* data.volatility && (
               <div>
                 <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                   Fiyat Volatilitesi
                 </h4>
                 <VolatilityIndicator volatility={data.volatility} />
               </div>
-            )}
+            ) */}
 
             {/* Brand comparison */}
             {data.priceByBrand && data.priceByBrand.length > 0 && (

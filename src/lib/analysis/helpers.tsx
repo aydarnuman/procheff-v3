@@ -12,6 +12,8 @@ import type {
   TextBlock,
   DocumentInfo
 } from '@/lib/document-processor/types';
+import type { MenuItem } from '@/lib/tender-analysis/types';
+import { extractMenuItems as marketExtractMenuItems } from '@/lib/tender-analysis/market-intel';
 
 // Type definitions
 export interface BasicInfo {
@@ -42,6 +44,29 @@ export interface ExtractedDetails {
   locations: ExtractedEntity[];
   officials: ExtractedEntity[];
   conditions: ExtractedEntity[];
+}
+
+export interface EntityWithSource {
+  type: string;
+  value: string;
+  confidence: number;
+  source: {
+    doc_id: string;
+    filename?: string;
+    page?: number;
+  };
+}
+
+export interface CostExtractionItem {
+  kalem: string;
+  fiyat?: number;
+  tutar?: number;
+  currency?: string;
+  source: {
+    doc_id?: string;
+    table_id?: string;
+    page?: number;
+  };
 }
 
 export interface CategorizedTables {
@@ -132,6 +157,33 @@ export function extractBasicInfo(dataPool: DataPool): BasicInfo[] {
   }
 
   return info;
+}
+
+/**
+ * Extract entities with document + page source information
+ */
+export function extractEntitiesWithSource(dataPool: DataPool): EntityWithSource[] {
+  const docMap = new Map(dataPool.documents.map(doc => [doc.doc_id, doc]));
+  const provenanceMap =
+    dataPool.provenance instanceof Map
+      ? dataPool.provenance
+      : new Map(Object.entries((dataPool.provenance as unknown as Record<string, any>) || {}));
+
+  return dataPool.entities.map(entity => {
+    const provenance = provenanceMap.get(entity.source);
+    const doc = provenance ? docMap.get(provenance.doc_id) : docMap.get(entity.source);
+
+    return {
+      type: entity.kind,
+      value: entity.value,
+      confidence: entity.confidence,
+      source: {
+        doc_id: provenance?.doc_id || doc?.doc_id || entity.source,
+        filename: doc?.name,
+        page: provenance?.page ?? (entity as any).page ?? undefined
+      }
+    };
+  });
 }
 
 /**
@@ -349,6 +401,77 @@ export function categorizeAllTables(tables: ExtractedTable[]): CategorizedTables
   });
 
   return categorized;
+}
+
+/**
+ * Re-export menu extraction helper for backwards compatibility
+ */
+export function extractMenuItems(dataPool: DataPool): MenuItem[] {
+  return marketExtractMenuItems(dataPool);
+}
+
+/**
+ * Extract cost table items with numeric parsing
+ */
+export function extractCostItems(dataPool: DataPool): CostExtractionItem[] {
+  const items: CostExtractionItem[] = [];
+
+  dataPool.tables.forEach(table => {
+    if (!isCostTable(table)) return;
+
+    const headerMap = table.headers.map(h => h.toLowerCase());
+    const findColumn = (keywords: string[]) => {
+      const index = headerMap.findIndex(header =>
+        keywords.some(keyword => header.includes(keyword))
+      );
+      return index >= 0 ? index : undefined;
+    };
+
+    const nameIndex = findColumn(['kalem', 'ürün', 'malzeme', 'açıklama']);
+    const priceIndex = findColumn(['fiyat', 'birim', 'bedel']);
+    const totalIndex = findColumn(['tutar', 'toplam', 'genel']);
+
+    table.rows.forEach(row => {
+      if (row.length === 0) return;
+
+      const rawName = nameIndex !== undefined ? row[nameIndex] : row[0];
+      const rawPrice = priceIndex !== undefined ? row[priceIndex] : undefined;
+      const rawTotal = totalIndex !== undefined ? row[totalIndex] : undefined;
+
+      items.push({
+        kalem: rawName?.trim() || 'Kalem',
+        fiyat: parseNumericValue(rawPrice),
+        tutar: parseNumericValue(rawTotal),
+        currency: detectCurrency(rawPrice || rawTotal),
+        source: {
+          doc_id: table.doc_id,
+          table_id: table.table_id,
+          page: table.page
+        }
+      });
+    });
+  });
+
+  return items;
+}
+
+function parseNumericValue(value?: string): number | undefined {
+  if (!value) return undefined;
+  const normalized = value
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.');
+  const parsed = parseFloat(normalized);
+  return Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : undefined;
+}
+
+function detectCurrency(value?: string): string | undefined {
+  if (!value) return undefined;
+  if (value.includes('€')) return 'EUR';
+  if (value.includes('$')) return 'USD';
+  if (value.includes('£')) return 'GBP';
+  if (value.includes('₺') || value.toLowerCase().includes('tl')) return 'TRY';
+  return undefined;
 }
 
 /**

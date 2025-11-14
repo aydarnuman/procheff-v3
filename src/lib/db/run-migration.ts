@@ -18,7 +18,8 @@ export function runMigrations() {
       '003_analysis_repository.sql',
       '004_add_missing_indexes.sql',
       '006_market_prices.sql',
-      '007_market_prices_real.sql'
+      '007_market_prices_real.sql',
+      '009_ai_logs_table.sql'
     ];
 
     for (const migrationFile of migrations) {
@@ -47,37 +48,26 @@ export function runMigrations() {
 
         const migrationSQL = fs.readFileSync(migrationPath, 'utf-8');
 
-        // Split by semicolon and run each statement
-        const statements = migrationSQL
-          .split(';')
-          .map(s => s.trim())
-          .filter(s => s.length > 0 && !s.startsWith('--'));
+        // Execute entire migration file at once to preserve trigger/function definitions
+        try {
+          db.exec(migrationSQL);
+        } catch (error: any) {
+          // Ignore common migration errors that don't affect functionality
+          const ignorableErrors = [
+            'duplicate column',
+            'duplicate index',
+            'already exists',
+            'no such table',  // Tables that haven't been created yet
+            'no such column', // Columns that don't exist in base tables
+          ];
 
-        for (const statement of statements) {
-          try {
-            db.exec(statement + ';');
-            // Only log successful non-index operations to reduce noise
-            if (!statement.includes('CREATE INDEX')) {
-              console.log('✓ Executed:', statement.substring(0, 50) + '...');
-            }
-          } catch (error: any) {
-            // Ignore common migration errors that don't affect functionality
-            const ignorableErrors = [
-              'duplicate column',
-              'duplicate index',
-              'already exists',
-              'no such table',  // Tables that haven't been created yet
-              'no such column', // Columns that don't exist in base tables
-            ];
+          const shouldIgnore = ignorableErrors.some(msg =>
+            error.message.toLowerCase().includes(msg.toLowerCase())
+          );
 
-            const shouldIgnore = ignorableErrors.some(msg =>
-              error.message.toLowerCase().includes(msg.toLowerCase())
-            );
-
-            if (!shouldIgnore) {
-              console.error('✗ Failed:', statement.substring(0, 50) + '...');
-              console.error(error.message);
-            }
+          if (!shouldIgnore) {
+            console.error('✗ Failed:', migrationFile);
+            console.error(error.message);
           }
         }
 

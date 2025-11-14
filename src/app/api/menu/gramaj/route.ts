@@ -3,33 +3,18 @@
  * Calculates portion sizes and totals based on institution type
  */
 
-import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/db/sqlite-client';
-
-interface GramajRequest {
-  items: number[]; // menu item IDs
-  institution_type: string;
-  persons: number;
-}
+import { validateRequest } from '@/lib/utils/validate';
+import { MenuGramajRequestSchema } from '@/lib/validation/menu-gramaj';
+import { NextRequest, NextResponse } from 'next/server';
+import { ZodError } from 'zod';
 
 export async function POST(request: NextRequest) {
   try {
-    const body: GramajRequest = await request.json();
-    const { items, institution_type, persons } = body;
-
-    if (!items || items.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'No items provided' },
-        { status: 400 }
-      );
-    }
-
-    if (!institution_type || !persons || persons < 1) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid parameters' },
-        { status: 400 }
-      );
-    }
+    const { items, institution_type, persons } = await validateRequest(
+      request,
+      MenuGramajRequestSchema
+    );
 
     const db = getDB();
 
@@ -92,6 +77,13 @@ export async function POST(request: NextRequest) {
       }
     });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { success: false, error: 'Validation failed', details: error.issues },
+        { status: 400 }
+      );
+    }
+
     console.error('Gramaj calculation error:', error);
     return NextResponse.json(
       {

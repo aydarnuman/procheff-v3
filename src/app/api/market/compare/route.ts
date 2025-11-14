@@ -2,22 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/db/sqlite-client';
 import { webQuoteRealData } from '@/lib/market/provider/web-real';
 import type { MarketQuote } from '@/lib/market/schema';
+import { ZodError } from 'zod';
+import { MarketCompareQuerySchema } from '@/lib/validation/market-compare';
 
 /**
  * Market fiyat karşılaştırma endpoint'i
- * GET /api/market/compare?product=tavuk-eti
+ * GET /api/market/compare?product=tavuk-eti&limit=20
  */
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const product = searchParams.get('product');
-    
-    if (!product) {
-      return NextResponse.json(
-        { ok: false, error: 'Product parameter is required' },
-        { status: 400 }
-      );
-    }
+
+    const { product, limit, includeOutOfStock } = MarketCompareQuerySchema.parse({
+      product: searchParams.get('product'),
+      limit: searchParams.get('limit'),
+      includeOutOfStock: searchParams.get('includeOutOfStock'),
+    });
 
     // Önce veritabanından son fiyatları çek
     const db = getDB();
@@ -39,29 +39,32 @@ export async function GET(req: NextRequest) {
 
     // Veritabanında veri yoksa web scraping dene
     let marketPrices = [];
-    
+
     if (dbPrices.length > 0) {
       // DB verilerini formatla
-      marketPrices = dbPrices.map(row => ({
-        market: row.market_name || row.market,
-        price: row.price,
-        stock_status: row.stock_status || 'in_stock',
-        brand: row.brand,
-        url: row.base_url ? `${row.base_url}/search?q=${encodeURIComponent(product)}` : null,
-        last_updated: row.last_updated
-      }));
+      marketPrices = dbPrices
+        .map(row => ({
+          market: row.market_name || row.market,
+          price: row.price,
+          stock_status: row.stock_status || 'in_stock',
+          brand: row.brand,
+          url: row.base_url ? `${row.base_url}/search?q=${encodeURIComponent(product)}` : null,
+          last_updated: row.last_updated
+        }))
+        .filter(item => includeOutOfStock || item.stock_status !== 'out_of_stock')
+        .slice(0, limit);
     } else {
       // Web scraping ile gerçek zamanlı veri çek
       try {
         const quotes = await webQuoteRealData(product.replace(/-/g, ' '));
         
         marketPrices = quotes.map(quote => ({
-          market: quote.meta?.market_name || quote.market_key || 'Bilinmiyor',
+          market: (quote.meta?.market_name as string) || 'Bilinmiyor',
           price: quote.unit_price,
-          stock_status: quote.stock_status || 'in_stock',
+          stock_status: (quote.meta?.stock_status as string) || 'in_stock',
           brand: quote.brand,
-          url: quote.meta?.product_url,
-          last_updated: quote.meta?.scraped_at || new Date().toISOString()
+          url: quote.meta?.product_url as string,
+          last_updated: (quote.meta?.scraped_at as string) || new Date().toISOString()
         }));
       } catch (err) {
         console.error('[Market Compare] Scraping failed:', err);
@@ -83,6 +86,13 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { ok: false, error: 'validation_error', details: error.issues },
+        { status: 400 }
+      );
+    }
+
     console.error('[Market Compare] Error:', error);
     return NextResponse.json(
       { ok: false, error: 'Failed to fetch market prices' },

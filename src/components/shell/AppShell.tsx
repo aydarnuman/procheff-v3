@@ -37,9 +37,10 @@ export function AppShell({ children }: AppShellProps) {
         <Breadcrumb />
         
         {/* Content Area */}
-        <div className="relative z-10 pt-28 px-4 md:px-8 pb-6 
-                        ml-0 md:ml-20 lg:ml-[280px] 
-                        transition-all duration-300">
+        <div
+          className="relative z-10 pt-28 px-4 md:px-8 pb-6 transition-all duration-300"
+          style={{ marginLeft: 'var(--sidebar-width, 0px)' }}
+        >
           <div className="max-w-[1600px] mx-auto">
             {children}
           </div>

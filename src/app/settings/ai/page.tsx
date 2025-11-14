@@ -2,13 +2,16 @@
 
 import { Brain, ChevronLeft, Save, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type ModelProvider = "claude" | "gemini";
 type ClaudeModel = "claude-sonnet-4-20250514" | "claude-haiku-4-5-20251001" | "claude-opus-4-20250514";
 type GeminiModel = "gemini-2.0-flash-exp" | "gemini-1.5-pro";
 
 export default function AISettingsPage() {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   // Claude Settings
   const [claudeModel, setClaudeModel] = useState<ClaudeModel>("claude-sonnet-4-20250514");
   const [claudeTemperature, setClaudeTemperature] = useState(0.7);
@@ -24,27 +27,67 @@ export default function AISettingsPage() {
   const [enableFallback, setEnableFallback] = useState(true);
   const [fallbackModel, setFallbackModel] = useState<ClaudeModel>("claude-haiku-4-5-20251001");
 
-  const handleSave = () => {
-    const settings = {
-      claude: {
-        model: claudeModel,
-        temperature: claudeTemperature,
-        maxTokens: claudeMaxTokens,
-        timeout: claudeTimeout,
-      },
-      gemini: {
-        model: geminiModel,
-        temperature: geminiTemperature,
-      },
-      pipeline: {
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const res = await fetch("/api/settings?category=ai");
+      const data = await res.json();
+
+      if (data.success && !data.isDefault) {
+        const settings = data.settings;
+        setClaudeModel(settings.claudeModel);
+        setClaudeTemperature(settings.claudeTemperature);
+        setClaudeMaxTokens(settings.claudeMaxTokens);
+        setClaudeTimeout(settings.claudeTimeout);
+        setGeminiModel(settings.geminiModel);
+        setGeminiTemperature(settings.geminiTemperature);
+        setPrimaryProvider(settings.primaryProvider);
+        setEnableFallback(settings.enableFallback);
+        setFallbackModel(settings.fallbackModel);
+      }
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const settings = {
+        claudeModel,
+        claudeTemperature,
+        claudeMaxTokens,
+        claudeTimeout,
+        geminiModel,
+        geminiTemperature,
         primaryProvider,
         enableFallback,
         fallbackModel,
-      },
-    };
+      };
 
-    localStorage.setItem("ai_settings", JSON.stringify(settings));
-    alert("Ayarlar kaydedildi!");
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: "ai", settings })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        alert("✅ " + data.message);
+      } else {
+        alert("❌ " + data.error);
+      }
+    } catch (error) {
+      alert("❌ Ayarlar kaydedilemedi");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -272,10 +315,11 @@ export default function AISettingsPage() {
       {/* Save Button */}
       <button
         onClick={handleSave}
-        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all"
+        disabled={saving}
+        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Save className="w-5 h-5" />
-        Ayarları Kaydet
+        {saving ? "Kaydediliyor..." : "Ayarları Kaydet"}
       </button>
     </div>
   );

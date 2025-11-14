@@ -18,7 +18,13 @@
     "test": "vitest",
     "validate": "npm run tip-kontrol && npm run lint",
     "prepare": "node -e \"try { require('husky').install() } catch (e) {if (e.code !== 'MODULE_NOT_FOUND') throw e}\"",
-    "postinstall": "npm run prepare"
+    "postinstall": "npm run prepare",
+    "master": "./scripts/dev-master.sh start",
+    "master:clean": "./scripts/dev-master.sh start --clean",
+    "master:stop": "./scripts/dev-master.sh stop",
+    "master:status": "./scripts/dev-master.sh status",
+    "master:logs": "./scripts/dev-master.sh logs",
+    "master:monitor": "./scripts/dev-master.sh monitor"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
@@ -75,6 +81,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/tesseract.js": "^0.0.2",
+    "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^2.1.9",
     "autoprefixer": "^10.4.18",
     "eslint": "^9",

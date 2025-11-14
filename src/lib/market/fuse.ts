@@ -14,10 +14,12 @@ let SOURCE_WEIGHTS: Record<Source, number> = { ...BASE_SOURCE_WEIGHTS };
 
 /**
  * IQR (Interquartile Range) ile outlier filtresi
+ * @returns {quotes, removedCount} - Filtrelenmiş quotes ve kaldırılan sayısı
  */
-function filterOutliers(quotes: MarketQuote[]): MarketQuote[] {
-  if (quotes.length < 3) return quotes; // Çok az veri varsa filtre yapma
+function filterOutliers(quotes: MarketQuote[]): { quotes: MarketQuote[], removedCount: number } {
+  if (quotes.length < 3) return { quotes, removedCount: 0 }; // Çok az veri varsa filtre yapma
 
+  const originalCount = quotes.length;
   const prices = quotes.map(q => q.unit_price).sort((a, b) => a - b);
 
   const q1Index = Math.floor(prices.length * 0.25);
@@ -30,9 +32,14 @@ function filterOutliers(quotes: MarketQuote[]): MarketQuote[] {
   const lowerBound = q1 - 1.5 * iqr;
   const upperBound = q3 + 1.5 * iqr;
 
-  return quotes.filter(q =>
+  const filtered = quotes.filter(q =>
     q.unit_price >= lowerBound && q.unit_price <= upperBound
   );
+  
+  return {
+    quotes: filtered,
+    removedCount: originalCount - filtered.length
+  };
 }
 
 /**
@@ -159,7 +166,7 @@ export async function fuse(
   }
 
   // Outlier filtresi
-  const filtered = filterOutliers(validQuotes);
+  const { quotes: filtered, removedCount: outliersRemoved } = filterOutliers(validQuotes);
 
   if (filtered.length === 0) {
     return null;
@@ -196,7 +203,50 @@ export async function fuse(
   let priceByBrand: BrandPriceOption[] | undefined;
   if (enableBrandPrices) {
     priceByBrand = extractBrandPrices(filtered);
+    
+    // Eğer web kaynağından market fiyatları varsa onları ekle
+    const webSource = filtered.find(q => q.source === 'WEB' && q.meta?.isRealPrice);
+    if (webSource && webSource.meta?.markets) {
+      // Gerçek market fiyatlarını al
+      try {
+        const { getAllMarketPrices } = await import('./provider/real-price-api');
+        const marketPrices = await getAllMarketPrices(filtered[0].product_key);
+        
+        if (marketPrices.length > 0) {
+          priceByBrand = marketPrices.map(q => ({
+            brand: q.brand || 'Unknown',
+            price: q.unit_price,
+            availability: 'in_stock' as const,
+            source: 'api' as Source,
+            lastUpdated: q.asOf
+          })).sort((a, b) => a.price - b.price); // Ucuzdan pahalıya sırala
+        }
+      } catch (error) {
+        console.warn('[Fuse] Could not get market prices:', error);
+      }
+    }
   }
+
+  // Ek hesaplamalar
+  const prices = filtered.map(q => q.unit_price);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const priceRange = maxPrice - minPrice;
+  
+  // Dominant packaging ve tier tespiti
+  const packagingTypes = filtered.map(q => 
+    typeof q.packaging === 'object' ? q.packaging?.type : undefined
+  ).filter(Boolean);
+  const dominantPackaging = packagingTypes.length > 0 ? 
+    packagingTypes.sort((a,b) => 
+      packagingTypes.filter(v => v===a).length - packagingTypes.filter(v => v===b).length
+    )[0] : 'retail';
+    
+  const brandTiers = filtered.map(q => q.brandTier).filter(Boolean);
+  const dominantTier = brandTiers.length > 0 ?
+    brandTiers.sort((a,b) => 
+      brandTiers.filter(v => v===a).length - brandTiers.filter(v => v===b).length  
+    )[0] : 'standard';
 
   return {
     product_key: filtered[0].product_key,
@@ -205,7 +255,24 @@ export async function fuse(
     conf,
     sources: filtered,
     confidenceBreakdown,
-    priceByBrand
+    priceByBrand,
+    
+    // UI için ekstra alanlar
+    timestamp: new Date().toISOString(),
+    averagePrice: price,
+    minPrice,
+    maxPrice,
+    priceRange,
+    currency: 'TRY',
+    
+    // Meta bilgiler
+    meta: {
+      outliers_removed: outliersRemoved,
+      packaging: dominantPackaging as any,
+      brand_tier: dominantTier as any,
+      provider_health: filtered.map(q => q.source),
+      cache_hit: false // Cache'ten gelmediyse false
+    }
   };
 }
 
@@ -223,12 +290,18 @@ export function fuseSync(quotes: MarketQuote[]): MarketFusion | null {
 
   if (validQuotes.length === 0) return null;
 
-  const filtered = filterOutliers(validQuotes);
+  const { quotes: filtered, removedCount: outliersRemoved } = filterOutliers(validQuotes);
   if (filtered.length === 0) return null;
 
   const price = calculateWeightedPrice(filtered);
   const unit = filtered[0].unit;
   const conf = calculateConfidence(filtered, price);
+
+  // Ek hesaplamalar
+  const prices = filtered.map(q => q.unit_price);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const priceRange = maxPrice - minPrice;
 
   return {
     product_key: filtered[0].product_key,
@@ -236,6 +309,15 @@ export function fuseSync(quotes: MarketQuote[]): MarketFusion | null {
     price: Number(price.toFixed(2)),
     conf,
     sources: filtered,
+    timestamp: new Date().toISOString(),
+    averagePrice: price,
+    minPrice,
+    maxPrice,
+    priceRange,
+    currency: 'TRY',
+    meta: {
+      outliers_removed: outliersRemoved
+    }
   };
 }
 
@@ -258,9 +340,9 @@ function extractBrandPrices(quotes: MarketQuote[]): BrandPriceOption[] {
   return Array.from(brandMap.values()).map(quote => ({
     brand: quote.brand!,
     price: quote.unit_price,
-    availability: 'in_stock', // TODO: Gerçek availability check
+    availability: 'in_stock' as const,
     source: quote.source,
-    packaging: quote.packaging,
+    packaging: typeof quote.packaging === 'object' ? quote.packaging : undefined,
     lastUpdated: quote.asOf
   }));
 }

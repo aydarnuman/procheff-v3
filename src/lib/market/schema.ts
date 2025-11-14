@@ -1,6 +1,17 @@
 import { z } from 'zod';
 
-export type Source = 'TUIK' | 'WEB' | 'DB' | 'AI';
+export type Source = 
+  | "migros"
+  | "a101"
+  | "bim"
+  | "sok"
+  | "carrefour"
+  | "hepsiburada"
+  | "trendyol"
+  | "ai"
+  | "scraper"
+  | "api"
+  | 'TUIK' | 'WEB' | 'DB' | 'AI'; // Backward compat
 export type BrandTier = 'premium' | 'standard' | 'economy';
 export type PackagingType = 'bulk' | 'retail' | 'wholesale';
 
@@ -16,33 +27,34 @@ export interface PackagingInfo {
 export interface MarketQuote {
   product_key: string;          // normalize edilmiş anahtar (örn: "tavuk-eti")
   raw_query: string;            // kullanıcı girdi metni
-  unit: 'kg' | 'lt' | 'adet' | string;
+  unit: string;                 // kg | lt | adet
   unit_price: number;           // TL (normalize edilmiş birim fiyat)
   currency: 'TRY';
-  asOf: string;                 // ISO tarih
-  source: Source;
-  
-  // YENİ: Brand bilgileri
+  market_key?: Source;          // 🔥 EKLENDİ (market identifier)
+  stock_status?: "in_stock" | "out_of_stock" | "limited";
   brand?: string;               // Marka adı (Orkide, Komili, vb.)
   brandTier?: BrandTier;        // Marka segmenti
-  
-  // YENİ: Paketleme bilgileri
-  packaging?: PackagingInfo;
-  
-  // YENİ: Güvenilirlik skoru (kaynak-bazlı)
+  packaging?: string | PackagingInfo;
+  quantity?: number;
+  asOf: string;                 // ISO tarih
+  source: Source;
   sourceTrust?: number;         // 0-1 arası güvenilirlik
-  
   meta?: Record<string, unknown>;   // link, mağaza vs.
 }
 
 // Güven skoru detay breakdown
 export interface ConfidenceBreakdown {
+  // Old (backward compatible)
   category: number;             // Ürün kategori tespiti güveni (0-1)
   variant: number;              // Varyant match güveni (0-1)
   marketPrice: number;          // Fiyat füzyon güveni (0-1)
   weighted: number;             // Final ağırlıklı skor (0-1)
   
-  // Açıklama
+  // New (UI tarafından zorunlu)
+  sourceReliability?: number;   // Kaynak güvenilirliği (0-1)
+  priceConsistency?: number;    // Fiyat tutarlılığı (0-1)
+  dataCompleteness?: number;    // Veri tamlığı (0-1)
+  freshness?: number;           // Veri güncelliği (0-1)
   explanation?: string;         // "Yüksek güven: 3 kaynak uyumlu" gibi
 }
 
@@ -87,6 +99,23 @@ export interface MarketFusion {
     conf: number;
     method: 'exp_smoothing' | 'arima' | 'sarima';
     trend?: 'rising' | 'falling' | 'stable';
+  };
+  
+  // COMPACT UI için ek meta bilgiler
+  timestamp?: string;
+  aiInsights?: string;
+  averagePrice?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  priceRange?: number;
+  currency?: 'TRY';
+  
+  meta?: {
+    outliers_removed?: number;      // Filtrelenen aşırı fiyat sayısı
+    packaging?: PackagingType;      // Dominant paketleme tipi
+    brand_tier?: BrandTier;         // Dominant marka segmenti  
+    provider_health?: string[];     // Aktif provider listesi
+    cache_hit?: boolean;            // Cache'ten mi geldi
   };
 }
 

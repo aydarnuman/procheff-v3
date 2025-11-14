@@ -136,7 +136,7 @@ export function PriceCardV31({ data, productName }: PriceCardV31Props) {
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-300">Volatilite</span>
               <span className="text-lg font-bold text-amber-400">
-                {data.volatility.level.toUpperCase()}
+                {data.volatility.score > 0.7 ? 'YÜKSEK' : data.volatility.score > 0.3 ? 'ORTA' : 'DÜŞÜK'}
               </span>
             </div>
           </div>

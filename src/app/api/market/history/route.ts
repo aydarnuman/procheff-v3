@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ZodError } from 'zod';
 import { normalizeProductName } from '@/lib/market/normalize';
 import { seriesOf } from '@/lib/market/provider/db';
 import { analyzeTrend } from '@/lib/market/forecast';
+import { MarketHistoryQuerySchema } from '@/lib/validation/market-history';
 
 /**
  * Ürün fiyat geçmişi
@@ -10,19 +12,10 @@ import { analyzeTrend } from '@/lib/market/forecast';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const product = searchParams.get('product');
-    const monthsParam = searchParams.get('months');
-
-    if (!product) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'missing_product',
-          message: 'Ürün adı gerekli',
-        },
-        { status: 400 }
-      );
-    }
+    const { product, months } = MarketHistoryQuerySchema.parse({
+      product: searchParams.get('product'),
+      months: searchParams.get('months'),
+    });
 
     // Normalize product name
     const { product_key, base } = normalizeProductName(product);
@@ -33,20 +26,6 @@ export async function GET(req: NextRequest) {
           ok: false,
           error: 'invalid_product',
           message: 'Geçersiz ürün adı',
-        },
-        { status: 400 }
-      );
-    }
-
-    // Parse months parameter
-    const months = monthsParam ? parseInt(monthsParam, 10) : 12;
-
-    if (isNaN(months) || months < 1 || months > 24) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'invalid_months',
-          message: 'Ay parametresi 1-24 arasında olmalı',
         },
         { status: 400 }
       );
@@ -92,6 +71,17 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: unknown) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'validation_error',
+          details: error.issues,
+        },
+        { status: 400 }
+      );
+    }
+
     console.error('[Market API] History endpoint error:', error);
 
     const message = error instanceof Error ? error.message : 'Bilinmeyen hata';

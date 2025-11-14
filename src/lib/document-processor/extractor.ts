@@ -221,44 +221,49 @@ export async function extractFromFile(
       fileName.endsWith('.xlsx') ||
       fileName.endsWith('.xls')
     ) {
-      onProgress?.('📊 Excel dosyası işleniyor...');
+      onProgress?.('📊 Excel dosyası işleniyor...', 10);
       const result = await extractFromExcel(file, docId, onProgress);
       tables = result.tables;
       rawText = result.rawText;
+      onProgress?.('✅ Excel işlendi', 90);
     }
     // 5. PDF files
     else if (mimeType.includes('pdf') || fileName.endsWith('.pdf')) {
-      onProgress?.('📄 PDF dosyası işleniyor...');
+      onProgress?.('📄 PDF dosyası işleniyor...', 10);
       const result = await extractFromPDF(buffer, docId, options, file instanceof File ? file : undefined, onProgress);
       textBlocks = result.textBlocks;
       tables = result.tables;
       rawText = result.rawText;
+      onProgress?.('✅ PDF işlendi', 90);
     }
     // 6. JSON files
     else if (mimeType.includes('json') || fileName.endsWith('.json')) {
-      onProgress?.('📄 JSON dosyası işleniyor...');
-      const result = await extractFromJSON(buffer, docId);
+      onProgress?.('📄 JSON dosyası işleniyor...', 30);
+      const result = await extractFromJSON(buffer, docId, onProgress);
       textBlocks = result.textBlocks;
       rawText = result.rawText;
+      onProgress?.('✅ JSON işlendi', 90);
     }
     // 7. HTML files
     else if (mimeType.includes('html') || fileName.endsWith('.html') || fileName.endsWith('.htm')) {
-      onProgress?.('📄 HTML dosyası işleniyor...');
-      const result = await extractFromHTML(buffer, docId);
+      onProgress?.('📄 HTML dosyası işleniyor...', 30);
+      const result = await extractFromHTML(buffer, docId, onProgress);
       textBlocks = result.textBlocks;
       tables = result.tables;
       rawText = result.rawText;
+      onProgress?.('✅ HTML işlendi', 90);
     }
     // 7. CSV files - parse as tables
     else if (
       mimeType === 'text/csv' ||
       fileName.endsWith('.csv')
     ) {
-      onProgress?.('📊 CSV dosyası işleniyor...');
-      const result = await extractFromCSV(buffer, docId, fileName);
+      onProgress?.('📊 CSV dosyası işleniyor...', 30);
+      const result = await extractFromCSV(buffer, docId, fileName, onProgress);
       textBlocks = result.textBlocks;
       tables = result.tables || [];
       rawText = result.rawText;
+      onProgress?.('✅ CSV işlendi', 90);
     }
     // 8. Text files (TXT, RTF)
     else if (
@@ -266,11 +271,12 @@ export async function extractFromFile(
       fileName.endsWith('.txt') ||
       fileName.endsWith('.rtf')
     ) {
-      onProgress?.('📄 Metin dosyası işleniyor...');
+      onProgress?.('📄 Metin dosyası işleniyor...', 30);
       try {
         const result = await extractFromText(buffer, docId, fileName);
         textBlocks = result.textBlocks;
         rawText = result.rawText;
+        onProgress?.('✅ Metin işlendi', 90);
       } catch (textError) {
         if (textError instanceof Error && textError.message.includes('boş')) {
           warnings.push(textError.message);
@@ -354,7 +360,7 @@ async function extractFromPDF(
 
   try {
     // ✅ Use pdf-parse (more stable for server-side)
-    onProgress?.(`📄 PDF işleniyor...`);
+    onProgress?.(`📄 PDF işleniyor...`, 10);
 
     AILogger.info('Starting PDF extraction', {
       docId,
@@ -376,7 +382,7 @@ async function extractFromPDF(
       hasText: rawText.trim().length > 0
     });
 
-    onProgress?.(`📄 PDF: ${numPages} sayfa işlendi`);
+    onProgress?.(`📄 PDF: ${numPages} sayfa işlendi`, 30);
 
     // Split text into paragraphs (by double newlines or significant breaks)
     const paragraphs = rawText
@@ -385,6 +391,7 @@ async function extractFromPDF(
       .filter(p => p.length > 0);
 
     // Create text blocks from paragraphs
+    onProgress?.(`📝 Metin blokları oluşturuluyor...`, 40);
     paragraphs.forEach((paragraph, index) => {
       if (paragraph.length > 0) {
         textBlocks.push({
@@ -396,6 +403,7 @@ async function extractFromPDF(
         });
       }
     });
+    onProgress?.(`✅ ${textBlocks.length} metin bloğu oluşturuldu`, 50);
 
     // Check if text extraction was successful
     if (rawText.trim().length < 100) {
@@ -462,7 +470,7 @@ async function extractFromPDF(
           });
         } else if (options.ocr_enabled && file) {
           // Last resort: OCR
-          onProgress?.('📄 OCR ile metin çıkarılıyor...');
+          onProgress?.('📄 OCR ile metin çıkarılıyor...', 40);
           const ocrText = await extractTextWithOCR(file, onProgress);
           if (ocrText.trim()) {
             rawText = TurkishNormalizer.normalize(ocrText);
@@ -486,7 +494,7 @@ async function extractFromPDF(
         
         // Try OCR if enabled
         if (options.ocr_enabled && file) {
-          onProgress?.('📄 OCR ile metin çıkarılıyor...');
+          onProgress?.('📄 OCR ile metin çıkarılıyor...', 50);
           const ocrText = await extractTextWithOCR(file, onProgress);
           if (ocrText.trim()) {
             rawText = TurkishNormalizer.normalize(ocrText);
@@ -806,7 +814,8 @@ async function extractFromExcel(
  */
 async function extractFromHTML(
   buffer: ArrayBuffer,
-  docId: string
+  docId: string,
+  onProgress?: ProgressCallback
 ): Promise<{
   textBlocks: TextBlock[];
   tables: ExtractedTable[];
@@ -1174,7 +1183,8 @@ async function extractFromDOC(
  */
 async function extractFromJSON(
   buffer: ArrayBuffer,
-  docId: string
+  docId: string,
+  onProgress?: ProgressCallback
 ): Promise<{
   textBlocks: TextBlock[];
   rawText: string;
@@ -1241,7 +1251,8 @@ async function extractFromJSON(
 async function extractFromCSV(
   buffer: ArrayBuffer,
   docId: string,
-  fileName: string
+  fileName: string,
+  onProgress?: ProgressCallback
 ): Promise<{
   textBlocks: TextBlock[];
   tables: ExtractedTable[];

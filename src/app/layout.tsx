@@ -6,6 +6,7 @@ import { ToastProvider } from "@/contexts/ToastContext";
 import { QuickPipelineAction } from "@/components/ui/QuickPipelineAction";
 import { FloatingChatWidgetWrapper } from "@/components/chat/FloatingChatWidgetWrapper";
 import { ErrorSuppressor } from "@/components/ErrorSuppressor";
+import { ErrorBoundary } from "@/components/system/ErrorBoundary";
 import "./globals.css";
 
 const inter = Inter({
@@ -59,15 +60,17 @@ export default function RootLayout({
 
         {/* Main content wrapper */}
         <ErrorSuppressor />
-        <SessionProvider>
-          <ToastProvider>
-            <div className="relative z-10">
-              <AppShell>{children}</AppShell>
-              <QuickPipelineAction />
-              <FloatingChatWidgetWrapper />
-            </div>
-          </ToastProvider>
-        </SessionProvider>
+        <ErrorBoundary>
+          <SessionProvider>
+            <ToastProvider>
+              <div className="relative z-10">
+                <AppShell>{children}</AppShell>
+                <QuickPipelineAction />
+                <FloatingChatWidgetWrapper />
+              </div>
+            </ToastProvider>
+          </SessionProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

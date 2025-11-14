@@ -1233,10 +1233,13 @@ export function UltimateFileUploader() {
         });
 
         if (!selectedData || (!selectedData.documents?.length && !selectedData.formats?.length)) {
-          console.warn('⚠️ [DEBUG] No data in storage or empty arrays, skipping load', {
-            selectedData,
-            storageKeys: Object.keys(localStorage).filter(k => k.includes('ihale'))
-          });
+          // This is expected on first load - no need to warn
+          if (process.env.NODE_ENV === 'development') {
+            console.debug('📭 [DEBUG] No data in storage or empty arrays, skipping load (expected on first load)', {
+              selectedData,
+              storageKeys: Object.keys(localStorage).filter(k => k.includes('ihale'))
+            });
+          }
           return;
         }
 

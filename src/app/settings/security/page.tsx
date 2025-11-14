@@ -2,7 +2,7 @@
 
 import { ChevronLeft, Copy, Eye, EyeOff, Key, RefreshCw, Save, Shield, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type APIKey = {
   id: string;
@@ -14,6 +14,8 @@ type APIKey = {
 };
 
 export default function SecuritySettingsPage() {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [apiKeys, setApiKeys] = useState<APIKey[]>([
     {
       id: "1",
@@ -43,6 +45,28 @@ export default function SecuritySettingsPage() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [ipWhitelist, setIpWhitelist] = useState("");
   const [auditLogEnabled, setAuditLogEnabled] = useState(true);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const res = await fetch("/api/settings?category=security");
+      const data = await res.json();
+
+      if (data.success && !data.isDefault) {
+        setSessionTimeout(data.settings.sessionTimeout);
+        setTwoFactorEnabled(data.settings.twoFactorEnabled);
+        setIpWhitelist(data.settings.ipWhitelist || "");
+        setAuditLogEnabled(data.settings.auditLogEnabled);
+      }
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const toggleKeyVisibility = (id: string) => {
     setShowKeys((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -80,19 +104,35 @@ export default function SecuritySettingsPage() {
     alert("API key eklendi!");
   };
 
-  const handleSave = () => {
-    const settings = {
-      apiKeys,
-      security: {
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const settings = {
         sessionTimeout,
         twoFactorEnabled,
         ipWhitelist,
         auditLogEnabled,
-      },
-    };
+        apiKeysCount: apiKeys.length
+      };
 
-    localStorage.setItem("security_settings", JSON.stringify(settings));
-    alert("Güvenlik ayarları kaydedildi!");
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: "security", settings })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        alert("✅ " + data.message);
+      } else {
+        alert("❌ " + data.error);
+      }
+    } catch (error) {
+      alert("❌ Güvenlik ayarları kaydedilemedi");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -323,10 +363,11 @@ export default function SecuritySettingsPage() {
       {/* Save Button */}
       <button
         onClick={handleSave}
-        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-linear-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all"
+        disabled={saving}
+        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-linear-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Save className="w-5 h-5" />
-        Güvenlik Ayarlarını Kaydet
+        {saving ? "Kaydediliyor..." : "Güvenlik Ayarlarını Kaydet"}
       </button>
     </div>
   );

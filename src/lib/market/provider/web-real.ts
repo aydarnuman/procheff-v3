@@ -1,6 +1,7 @@
-import { MarketQuote } from '../schema';
+import { MarketQuote, Source } from '../schema';
 import { chromium } from 'playwright';
 import { getDB } from '@/lib/db/sqlite-client';
+import { MarketWebRealRequestSchema } from '@/lib/validation/market-web-real';
 
 /**
  * Gerçek web scraping provider
@@ -199,17 +200,17 @@ async function scrapeMarket(
     // Kaynak güvenilirlik güncelle
     await updateSourceReliability(marketKey, true);
 
-    return {
+    const quote: MarketQuote = {
       product_key: productName.toLowerCase().replace(/\s+/g, '-'),
       raw_query: productName,
       unit: extractUnit(product.unit),
       unit_price: unitPrice,
       currency: 'TRY',
-      asOf: new Date().toISOString().slice(0, 10),
-      source: 'WEB',
-      market_key: marketKey,
+      market_key: marketKey as Source,  // Market identifier
+      stock_status: product.price ? 'in_stock' : 'out_of_stock',
       brand: product.brand || undefined,
-      stock_status: product.stock,
+      asOf: new Date().toISOString(),
+      source: 'scraper' as Source,
       sourceTrust: 0.7,
       meta: {
         market_name: config.name,
@@ -217,6 +218,8 @@ async function scrapeMarket(
         scraped_at: new Date().toISOString()
       }
     };
+    
+    return quote;
   } catch (error) {
     console.error(`[Web Scraper] Error scraping ${marketKey}:`, error);
     await updateSourceReliability(marketKey, false);
@@ -273,12 +276,14 @@ async function updateSourceReliability(marketKey: string, success: boolean) {
  * Ana export: Tüm marketlerden paralel fiyat çekme
  */
 export async function webQuoteRealData(productName: string): Promise<MarketQuote[]> {
+  const { product } = MarketWebRealRequestSchema.parse({ product: productName });
+  const normalizedProduct = product.trim();
   const results: MarketQuote[] = [];
 
   // Paralel olarak tüm marketlerden veri çek
   const promises = Object.entries(MARKET_CONFIGS).map(async ([marketKey, config]) => {
     try {
-      const quote = await scrapeMarket(marketKey, productName, config);
+      const quote = await scrapeMarket(marketKey, normalizedProduct, config);
       if (quote) {
         results.push(quote);
       }

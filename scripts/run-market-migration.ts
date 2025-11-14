@@ -1,62 +1,47 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env node
+import { getDB } from '../src/lib/db/sqlite-client';
+import fs from 'fs';
+import path from 'path';
 
-/**
- * Market Robot v2.0 Migration Script
- * Database tablolarını oluşturur ve sistemi başlatır
- */
-
-import { runAllMigrations, getMigrationReport, checkMigrationStatus } from '../src/lib/market/migration.js';
-import { initTrustScoreTable } from '../src/lib/market/trust-score.js';
-
-async function main() {
-  console.log('🚀 Market Robot v2.0 Migration Başlatılıyor...\n');
+async function runMigration() {
+  console.log('🔄 Running market prices migration...');
 
   try {
-    // 1. Migration durumunu kontrol et
-    console.log('📊 Mevcut durum kontrol ediliyor...');
-    const beforeStatus = checkMigrationStatus();
-    console.log('Önceki durum:', beforeStatus);
-    console.log('');
+    const db = getDB();
+    
+    // Read migration file
+    const migrationPath = path.join(process.cwd(), 'src/lib/db/migrations/003_market_prices.sql');
+    const migrationSQL = fs.readFileSync(migrationPath, 'utf-8');
 
-    // 2. Tum migration'lari calistir
-    console.log('🔧 Migration\'lar calistiriliyor...');
-    runAllMigrations();
-    console.log('✅ Migration\'lar tamamlandi!\n');
-
-    // 3. Trust score tablosu
-    console.log('🔐 Trust score tablosu olusturuluyor...');
-    try {
-      initTrustScoreTable();
-      console.log('✅ Trust score tablosu hazir!\n');
-    } catch (error) {
-      console.log('⚠️  Trust score tablosu zaten mevcut\n');
+    // Split by semicolons and execute each statement
+    const statements = migrationSQL
+      .split(';')
+      .filter(stmt => stmt.trim().length > 0)
+      .map(stmt => stmt.trim() + ';');
+    
+    for (const statement of statements) {
+      if (statement.trim()) {
+        console.log(`Executing: ${statement.substring(0, 50)}...`);
+        db.exec(statement);
     }
+    }
+    
+    console.log('✅ Migration completed successfully!');
 
-    // 4. Son durum raporu
-    console.log('📋 Migration Raporu:');
-    console.log(getMigrationReport());
-    console.log('');
-
-    // 5. Final kontrol
-    const afterStatus = checkMigrationStatus();
-    const allComplete = Object.values(afterStatus).every(v => v);
-
-    if (allComplete) {
-      console.log('✅ ✅ ✅ TUM MIGRATION\'LAR BASARILI! ✅ ✅ ✅\n');
-      console.log('Sistem kullanima hazir! 🎉');
-      process.exit(0);
-    } else {
-      console.log('⚠️  Bazi migration\'lar tamamlanamadi:');
-      Object.entries(afterStatus).forEach(([key, value]) => {
-        console.log(`  ${value ? '✅' : '❌'} ${key}`);
+    // Verify tables were created
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+    console.log('\n📊 Database tables:');
+    tables.forEach((table: any) => {
+      console.log(`  - ${table.name}`);
       });
-      process.exit(1);
-    }
+    
   } catch (error) {
-    console.error('❌ Migration hatası:', error);
+    console.error('❌ Migration failed:', error);
     process.exit(1);
   }
 }
 
-main();
-
+// Run if called directly
+if (require.main === module) {
+  runMigration();
+}

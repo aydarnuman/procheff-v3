@@ -54,15 +54,48 @@ const WEB_MOCK_DATA: Record<string, { unit_price: number; unit: string; vendor: 
 
 /**
  * Web'den fiyat getir
- * Gerçek web scraping provider'a yönlendir
+ * Önce gerçek market API'lerini dene, yoksa null dön
  */
 export async function webQuote(product_key: string): Promise<MarketQuote | null> {
   try {
-    // Gerçek scraping provider'ı kullan
+    // Önce gerçek market fiyatlarını dene
+    const { getAllMarketPrices } = await import('./real-price-api');
+    const marketQuotes = await getAllMarketPrices(product_key);
+    
+    if (marketQuotes.length > 0) {
+      // En uygun fiyatı döndür (ortalama veya en ucuz)
+      const prices = marketQuotes.map(q => q.unit_price);
+      const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
+      
+      return {
+        product_key,
+        raw_query: product_key,
+        unit: 'kg',
+        unit_price: Number(avgPrice.toFixed(2)),
+        currency: 'TRY',
+        asOf: new Date().toISOString().slice(0, 10),
+        source: 'WEB',
+        sourceTrust: 0.95, // Gerçek fiyat, yüksek güven
+        meta: {
+          isRealPrice: true,
+          marketCount: marketQuotes.length,
+          minPrice: Math.min(...prices),
+          maxPrice: Math.max(...prices),
+          markets: marketQuotes.map(q => q.brand).join(', ')
+        }
+      };
+    }
+    
+    // Gerçek fiyat bulunamazsa scraping'i dene (opsiyonel)
+    try {
     const { webQuote: realWebQuote } = await import('./web-real');
     return await realWebQuote(product_key);
+    } catch {
+      // Scraping de başarısızsa null dön
+      return null;
+    }
   } catch (error) {
-    console.error('[WEB] Real scraping failed, falling back to null:', error);
+    console.error('[WEB] Error getting price:', error);
   return null;
   }
 }

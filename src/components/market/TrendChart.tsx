@@ -12,13 +12,17 @@ interface TrendChartProps {
     avg: number;
     latest: number;
     trend: 'rising' | 'falling' | 'stable' | null;
+    volatility?: number;
+    confidence?: number;
+    change?: number;
   };
+  compact?: boolean;
 }
 
-export function TrendChart({ data, productName, stats }: TrendChartProps) {
+export function TrendChart({ data, productName, stats, compact = false }: TrendChartProps) {
   if (data.length === 0) {
     return (
-      <div className="glass-card flex items-center justify-center h-64">
+      <div className={`${compact ? '' : 'glass-card'} flex items-center justify-center ${compact ? 'h-32' : 'h-64'}`}>
         <p className="text-slate-400 text-sm">Geçmiş veri bulunamadı</p>
       </div>
     );
@@ -67,8 +71,9 @@ export function TrendChart({ data, productName, stats }: TrendChartProps) {
   };
 
   return (
-    <div className="glass-card">
-      {/* Header */}
+    <div className={compact ? '' : 'glass-card'}>
+      {/* Header - only show if not compact */}
+      {!compact && (
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold text-white mb-1">{productName}</h3>
@@ -83,9 +88,10 @@ export function TrendChart({ data, productName, stats }: TrendChartProps) {
           </div>
         )}
       </div>
+      )}
 
       {/* Chart */}
-      <div className="h-64 mb-6">
+      <div className={`${compact ? 'h-full' : 'h-64 mb-6'}`}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" />
@@ -126,8 +132,8 @@ export function TrendChart({ data, productName, stats }: TrendChartProps) {
         </ResponsiveContainer>
       </div>
 
-      {/* Stats */}
-      {stats && (
+      {/* Stats - only show if not compact */}
+      {stats && !compact && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/40">
             <p className="text-xs text-slate-400 mb-1">En Düşük</p>

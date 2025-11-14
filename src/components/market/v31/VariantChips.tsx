@@ -15,7 +15,7 @@ export function VariantChips({
   onSelectAlternative
 }: VariantChipsProps) {
   const allItems = [
-    ...(normalized.variants || []),
+    ...(normalized.variant ? [normalized.variant] : []),
     ...(normalized.alternatives || [])
   ];
 
@@ -41,8 +41,8 @@ export function VariantChips({
         </div>
       )}
 
-      {/* Varyantlar - tıklanabilir */}
-      {normalized.variants?.map((variant, idx) => (
+      {/* Varyant - tıklanabilir */}
+      {normalized.variant && [normalized.variant].map((variant, idx) => (
         <button
           key={`variant-${idx}`}
           onClick={() => onSelectVariant?.(variant)}

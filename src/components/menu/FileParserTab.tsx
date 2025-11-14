@@ -77,7 +77,7 @@ export function FileParserTab() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("/api/parser/menu", {
+      const res = await fetch("/api/menu-robot", {
         method: "POST",
         body: formData,
       });

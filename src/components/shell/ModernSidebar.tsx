@@ -9,6 +9,7 @@ import {
   Menu,
   Package,
   Shield,
+  ShoppingCart,
   Star,
   TrendingUp,
   UploadCloud
@@ -59,13 +60,13 @@ type Item = {
 const primary: Item[] = [
   { id: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
   { id: "analysis", label: "Analiz Merkezi", href: "/analysis", icon: TrendingUp },
-  { id: "tools", label: "Araçlar", href: "/menu-parser", icon: Menu },
+  { id: "tools", label: "Araçlar", href: "/menu-robot", icon: Menu },
   { id: "batch", label: "Toplu İşlem", href: "/batch/jobs", icon: Package },
 ];
 
 const toolsChildren: Item[] = [
-  { id: "menu", label: "Menu Robotu", href: "/menu-parser", icon: Menu, colorIndex: 0 },
-  { id: "piyasa", label: "Piyasa Robotu", href: "/piyasa-robotu", icon: TrendingUp, colorIndex: 1 },
+  { id: "menu", label: "Menu Robotu", href: "/menu-robot", icon: Menu, colorIndex: 0 },
+  { id: "price-feed", label: "🔥 Fiyat Takip Sistemi", href: "/price-feed", icon: ShoppingCart, colorIndex: 1 },
 ];
 
 const analysisChildren: Item[] = [
@@ -312,7 +313,7 @@ export function ModernSidebar() {
         </div>
       </div>
 
-      {/* Footer user - ultra minimal + glassmorphism + glow */}
+      {/* Footer user - ultra minimal + modern black */}
       <div
         className={cn("px-3 pb-2 relative")}
         onClick={(e) => e.stopPropagation()}
@@ -320,22 +321,32 @@ export function ModernSidebar() {
         <Link
           href="/admin"
           className={cn(
-            "rounded-xl p-2 flex items-center backdrop-blur-md border border-[rgba(255,255,255,0.06)] no-underline",
+            "rounded-xl p-2 flex items-center no-underline group",
             open ? "gap-2.5" : "gap-1 justify-center",
-            "bg-[rgba(255,255,255,0.03)] shadow-[0_4px_16px_rgba(0,0,0,0.25)]",
-            "hover:bg-[rgba(255,255,255,0.06)] hover:shadow-[0_8px_24px_rgba(99,102,241,0.2)] transition-all duration-150 ease-out",
+            "bg-[#0a0a0a] border border-[rgba(255,255,255,0.08)]",
+            "hover:bg-[#141414] hover:border-[rgba(255,255,255,0.15)]",
+            "transition-all duration-200 ease-out",
+            "shadow-[0_2px_8px_rgba(0,0,0,0.4)]",
+            "hover:shadow-[0_4px_16px_rgba(0,0,0,0.6)]",
             "cursor-pointer"
           )}
         >
           <div
-            className="h-8 w-8 rounded-full ring-1 ring-[rgba(255,255,255,0.12)] bg-linear-to-tr from-[#7c3aed] to-[#2563eb] flex items-center justify-center text-[11px] font-bold text-white shadow-lg"
+            className={cn(
+              "h-8 w-8 rounded-lg flex items-center justify-center",
+              "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)]",
+              "group-hover:bg-[#222222] group-hover:border-[rgba(255,255,255,0.2)]",
+              "transition-all duration-200"
+            )}
             title={!open ? "Admin Panel" : undefined}
           >
-            <Shield className="w-4 h-4" />
+            <Shield className="w-4 h-4 text-[#999999] group-hover:text-white transition-colors" />
           </div>
           {open && (
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-semibold text-[#E6E7EA] truncate tracking-[-0.01em]">Admin Panel</div>
+              <div className="text-[13px] font-semibold text-[#B0B0B0] group-hover:text-white truncate tracking-[-0.01em] transition-colors">
+                Admin Panel
+              </div>
             </div>
           )}
         </Link>

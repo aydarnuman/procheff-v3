@@ -192,7 +192,8 @@ export function calculateConfidenceBreakdown(
 }
 
 /**
- * Açıklama metni oluştur
+ * Kurumsal Açıklama Sistemi - Detaylı ve profesyonel açıklamalar
+ * Kullanıcıya "neden bu skor?" sorusunun kurumsal cevabını verir
  */
 function generateExplanation(
   cat: CategoryConfidence,
@@ -200,19 +201,57 @@ function generateExplanation(
   market: MarketPriceConfidence,
   weighted: number
 ): string {
+  const reasons: string[] = [];
+
+  // ========== Kategori Analizi ==========
+  if (cat.score >= 0.85) {
+    if (cat.method === 'exact') {
+      reasons.push('Kategori tam eşleşme ile tespit edildi');
+    } else {
+      reasons.push('Kategori yüksek güvenle belirlendi');
+    }
+  } else if (cat.score < 0.60) {
+    reasons.push('Kategori tespiti zayıf');
+  }
+
+  // ========== Varyant Analizi ==========
+  if (variant.score >= 0.80) {
+    if (variant.matchType === 'exact') {
+      reasons.push('varyant tam olarak eşleşti');
+    }
+  } else if (variant.score < 0.50) {
+    reasons.push('varyant belirsizliği mevcut');
+  }
+
+  // ========== Piyasa Fiyatı Analizi ==========
+  if (market.sourceCount >= 3) {
+    reasons.push(`${market.sourceCount} kaynaktan doğrulandı`);
+  } else if (market.sourceCount === 1) {
+    reasons.push('tek kaynaktan alındı');
+  } else {
+    reasons.push(`${market.sourceCount} kaynak bulundu`);
+  }
+
+  if (market.priceVariance < 0.15) {
+    reasons.push('fiyat tutarlılığı yüksek');
+  } else if (market.priceVariance > 0.30) {
+    reasons.push(`fiyat varyansı yüksek (%${(market.priceVariance * 100).toFixed(0)})`);
+  }
+
+  if (market.dataFreshness < 0.5) {
+    reasons.push('veri güncelliği düşük');
+  }
+
+  // ========== Final Özet ==========
   if (weighted >= 0.85) {
-    return `Yüksek güven: ${market.sourceCount} kaynak uyumlu, ${cat.method} kategori tespiti`;
+    return '✅ Yüksek güvenilirlik: ' + reasons.join(', ');
+  } else if (weighted >= 0.70) {
+    return '🔵 Orta-yüksek güvenilirlik: ' + reasons.join(', ');
+  } else if (weighted >= 0.50) {
+    return '🟡 Orta güvenilirlik: ' + reasons.join(', ');
+  } else {
+    return '🔴 Düşük güvenilirlik: ' + reasons.join(', ');
   }
-  
-  if (weighted >= 0.70) {
-    return `Orta-yüksek güven: ${market.sourceCount} kaynak, fiyat varyansı ${(market.priceVariance * 100).toFixed(0)}%`;
-  }
-  
-  if (weighted >= 0.50) {
-    return `Orta güven: Varyant belirsizliği veya sınırlı kaynak (${market.sourceCount})`;
-  }
-  
-  return `Düşük güven: Az kaynak (${market.sourceCount}), yüksek varyans, veya zayıf kategori tespiti`;
 }
 
 /**

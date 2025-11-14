@@ -217,14 +217,15 @@ export function TopBar() {
 
   return (
     <>
-      <div 
+      <div
         className="
-          fixed top-0 z-60 h-16 
-          bg-transparent
+          fixed top-0 z-[100] h-16
+          bg-slate-950/80 backdrop-blur-md
           transition-all duration-300 ease-out
           flex items-center justify-between pl-0 pr-4 md:pr-6
           right-0
           [left:var(--sidebar-width,0px)]
+          border-b border-white/5
         "
       >
         {/* Logo & Page Title */}
@@ -253,8 +254,9 @@ export function TopBar() {
             }}
             className="hidden md:flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 hover:scale-105 transition-all duration-200"
             title="Ara (⌘K)"
+            aria-label="Arama komut paletini aç (⌘K kısayolu)"
           >
-            <Search className="h-4 w-4" />
+            <Search className="h-4 w-4" aria-hidden="true" />
           </button>
 
           {/* Settings */}
@@ -263,22 +265,30 @@ export function TopBar() {
               onClick={() => setShowSettings(!showSettings)}
               className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 hover:scale-105 transition-all duration-200"
               title="Ayarlar"
+              aria-label="Ayarlar menüsü"
+              aria-expanded={showSettings}
+              aria-haspopup="true"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-4 w-4" aria-hidden="true" />
             </button>
 
             {/* Settings Dropdown */}
             <AnimatePresence>
               {showSettings && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 shadow-2xl shadow-black/20 z-50"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="p-4">
+                <>
+                  <div
+                    className="fixed inset-0 z-[90]"
+                    onClick={() => setShowSettings(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 shadow-2xl shadow-black/20 z-[110]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="p-4">
                     <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                       <Settings className="h-4 w-4 text-purple-400" />
                       Ayarlar & Yönetim
@@ -321,7 +331,8 @@ export function TopBar() {
                       </Link>
                     </div>
                   </div>
-                </motion.div>
+                  </motion.div>
+                </>
               )}
             </AnimatePresence>
           </div>
@@ -334,8 +345,11 @@ export function TopBar() {
                 if (!showNotifications) fetchNotifications();
               }}
               className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 hover:scale-105 transition-all duration-200"
+              aria-label={unreadCount > 0 ? `${unreadCount} okunmamış bildirim` : "Bildirimler"}
+              aria-expanded={showNotifications}
+              aria-haspopup="true"
             >
-              <Bell className="h-4 w-4" />
+              <Bell className="h-4 w-4" aria-hidden="true" />
               {unreadCount > 0 && (
                 <motion.span
                   initial={{ scale: 0 }}
@@ -357,7 +371,7 @@ export function TopBar() {
               {showNotifications && (
                 <>
                   <div
-                    className="fixed inset-0 z-59"
+                    className="fixed inset-0 z-[90]"
                     onClick={() => setShowNotifications(false)}
                   />
 
@@ -366,7 +380,7 @@ export function TopBar() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                    className="absolute right-0 top-12 z-70 w-80 md:w-96 rounded-xl border border-white/10 bg-[#0a0a0a] backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
+                    className="absolute right-0 top-12 z-[110] w-80 md:w-96 rounded-xl border border-white/10 bg-[#0a0a0a] backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
                   >
                     <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
                       <h3 className="text-sm font-semibold text-white">
@@ -445,8 +459,11 @@ export function TopBar() {
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 hover:scale-105 transition-all duration-200"
               title="Kullanıcı Menüsü"
+              aria-label={userName ? `Kullanıcı menüsü - ${userName}` : "Kullanıcı menüsü"}
+              aria-expanded={showUserMenu}
+              aria-haspopup="true"
             >
-              <User className="h-4 w-4" />
+              <User className="h-4 w-4" aria-hidden="true" />
             </button>
 
             {/* User Dropdown */}
@@ -454,7 +471,7 @@ export function TopBar() {
               {showUserMenu && (
                 <>
                   <div
-                    className="fixed inset-0 z-59"
+                    className="fixed inset-0 z-[90]"
                     onClick={() => setShowUserMenu(false)}
                   />
 
@@ -463,7 +480,7 @@ export function TopBar() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                    className="absolute right-0 top-12 z-70 w-56 rounded-xl border border-white/10 bg-[#0a0a0a] backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
+                    className="absolute right-0 top-12 z-[110] w-56 rounded-xl border border-white/10 bg-[#0a0a0a] backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
                   >
                     <div className="p-3 border-b border-white/10">
                       <p className="text-sm font-semibold text-white truncate">

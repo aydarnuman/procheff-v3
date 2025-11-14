@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PriceRequestSchema } from '@/lib/market/schema';
+import { ZodError } from 'zod';
 import type { MarketQuote } from '@/lib/market/schema';
 import { normalizeProductPipeline } from '@/lib/market/product-normalizer';
 import { tuikQuote } from '@/lib/market/provider/tuik';
@@ -11,6 +11,8 @@ import { forecastNextMonth } from '@/lib/market/forecast';
 import { cacheGet, cacheSet } from '@/lib/market/cache';
 import { analyzeVolatility } from '@/lib/market/volatility';
 import { AILogger } from '@/lib/ai/logger';
+import { MarketAIPriceSchema } from '@/lib/validation/market-ai-price';
+import { validateRequest } from '@/lib/utils/validate';
 
 /**
  * Tek ürün fiyat sorgulama
@@ -19,22 +21,7 @@ import { AILogger } from '@/lib/ai/logger';
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-
-    // Validate input
-    const validation = PriceRequestSchema.safeParse(body);
-    if (!validation.success) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'validation_error',
-          message: validation.error.issues[0].message,
-        },
-        { status: 400 }
-      );
-    }
-
-    const { product } = validation.data;
+    const { product } = await validateRequest(req, MarketAIPriceSchema);
 
     // YENİ: Advanced product normalization pipeline
     const normalized = await normalizeProductPipeline(product);
@@ -168,6 +155,17 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: unknown) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'validation_error',
+          details: error.issues,
+        },
+        { status: 400 }
+      );
+    }
+
     console.error('[Market API] Price endpoint error:', error);
 
     const message = error instanceof Error ? error.message : 'Bilinmeyen hata';

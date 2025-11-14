@@ -3,21 +3,18 @@
  * Combines extracted data from multiple documents into a unified structure
  */
 
-import { extractFromFile, guessDocumentType, type ProgressCallback } from './extractor';
-import { extractDates, extractAmounts, extractEntities, parseMenuFromTable } from './parser';
 import { AILogger } from '@/lib/ai/logger';
+import { extractFromFile, guessDocumentType, type ProgressCallback } from './extractor';
+import { extractAmounts, extractDates, extractEntities } from './parser';
 import type {
   DataPool,
-  DocumentInfo,
-  TextBlock,
-  ExtractedTable,
-  ExtractedEntity,
   ExtractedDate,
-  ExtractedAmount,
+  ExtractedEntity,
+  ProcessingError,
   ProcessingOptions,
   ProcessingResult,
-  ProcessingError,
-  SourceLocation
+  SourceLocation,
+  TextBlock
 } from './types';
 
 /**
@@ -140,13 +137,20 @@ export async function buildDataPool(
       // Extract content from file
       let extractionResult;
       try {
-        onProgress?.(`📄 İşleniyor: ${file.name} (${i + 1}/${filesToProcess.length})`);
+        // Calculate base progress for this file
+        const baseProgress = (i / filesToProcess.length) * 100;
+        onProgress?.(`📄 İşleniyor: ${file.name} (${i + 1}/${filesToProcess.length})`, baseProgress);
+        
         extractionResult = await extractFromFile(
           file,
           docId,
           options,
           (msg, progress) => {
-            onProgress?.(`[${file.name}] ${msg}`, progress);
+            // Forward progress with file context and normalized value
+            const fileProgress = progress !== undefined 
+              ? baseProgress + (progress / 100) * (100 / filesToProcess.length)
+              : baseProgress + 20; // Default to 20% progress within file range
+            onProgress?.(`[${file.name}] ${msg}`, fileProgress);
           }
         );
       } catch (extractError) {

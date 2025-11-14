@@ -2,12 +2,14 @@
 
 import { ChevronLeft, Palette, Save, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type Theme = "dark" | "light" | "auto";
 type AccentColor = "indigo" | "purple" | "pink" | "blue" | "emerald" | "orange";
 
 export default function AppearanceSettingsPage() {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [theme, setTheme] = useState<Theme>("dark");
   const [accentColor, setAccentColor] = useState<AccentColor>("indigo");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -15,6 +17,31 @@ export default function AppearanceSettingsPage() {
   const [animationsEnabled, setAnimationsEnabled] = useState(true);
   const [glassEffect, setGlassEffect] = useState(true);
   const [fontSize, setFontSize] = useState(14);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const res = await fetch("/api/settings?category=appearance");
+      const data = await res.json();
+
+      if (data.success && !data.isDefault) {
+        setTheme(data.settings.theme);
+        setAccentColor(data.settings.accentColor);
+        setSidebarCollapsed(data.settings.sidebarCollapsed);
+        setCompactMode(data.settings.compactMode);
+        setAnimationsEnabled(data.settings.animationsEnabled);
+        setGlassEffect(data.settings.glassEffect);
+        setFontSize(data.settings.fontSize);
+      }
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const accentColors: { value: AccentColor; label: string; gradient: string }[] = [
     {
@@ -49,23 +76,39 @@ export default function AppearanceSettingsPage() {
     },
   ];
 
-  const handleSave = () => {
-    const settings = {
-      theme,
-      accentColor,
-      sidebarCollapsed,
-      compactMode,
-      animationsEnabled,
-      glassEffect,
-      fontSize,
-    };
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const settings = {
+        theme,
+        accentColor,
+        sidebarCollapsed,
+        compactMode,
+        animationsEnabled,
+        glassEffect,
+        fontSize,
+      };
 
-    localStorage.setItem("appearance_settings", JSON.stringify(settings));
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: "appearance", settings })
+      });
 
-    // Apply immediately
-    document.documentElement.style.fontSize = `${fontSize}px`;
+      const data = await res.json();
 
-    alert("Görünüm ayarları kaydedildi!");
+      if (data.success) {
+        // Apply immediately
+        document.documentElement.style.fontSize = `${fontSize}px`;
+        alert("✅ " + data.message);
+      } else {
+        alert("❌ " + data.error);
+      }
+    } catch (error) {
+      alert("❌ Görünüm ayarları kaydedilemedi");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -291,10 +334,11 @@ export default function AppearanceSettingsPage() {
       {/* Save Button */}
       <button
         onClick={handleSave}
-        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all"
+        disabled={saving}
+        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Save className="w-5 h-5" />
-        Ayarları Kaydet ve Uygula
+        {saving ? "Kaydediliyor..." : "Ayarları Kaydet ve Uygula"}
       </button>
     </div>
   );

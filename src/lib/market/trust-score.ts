@@ -32,11 +32,38 @@ export interface ValidationHistory {
  * Mock data kaldırıldı, AI primary source
  */
 export const BASE_SOURCE_WEIGHTS: Record<Source, number> = {
-  AI: 0.85,     // AI primary source (Claude)
-  DB: 0.10,     // Kendi geçmiş verilerimiz (az veri)
-  TUIK: 0.03,   // Devre dışı (public API yok)
-  WEB: 0.02,    // Devre dışı (scraping yok)
+  migros: 0.1,
+  a101: 0.08,
+  bim: 0.08,
+  sok: 0.07,
+  carrefour: 0.08,
+  hepsiburada: 0.05,
+  trendyol: 0.06,
+  ai: 0.12,
+  scraper: 0.08,
+  api: 0.08,
+  TUIK: 0.04,
+  WEB: 0.04,
+  DB: 0.06,
+  AI: 0.16
 };
+
+const TRACKED_SOURCES: Source[] = [
+  'migros',
+  'a101',
+  'bim',
+  'sok',
+  'carrefour',
+  'hepsiburada',
+  'trendyol',
+  'ai',
+  'scraper',
+  'api',
+  'TUIK',
+  'WEB',
+  'DB',
+  'AI'
+];
 
 /**
  * Dinamik trust score hesapla
@@ -89,9 +116,7 @@ export function calculateDynamicTrust(
 export async function getSourceReliabilityReport(): Promise<Map<Source, SourceReliability>> {
   const report = new Map<Source, SourceReliability>();
   
-  const sources: Source[] = ['TUIK', 'WEB', 'DB', 'AI'];
-  
-  for (const source of sources) {
+  for (const source of TRACKED_SOURCES) {
     try {
       const history = await getValidationHistory(source, 90); // Son 90 gün
       const finalTrust = calculateDynamicTrust(source, history);
@@ -237,12 +262,7 @@ export async function recordValidation(
 export async function getDynamicWeights(): Promise<Record<Source, number>> {
   const report = await getSourceReliabilityReport();
   
-  const weights: Record<Source, number> = {
-    TUIK: BASE_SOURCE_WEIGHTS.TUIK,
-    DB: BASE_SOURCE_WEIGHTS.DB,
-    WEB: BASE_SOURCE_WEIGHTS.WEB,
-    AI: BASE_SOURCE_WEIGHTS.AI
-  };
+  const weights: Record<Source, number> = { ...BASE_SOURCE_WEIGHTS };
   
   // Her kaynak için dinamik trust'ı kullan
   for (const [source, reliability] of report.entries()) {

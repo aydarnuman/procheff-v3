@@ -46,7 +46,7 @@ describe('Enhanced Document Detection', () => {
       variations.forEach(filename => {
         const result = detector.detectWithEvidence(filename, 'Test içerik');
         expect(result.confidence).toBeGreaterThanOrEqual(30);
-        expect(result.scoreBreakdown.filename).toBeGreaterThan(0);
+        expect(result.score_breakdown.filename).toBeGreaterThan(0);
       });
     });
 
@@ -57,7 +57,7 @@ describe('Enhanced Document Detection', () => {
       );
       
       expect(result.category).toBe('diğer');
-      expect(result.scoreBreakdown.filename).toBe(0);
+      expect(result.score_breakdown.filename).toBe(0);
     });
 
     test('Multi-evidence high confidence', () => {

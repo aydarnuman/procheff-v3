@@ -542,11 +542,7 @@ function createStreamingResponse(sessionId: string, request: NextRequest): Respo
           }
         }
 
-        stream.sendProgress('datapool', 60, '🔧 DataPool oluşturuluyor...');
-        
-        // Add realistic delay based on file size
-        const processingDelay = Math.min(500 + (file.size / 1024), 3000); // 0.5-3 seconds
-        await new Promise(resolve => setTimeout(resolve, processingDelay));
+        stream.sendProgress('extraction', 55, '🔧 İçerik ve tablolar çıkarılıyor...');
         
         const result = await buildDataPool([fileToProcess], {
           ocr_enabled: ocrUsed,
@@ -558,9 +554,26 @@ function createStreamingResponse(sessionId: string, request: NextRequest): Respo
           clean_text: true,
           detect_language: false
         }, (message, progress) => {
-          // Forward progress from buildDataPool
-          const adjustedProgress = 60 + (progress || 0) * 0.3; // 60-90% range
-          stream.sendProgress('datapool', adjustedProgress, message);
+          // Forward progress from buildDataPool - map to extraction stage (55-90% range)
+          // If no progress value provided, calculate based on message content
+          let actualProgress = progress;
+          if (actualProgress === undefined) {
+            // Estimate progress based on message content
+            if (message.includes('tamamlandı') || message.includes('oluşturuldu')) {
+              actualProgress = 80;
+            } else if (message.includes('OCR')) {
+              actualProgress = 50;
+            } else if (message.includes('işlendi')) {
+              actualProgress = 60;
+            } else if (message.includes('işleniyor')) {
+              actualProgress = 30;
+            } else {
+              actualProgress = 40; // Default progress for unknown messages
+            }
+          }
+          
+          const adjustedProgress = 55 + (actualProgress / 100) * 35;  // 55-90% range
+          stream.sendProgress('extraction', adjustedProgress, message);
         });
         
         if (!result.success || !result.dataPool) {

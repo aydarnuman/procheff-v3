@@ -15,7 +15,8 @@ export interface NormalizedProduct {
   
   // Detaylar
   category?: string;                // Kategori (et, sebze, vb.)
-  variant?: string;                 // Varyant (göğüs, fileto, vb.)
+  variant?: string;                 // Varyant (seçilen tek varyant)
+  variants?: string[];              // 🔥 EKLENDİ — tüm varyant listesi
   alternatives?: string[];          // Alternatif eşleşmeler
   suggestions?: string[];           // Öneriler
 }

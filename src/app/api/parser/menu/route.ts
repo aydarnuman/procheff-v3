@@ -4,11 +4,26 @@ import { AIProviderFactory } from "@/lib/ai/provider-factory";
 import { MENU_PARSER_SCHEMA, type MenuItemResponse } from "@/lib/ai/schemas";
 import { AnalysisRepository } from "@/lib/db/analysis-repository";
 import { NextRequest, NextResponse } from "next/server";
+import { MenuParserMetadataSchema } from "@/lib/validation/menu-parser";
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
+    const metadataPayload = formData.get("metadata");
+
+    if (metadataPayload) {
+      try {
+        MenuParserMetadataSchema.parse(
+          JSON.parse(metadataPayload.toString())
+        );
+      } catch (error) {
+        return NextResponse.json(
+          { success: false, error: "Metadata doğrulaması başarısız" },
+          { status: 400 }
+        );
+      }
+    }
 
     if (!file) {
       return NextResponse.json(

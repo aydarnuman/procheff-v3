@@ -34,24 +34,25 @@ export default function PerformanceSettingsPage() {
 
   const fetchConfig = async () => {
     try {
-      const res = await fetch("/api/performance/stats");
+      // Fetch from our new performance save endpoint
+      const res = await fetch("/api/settings/performance/save");
       const data = await res.json();
-      if (data.success) {
-        // Transform API response to config format
+      if (data.success && data.settings) {
+        // Transform database settings to config format
         setConfig({
           rateLimiting: {
-            enabled: data.data.featureFlags.rateLimiting,
-            globalLimit: data.data.rateLimit?.globalLimit || 100,
-            endpoints: data.data.rateLimit?.endpointStats || {},
+            enabled: data.settings.enable_caching || false,
+            globalLimit: data.settings.api_rate_limit || 100,
+            endpoints: {},
           },
           caching: {
-            enabled: data.data.featureFlags.caching,
-            defaultTTL: 3600,
+            enabled: data.settings.enable_caching || false,
+            defaultTTL: data.settings.cache_ttl || 3600,
           },
           redis: {
             url: process.env.NEXT_PUBLIC_REDIS_URL || "",
             token: "",
-            connected: data.data.redis?.connected || false,
+            connected: false,
           },
         });
       }
@@ -65,40 +66,40 @@ export default function PerformanceSettingsPage() {
 
   const handleSave = async () => {
     if (!config) return;
-    
+
     setSaving(true);
     try {
-      const res = await fetch("/api/performance/config", {
+      // Save to our new performance database endpoint
+      const res = await fetch("/api/settings/performance/save", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          rateLimiting: {
-            enabled: config.rateLimiting.enabled,
-            globalLimit: config.rateLimiting.globalLimit,
-          },
-          caching: {
-            enabled: config.caching.enabled,
-            defaultTTL: config.caching.defaultTTL,
-          },
+          cache_ttl: config.caching.defaultTTL,
+          api_rate_limit: config.rateLimiting.globalLimit,
+          enable_caching: config.caching.enabled,
+          enable_compression: true, // Default value
+          // Add more fields as needed
         }),
       });
 
       const data = await res.json();
 
       if (data.success) {
-        if (data.data.warnings && data.data.warnings.length > 0) {
+        if (data.requiresRestart && data.requiresRestart.length > 0) {
           toast.warning(
             "Ayarlar kaydedildi, ancak bazı değişiklikler sunucu yeniden başlatması gerektirir",
             {
-              description: data.data.warnings.join(", "),
+              description: `Yeniden başlatma gerektiren ayarlar: ${data.requiresRestart.join(", ")}`,
               duration: 5000,
             }
           );
         } else {
-          toast.success("Ayarlar başarıyla kaydedildi");
+          toast.success("Ayarlar başarıyla database'e kaydedildi!");
         }
+        // Refresh config after save
+        await fetchConfig();
       } else {
         throw new Error(data.error || "Kayıt başarısız");
       }

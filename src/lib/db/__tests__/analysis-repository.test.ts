@@ -6,7 +6,26 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AnalysisRepository } from '../analysis-repository';
 import type { TenderAnalysisResult } from '@/lib/tender-analysis/types';
-import type { DataPool } from '@/lib/document-processor/types';
+import type { DataPool, SourceLocation } from '@/lib/document-processor/types';
+
+const createMockDataPool = (): DataPool => ({
+  documents: [],
+  textBlocks: [],
+  tables: [],
+  dates: [],
+  amounts: [],
+  entities: [],
+  rawText: '',
+  metadata: {
+    total_pages: 0,
+    total_words: 0,
+    extraction_time_ms: 0,
+    ocr_used: false,
+    languages_detected: [],
+    warnings: []
+  },
+  provenance: new Map<string, SourceLocation>()
+});
 
 // Mock database
 vi.mock('../sqlite-client', () => {
@@ -145,16 +164,7 @@ describe('AnalysisRepository', () => {
       };
       db.prepare.mockReturnValue(mockStmt);
 
-      const dataPool: DataPool = {
-        documents: [],
-        textBlocks: [],
-        tables: [],
-        dates: [],
-        entities: [],
-        metadata: {
-          warnings: [],
-        },
-      };
+      const dataPool = createMockDataPool();
 
       AnalysisRepository.saveDataPool('test-id', dataPool, 24);
 
@@ -166,16 +176,7 @@ describe('AnalysisRepository', () => {
       const { getDB } = require('../sqlite-client');
       const db = getDB();
       
-      const mockDataPool: DataPool = {
-        documents: [],
-        textBlocks: [],
-        tables: [],
-        dates: [],
-        entities: [],
-        metadata: {
-          warnings: [],
-        },
-      };
+      const mockDataPool = createMockDataPool();
 
       const mockStmt = {
         get: vi.fn().mockReturnValue({

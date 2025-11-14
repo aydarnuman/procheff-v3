@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Settings, Clock, RefreshCw } from "lucide-react";
 
 export default function PipelineSettingsPage() {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState({
     maxRetries: 2,
     timeout: 60,
@@ -11,9 +13,46 @@ export default function PipelineSettingsPage() {
     autoExport: true,
   });
 
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const res = await fetch("/api/settings?category=pipeline");
+      const data = await res.json();
+
+      if (data.success && !data.isDefault) {
+        setConfig(data.settings);
+      }
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSave = async () => {
-    // TODO: Save to backend
-    alert("Ayarlar kaydedildi!");
+    try {
+      setSaving(true);
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: "pipeline", settings: config })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        alert("✅ " + data.message);
+      } else {
+        alert("❌ " + data.error);
+      }
+    } catch (error) {
+      alert("❌ Ayarlar kaydedilemedi");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -101,9 +140,10 @@ export default function PipelineSettingsPage() {
 
         <button
           onClick={handleSave}
-          className="btn-gradient w-full py-3 rounded-lg font-semibold"
+          disabled={saving}
+          className="btn-gradient w-full py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Ayarları Kaydet
+          {saving ? "Kaydediliyor..." : "Ayarları Kaydet"}
         </button>
       </div>
     </div>
