@@ -54,8 +54,9 @@ services:
       OCR_ENABLED: true
       PDF_PARSING_TIMEOUT: 20000
 
-      # Scraper (if needed)
-      SCRAPER_ENABLED: ${SCRAPER_ENABLED:-false}
+      # Scraper/Worker Configuration
+      SCRAPER_ENABLED: true
+      IHALE_WORKER_URL: http://ihale-worker:8080
       SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
 
     volumes:
@@ -64,6 +65,33 @@ services:
       - procheff-network
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"  # Auto-update with Watchtower
+
+  # İhale Worker Service
+  ihale-worker:
+    build:
+      context: ./ihale-worker
+      dockerfile: Dockerfile
+    image: aydarnuman/ihale-worker:latest
+    container_name: ihale-worker
+    restart: unless-stopped
+    ports:
+      - "8081:8080"  # Map to different external port to avoid conflicts
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      # İhalebul credentials (set via .env file)
+      IHALEBUL_USERNAME: ${IHALEBUL_USERNAME}
+      IHALEBUL_PASSWORD: ${IHALEBUL_PASSWORD}
+    networks:
+      - procheff-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
       timeout: 10s
       retries: 3

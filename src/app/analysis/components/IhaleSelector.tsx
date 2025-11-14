@@ -350,3 +350,4 @@ export function IhaleSelector({ onTenderSelect, disabled }: IhaleSelectorProps) 
     </div>
   );
 }
+

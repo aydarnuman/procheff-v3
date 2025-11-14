@@ -15,7 +15,7 @@ export async function ihbLogin() {
 
     console.log('[İHALE] Connecting to worker:', W);
 
-    const r = await fetch(`${W}/auth/login`, {
+    const r = await fetch(`${W}/api/ihale/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -46,7 +46,7 @@ export async function ihbList(sessionId: string) {
 
     console.log('[İHALE] Fetching tender list...');
 
-    const r = await fetch(`${W}/list?sessionId=${sessionId}`, { signal: controller.signal });
+    const r = await fetch(`${W}/api/ihale/scrape?sessionId=${sessionId}`, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     const j = await r.json();
@@ -68,7 +68,7 @@ export async function ihbDetail(sessionId: string, id: string) {
 
     console.log('[İHALE] Fetching tender detail for ID:', id);
 
-    const r = await fetch(`${W}/detail/${id}?sessionId=${sessionId}`, { signal: controller.signal });
+    const r = await fetch(`${W}/api/ihale/detail/${id}?sessionId=${sessionId}`, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     const j = await r.json();
