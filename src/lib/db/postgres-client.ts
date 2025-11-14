@@ -1,6 +1,4 @@
-import { Pool, Client, QueryResult } from 'pg';
-import { initAuthSchema } from "./init-auth";
-import { runMigrations } from "./run-migration";
+import { Pool, QueryResult, QueryResultRow } from 'pg';
 
 // PostgreSQL connection pool
 let pool: Pool | null = null;
@@ -139,7 +137,7 @@ export async function getPool(): Promise<Pool> {
 /**
  * Execute a query using the pool
  */
-export async function query<T = any>(
+export async function query<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<QueryResult<T>> {
@@ -343,7 +341,7 @@ export const compatibilityLayer = {
   /**
    * Mimic better-sqlite3's prepare().get() pattern
    */
-  async prepareGet<T = any>(sql: string, ...params: any[]): Promise<T | undefined> {
+  async prepareGet<T extends QueryResultRow = any>(sql: string, ...params: any[]): Promise<T | undefined> {
     const result = await query<T>(sql, params);
     return result.rows[0];
   },
@@ -351,7 +349,7 @@ export const compatibilityLayer = {
   /**
    * Mimic better-sqlite3's prepare().all() pattern
    */
-  async prepareAll<T = any>(sql: string, ...params: any[]): Promise<T[]> {
+  async prepareAll<T extends QueryResultRow = any>(sql: string, ...params: any[]): Promise<T[]> {
     const result = await query<T>(sql, params);
     return result.rows;
   },

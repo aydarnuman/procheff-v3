@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Step 1: Extract text
-    let text = await extractText(buf, mime);
+    const text = await extractText(buf, mime);
     const density = textDensity(text);
 
     // Step 2: Check if we need OCR (low density or PDF)
@@ -318,8 +318,6 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Build DataPool with full extraction
     // Use the processed file (with OCR text if available)
-    let result;
-    
     if (ocrUsed && ocrTextResult) {
       // If OCR was used, ensure the text is properly processed
       AILogger.info('Building DataPool with OCR text', {
@@ -327,8 +325,8 @@ export async function POST(request: NextRequest) {
         ocrTextLength: ocrTextResult.length
       });
     }
-    
-    result = await buildDataPool([fileToProcess], {
+
+    const result = await buildDataPool([fileToProcess], {
       ocr_enabled: ocrUsed, // Mark as OCR-enabled
       extract_tables: true,
       extract_dates: true,
@@ -466,7 +464,7 @@ function createStreamingResponse(sessionId: string, request: NextRequest): Respo
         });
 
         stream.sendProgress('extraction', 20, '📝 Metin çıkarılıyor...');
-        let text = await extractText(buf, mime);
+        const text = await extractText(buf, mime);
         const density = textDensity(text);
 
         let ocrUsed = false;

@@ -1617,9 +1617,9 @@ export function UltimateFileUploader() {
         // Hide loading overlay on error
         setIsLoadingFromDetail(false);
         // Update toast to error state
-        // @ts-ignore - progressToastId may be out of scope
+        // @ts-expect-error - progressToastId may be out of scope in catch block
         if (typeof progressToastId !== 'undefined' && progressToastId) {
-          // @ts-ignore
+          // @ts-expect-error - updateToast type inference issue with dynamic toast ID
           updateToast(progressToastId, {
             type: 'error',
             title: '❌ Yükleme hatası',

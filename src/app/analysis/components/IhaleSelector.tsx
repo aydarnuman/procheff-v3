@@ -318,7 +318,7 @@ export function IhaleSelector({ onTenderSelect, disabled }: IhaleSelectorProps) 
                             </div>
                           ) : searchQuery ? (
                             <div>
-                              <p className="text-sm">'<span className="text-white">{searchQuery}</span>' için sonuç bulunamadı</p>
+                              <p className="text-sm">&apos;<span className="text-white">{searchQuery}</span>&apos; için sonuç bulunamadı</p>
                               <p className="text-xs mt-1">İhale ID, başlık veya kurum adı ile deneyin</p>
                             </div>
                           ) : (

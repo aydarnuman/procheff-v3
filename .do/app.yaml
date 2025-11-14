@@ -4,6 +4,9 @@
 name: procheff-v3
 region: fra # Frankfurt region (change to your preferred region: nyc, sfo, ams, sgp, blr)
 
+# External PostgreSQL Database (Aiven)
+# We use external managed PostgreSQL instead of DO managed database
+
 # Main web service
 services:
   - name: web
@@ -43,23 +46,29 @@ services:
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
 
-      # Database (using persistent volume)
-      - key: DATABASE_PATH
-        value: "/app/data/procheff.db"
+      # Database Configuration
+      - key: USE_POSTGRES
+        value: "true"
+      - key: NODE_TLS_REJECT_UNAUTHORIZED
+        value: "0"
+      - key: DATABASE_URL
+        value: "postgres://***DB_USER***:***DB_PASS***@***DB_HOST***:25060/defaultdb?sslmode=require"
 
-      # NextAuth (set as secrets)
-      - key: NEXTAUTH_URL
-        value: "${APP_URL}"
+      # Authentication
       - key: NEXTAUTH_SECRET
-        scope: RUN_TIME
-        type: SECRET
+        value: "***NEXTAUTH_SECRET***"
 
-      # AI APIs (set as secrets)
+      # AI Configuration
       - key: ANTHROPIC_API_KEY
-        scope: RUN_TIME
-        type: SECRET
+        value: "***ANTHROPIC_API_KEY***"
       - key: ANTHROPIC_MODEL
         value: "claude-sonnet-4-20250514"
+      - key: GOOGLE_API_KEY
+        value: "***GOOGLE_API_KEY***"
+
+      # App URL (will be set after deployment)
+      - key: NEXT_PUBLIC_APP_URL
+        value: "https://procheff-v3-${APP_URL}"
       - key: DEFAULT_AI_MODEL
         value: "claude-sonnet-4-20250514"
 

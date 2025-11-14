@@ -153,7 +153,7 @@ function getPostgresAdapter(): UniversalDB {
       }
     },
     
-    async queryOne<T = any>(sql: string, params: any[] = []): Promise<T | undefined> {ed> {
+    async queryOne<T = any>(sql: string, params: any[] = []): Promise<T | undefined> {
       try {
         if (!pgQuery) throw new Error('PostgreSQL not initialized');
         const result = await pgQuery(sql, params);
@@ -253,16 +253,6 @@ function getDualAdapter(): UniversalDB {
     
     getMode: () => 'dual'
   };
-}
-
-/**
- * Dual Adapter (PostgreSQL + SQLite Fallback)
- * Tries PostgreSQL first, falls back to SQLite on connection failure
- */
-function getDualAdapter(): UniversalDB {
-  // For now, return PostgreSQL adapter in dual mode
-  // TODO: Implement fallback logic
-  return getPostgresAdapter();
 }
 
 /**
