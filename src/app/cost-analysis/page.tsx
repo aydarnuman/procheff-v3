@@ -159,7 +159,7 @@ export default function CostAnalysisPage() {
         {/* Navigation */}
         <div className="flex items-center justify-between mb-6">
           <button
-            onClick={() => router.push('/menu-parser')}
+            onClick={() => router.push('/menu-robot')}
             className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />

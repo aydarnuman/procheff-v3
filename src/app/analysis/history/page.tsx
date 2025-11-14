@@ -17,7 +17,7 @@ interface AnalysisHistoryItem {
 
 const analysisTypeLabels = {
   auto: "Oto Analiz",
-  menu: "Menü Parser",
+  menu: "Menu Robotu",
   cost: "Maliyet",
   decision: "Karar Desteği",
 };

@@ -79,7 +79,7 @@ export interface CoverageReport {
 
 export class CoverageMetrics {
   private static instance: CoverageMetrics;
-  private db: Database.Database | null = null;
+  private db: Database | null = null;
   
   // Configuration
   private readonly STALE_DATA_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours

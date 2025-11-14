@@ -25,7 +25,7 @@ const stepLabels: Record<number, string> = {
 
 const stepPaths: Record<number, string> = {
   [PIPELINE_STEPS.TENDER_SELECT]: '/ihale',
-  [PIPELINE_STEPS.MENU_UPLOAD]: '/menu-parser',
+  [PIPELINE_STEPS.MENU_UPLOAD]: '/menu-robot',
   [PIPELINE_STEPS.COST_ANALYSIS]: '/cost-analysis',
   [PIPELINE_STEPS.DECISION]: '/decision',
   [PIPELINE_STEPS.PROPOSAL]: '/reports',
@@ -47,7 +47,7 @@ export function QuickPipelineAction() {
 
   // Don't show on non-pipeline pages
   if (!pathname.includes('/ihale') &&
-      !pathname.includes('/menu-parser') &&
+      !pathname.includes('/menu-robot') &&
       !pathname.includes('/cost-analysis') &&
       !pathname.includes('/decision') &&
       !pathname.includes('/reports')) {

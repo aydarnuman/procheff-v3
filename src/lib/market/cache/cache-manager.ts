@@ -36,7 +36,7 @@ export interface CacheStats {
 export class CacheManager {
   private static instance: CacheManager;
   private memoryCache: Map<string, CacheEntry> = new Map();
-  private db: Database.Database | null = null;
+  private db: Database | null = null;
   private stats: CacheStats = {
     hits: 0,
     misses: 0,

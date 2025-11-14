@@ -26,7 +26,7 @@ const stepConfig = {
   },
   menu: {
     label: 'Menü Yükleme',
-    path: '/menu-parser',
+    path: '/menu-robot',
     next: 'cost' as PipelineStep,
     nextLabel: 'Maliyet Analizi',
     previous: 'tender' as PipelineStep

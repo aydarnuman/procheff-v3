@@ -17,7 +17,7 @@ const tools = [
     name: 'Menü Robotu',
     description: 'AI ile akıllı menü analizi ve otomatik sınıflandırma',
     icon: FileText,
-    href: '/menu-parser',
+    href: '/menu-robot',
     color: 'from-blue-500 to-cyan-500',
     bgGradient: 'from-blue-500/10 to-cyan-500/10'
   },

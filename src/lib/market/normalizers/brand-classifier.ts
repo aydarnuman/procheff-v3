@@ -22,7 +22,7 @@ export interface BrandClassification {
 }
 
 export class BrandClassifier {
-  private static db: Database.Database | null = null;
+  private static db: Database | null = null;
   
   // In-memory brand cache
   private static brandCache: Map<string, BrandInfo> = new Map([
@@ -98,7 +98,7 @@ export class BrandClassifier {
   /**
    * Initialize database connection
    */
-  private static getDb(): Database.Database | null {
+  private static getDb(): Database | null {
     if (!this.db) {
       try {
         const dbPath = join(process.cwd(), 'procheff.db');

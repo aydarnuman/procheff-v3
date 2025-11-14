@@ -1,8 +1,10 @@
 "use client";
 
-import { ChevronLeft, Copy, Eye, EyeOff, Key, RefreshCw, Save, Shield, Trash2 } from "lucide-react";
+import { ChevronLeft, Copy, Eye, EyeOff, Key, RefreshCw, Save, Shield, Trash2, Smartphone, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { TwoFactorSetup } from "@/components/security/TwoFactorSetup";
+import { toast } from "sonner";
 
 type APIKey = {
   id: string;
@@ -43,6 +45,11 @@ export default function SecuritySettingsPage() {
   // Security Settings
   const [sessionTimeout, setSessionTimeout] = useState(30);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorStatus, setTwoFactorStatus] = useState<{
+    lastUsed?: string;
+    backupCodesRemaining?: number;
+  }>({});
+  const [show2FASetup, setShow2FASetup] = useState(false);
   const [ipWhitelist, setIpWhitelist] = useState("");
   const [auditLogEnabled, setAuditLogEnabled] = useState(true);
 
@@ -61,6 +68,18 @@ export default function SecuritySettingsPage() {
         setIpWhitelist(data.settings.ipWhitelist || "");
         setAuditLogEnabled(data.settings.auditLogEnabled);
       }
+
+      // Load 2FA status
+      const tfaRes = await fetch("/api/settings/security/2fa/setup");
+      const tfaData = await tfaRes.json();
+
+      if (tfaData.success) {
+        setTwoFactorEnabled(tfaData.enabled);
+        setTwoFactorStatus({
+          lastUsed: tfaData.lastUsed,
+          backupCodesRemaining: tfaData.backupCodesRemaining,
+        });
+      }
     } catch (error) {
       console.error("Failed to load settings:", error);
     } finally {
@@ -74,7 +93,7 @@ export default function SecuritySettingsPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert("API key kopyalandı!");
+    toast.success("API key kopyalandı!");
   };
 
   const deleteKey = (id: string) => {
@@ -85,7 +104,7 @@ export default function SecuritySettingsPage() {
 
   const addNewKey = () => {
     if (!newKeyName || !newKeyValue) {
-      alert("Lütfen tüm alanları doldurun");
+      toast.error("Lütfen tüm alanları doldurun");
       return;
     }
 
@@ -101,7 +120,61 @@ export default function SecuritySettingsPage() {
     setApiKeys((prev) => [...prev, newKey]);
     setNewKeyName("");
     setNewKeyValue("");
-    alert("API key eklendi!");
+    toast.success("API key eklendi!");
+  };
+
+  const handle2FAToggle = async () => {
+    if (twoFactorEnabled) {
+      // Disable 2FA
+      if (confirm("2FA'yı kapatmak istediğinizden emin misiniz?")) {
+        try {
+          const res = await fetch("/api/settings/security/2fa/setup", {
+            method: "DELETE",
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            setTwoFactorEnabled(false);
+            setTwoFactorStatus({});
+            toast.success("2FA kapatıldı");
+          } else {
+            throw new Error(data.error);
+          }
+        } catch (error) {
+          toast.error("2FA kapatılamadı");
+        }
+      }
+    } else {
+      // Show 2FA setup modal
+      setShow2FASetup(true);
+    }
+  };
+
+  const handle2FASetupSuccess = () => {
+    setTwoFactorEnabled(true);
+    loadSettings(); // Reload to get updated status
+    toast.success("2FA başarıyla etkinleştirildi!");
+  };
+
+  const regenerateBackupCodes = async () => {
+    if (confirm("Yedek kodları yenilemek istediğinizden emin misiniz? Eski kodlar geçersiz olacak.")) {
+      try {
+        const res = await fetch("/api/settings/security/2fa/backup-codes", {
+          method: "POST",
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          toast.success("Yedek kodlar yenilendi. Lütfen yeni kodları güvenli bir yerde saklayın.");
+          // Could show the codes in a modal here
+          console.log("New backup codes:", data.backupCodes);
+        } else {
+          throw new Error(data.error);
+        }
+      } catch (error) {
+        toast.error("Yedek kodlar yenilenemedi");
+      }
+    }
   };
 
   const handleSave = async () => {
@@ -124,12 +197,12 @@ export default function SecuritySettingsPage() {
       const data = await res.json();
 
       if (data.success) {
-        alert("✅ " + data.message);
+        toast.success(data.message);
       } else {
-        alert("❌ " + data.error);
+        toast.error(data.error);
       }
     } catch (error) {
-      alert("❌ Güvenlik ayarları kaydedilemedi");
+      toast.error("Güvenlik ayarları kaydedilemedi");
     } finally {
       setSaving(false);
     }
@@ -293,18 +366,52 @@ export default function SecuritySettingsPage() {
           </div>
 
           {/* Two-Factor Auth */}
-          <label className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:border-indigo-500/30 transition-all">
-            <div>
-              <p className="font-medium text-gray-200">İki Faktörlü Kimlik Doğrulama (2FA)</p>
-              <p className="text-sm text-gray-500">Giriş yaparken ekstra güvenlik katmanı</p>
+          <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="font-medium text-gray-200">İki Faktörlü Kimlik Doğrulama (2FA)</p>
+                  {twoFactorEnabled && (
+                    <CheckCircle className="w-4 h-4 text-green-400" />
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 mb-3">
+                  Giriş yaparken ekstra güvenlik katmanı
+                </p>
+                {twoFactorEnabled && twoFactorStatus && (
+                  <div className="space-y-1 text-xs text-gray-400">
+                    {twoFactorStatus.lastUsed && (
+                      <p>Son kullanım: {new Date(twoFactorStatus.lastUsed).toLocaleString("tr-TR")}</p>
+                    )}
+                    {twoFactorStatus.backupCodesRemaining !== undefined && (
+                      <p>Kalan yedek kod: {twoFactorStatus.backupCodesRemaining}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handle2FAToggle}
+                  className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
+                    twoFactorEnabled
+                      ? "bg-red-500/20 hover:bg-red-500/30 text-red-300"
+                      : "bg-green-500/20 hover:bg-green-500/30 text-green-300"
+                  }`}
+                >
+                  <Smartphone className="w-4 h-4" />
+                  {twoFactorEnabled ? "Kapat" : "Etkinleştir"}
+                </button>
+                {twoFactorEnabled && (
+                  <button
+                    onClick={regenerateBackupCodes}
+                    className="px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 rounded-lg transition-all text-sm"
+                  >
+                    Yedek Kodları Yenile
+                  </button>
+                )}
+              </div>
             </div>
-            <input
-              type="checkbox"
-              checked={twoFactorEnabled}
-              onChange={(e) => setTwoFactorEnabled(e.target.checked)}
-              className="w-4 h-4 text-indigo-500 bg-white/5 border-white/10 rounded focus:ring-indigo-500"
-            />
-          </label>
+          </div>
 
           {/* IP Whitelist */}
           <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
@@ -369,6 +476,14 @@ export default function SecuritySettingsPage() {
         <Save className="w-5 h-5" />
         {saving ? "Kaydediliyor..." : "Güvenlik Ayarlarını Kaydet"}
       </button>
+
+      {/* 2FA Setup Modal */}
+      {show2FASetup && (
+        <TwoFactorSetup
+          onClose={() => setShow2FASetup(false)}
+          onSuccess={handle2FASetupSuccess}
+        />
+      )}
     </div>
   );
 }

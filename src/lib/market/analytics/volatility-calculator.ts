@@ -56,7 +56,7 @@ export interface CategoryVolatility {
 
 export class VolatilityCalculator {
   private static instance: VolatilityCalculator;
-  private db: Database.Database | null = null;
+  private db: Database | null = null;
   
   // Volatility thresholds
   private readonly THRESHOLDS = {

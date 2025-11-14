@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { initAuthSchema } from "./init-auth";
 import { runMigrations } from "./run-migration";
 
-let db: Database.Database | null = null;
+let db: Database | null = null;
 let isInitialized = false;
 let isInitializing = false;
 let isShuttingDown = false;
@@ -97,7 +97,7 @@ async function initializeDatabase(): Promise<void> {
  * - Thread-safe initialization
  * - Automatic retry on connection loss
  */
-export function getDB(): Database.Database {
+export function getDB(): Database {
   // Quick path for already initialized database
   if (db && isInitialized) {
     try {

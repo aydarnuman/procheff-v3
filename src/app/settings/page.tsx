@@ -3,6 +3,7 @@
 import {
   Bell,
   Brain,
+  Code,
   Database,
   FileText,
   Globe,
@@ -101,8 +102,8 @@ const CATEGORIES: SettingCategory[] = [
   {
     id: "api",
     name: "API & Entegrasyonlar",
-    icon: Globe,
-    description: "Harici API'ler, webhook ayarları",
+    icon: Code,
+    description: "API endpoints, webhooks, üçüncü parti entegrasyonlar",
     href: "/settings/api",
   },
 ];

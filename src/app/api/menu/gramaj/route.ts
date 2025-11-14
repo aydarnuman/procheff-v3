@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
     });
 
     // Calculate totals
-    const totalCost = results.reduce((sum, r) => sum + r.totalCost, 0);
-    const totalCalories = results.reduce((sum, r) => sum + r.totalCalories, 0);
+    const totalCost = results.reduce((sum: number, r: any) => sum + r.totalCost, 0);
+    const totalCalories = results.reduce((sum: number, r: any) => sum + r.totalCalories, 0);
 
     return NextResponse.json({
       success: true,

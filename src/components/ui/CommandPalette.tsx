@@ -149,7 +149,7 @@ export function CommandPalette() {
               </Command.Item>
 
               <Command.Item
-                onSelect={() => navigate("/menu-parser")}
+                onSelect={() => navigate("/menu-robot")}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-800/50 text-gray-300 transition-colors"
               >
                 <Utensils className="w-4 h-4 text-emerald-400" />

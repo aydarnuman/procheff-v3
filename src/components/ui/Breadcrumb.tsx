@@ -20,7 +20,6 @@ const pathNameMap: Record<string, string> = {
   "/ihale/history": "Geçmiş",
   "/decision": "Karar Analizi",
   "/reports": "Raporlar",
-  "/menu-parser": "Menü Parser",
   "/menu-robot": "Menü Robotu",
   "/piyasa-robotu": "Piyasa Robotu",
   "/price-feed": "Fiyat Takip Sistemi",

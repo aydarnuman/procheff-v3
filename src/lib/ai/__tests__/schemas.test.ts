@@ -8,7 +8,7 @@ import {
   COST_ANALYSIS_SCHEMA,
   DECISION_ANALYSIS_SCHEMA,
   DEEP_ANALYSIS_SCHEMA,
-  MENU_PARSER_SCHEMA,
+  MENU_ROBOT_SCHEMA,
   IHALE_ANALYSIS_SCHEMA,
 } from '../schemas';
 
@@ -59,15 +59,15 @@ describe('AI Schemas', () => {
     });
   });
 
-  describe('MENU_PARSER_SCHEMA', () => {
+  describe('MENU_ROBOT_SCHEMA', () => {
     it('should be an array schema', () => {
-      expect(MENU_PARSER_SCHEMA.name).toBe('menu_parser');
-      expect(MENU_PARSER_SCHEMA.schema.type).toBe('array');
-      expect(MENU_PARSER_SCHEMA.schema.items).toBeDefined();
+      expect(MENU_ROBOT_SCHEMA.name).toBe('menu_robot');
+      expect(MENU_ROBOT_SCHEMA.schema.type).toBe('array');
+      expect(MENU_ROBOT_SCHEMA.schema.items).toBeDefined();
     });
 
     it('should have menu item structure', () => {
-      const itemSchema = MENU_PARSER_SCHEMA.schema.items;
+      const itemSchema = MENU_ROBOT_SCHEMA.schema.items;
       expect(itemSchema.properties.yemek_adi).toBeDefined();
       expect(itemSchema.properties.gramaj).toBeDefined();
       expect(itemSchema.properties.gramaj.type).toBe('number');
@@ -94,7 +94,7 @@ describe('AI Schemas', () => {
         COST_ANALYSIS_SCHEMA,
         DECISION_ANALYSIS_SCHEMA,
         DEEP_ANALYSIS_SCHEMA,
-        MENU_PARSER_SCHEMA,
+        MENU_ROBOT_SCHEMA,
         IHALE_ANALYSIS_SCHEMA,
       ];
 

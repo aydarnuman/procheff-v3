@@ -40,7 +40,7 @@ export interface QueueProcessor<T = any> {
 
 export class QueueManager extends EventEmitter {
   private static instance: QueueManager;
-  private db: Database.Database | null = null;
+  private db: Database | null = null;
   private processors: Map<string, QueueProcessor> = new Map();
   private activeJobs: Map<string, NodeJS.Timeout> = new Map();
   private isProcessing: boolean = false;

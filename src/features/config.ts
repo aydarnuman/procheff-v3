@@ -43,7 +43,7 @@ export const RATE_LIMIT_CONFIG = {
       requests: 5,
       window: "1 m" as const,
     },
-    "/api/parser/menu": {
+    "/api/menu-robot": {
       requests: 10,
       window: "1 m" as const,
     },

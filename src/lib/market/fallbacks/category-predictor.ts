@@ -47,7 +47,7 @@ export interface CategoryConfig {
 }
 
 export class CategoryPredictor {
-  private static db: Database.Database | null = null;
+  private static db: Database | null = null;
   
   // Category configurations
   private static readonly CATEGORY_CONFIGS: CategoryConfig[] = [
@@ -114,7 +114,7 @@ export class CategoryPredictor {
   /**
    * Initialize database connection
    */
-  private static getDb(): Database.Database | null {
+  private static getDb(): Database | null {
     if (!this.db) {
       try {
         const dbPath = join(process.cwd(), 'procheff.db');

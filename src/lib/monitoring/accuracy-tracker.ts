@@ -58,7 +58,7 @@ export interface PriceComparison {
 
 export class AccuracyTracker {
   private static instance: AccuracyTracker;
-  private db: Database.Database | null = null;
+  private db: Database | null = null;
   
   // Accuracy thresholds
   private readonly ACCURACY_THRESHOLD = 0.05; // 5% deviation allowed

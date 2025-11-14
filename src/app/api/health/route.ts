@@ -1,86 +1,101 @@
 import { NextResponse } from "next/server";
+import { getDB } from "@/lib/db/sqlite-client";
+import Database from "better-sqlite3";
 
 /**
- * Health Check Endpoint
- * Used by DigitalOcean, Docker, and monitoring services
+ * Health check endpoint for monitoring and deployment verification
+ * GET /api/health
  */
 export async function GET() {
-  try {
-    // Basic health check
-    const health = {
-      status: "healthy",
-      timestamp: new Date().toISOString(),
-      version: process.env.APP_VERSION || "3.0.0",
-      environment: process.env.NODE_ENV || "development",
-      uptime: process.uptime(),
-    };
-
-    // Check critical services
-    const checks: Record<string, boolean> = {
-      redis: false,
+  const health = {
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    version: process.env.NEXT_PUBLIC_APP_VERSION || "3.0.0",
+    environment: process.env.NODE_ENV,
+    checks: {
       database: false,
-      ai: false,
+      memory: false,
+      disk: false,
+    },
+    details: {} as any,
+  };
+
+  try {
+    // 1. Database check
+    try {
+      const db = getDB();
+      const result = db.prepare("SELECT 1 as check").get() as { check: number };
+      health.checks.database = result?.check === 1;
+      
+      // Get database stats
+      const tableCount = db.prepare(
+        "SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'"
+      ).get() as { count: number };
+      
+      health.details.database = {
+        connected: true,
+        tables: tableCount?.count || 0,
+      };
+    } catch (dbError) {
+      health.checks.database = false;
+      health.details.database = {
+        connected: false,
+        error: dbError instanceof Error ? dbError.message : "Unknown error",
+      };
+    }
+
+    // 2. Memory check
+    const memUsage = process.memoryUsage();
+    const memoryUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+    const memoryTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+    
+    health.checks.memory = memoryUsedMB < memoryTotalMB * 0.9; // Less than 90% used
+    health.details.memory = {
+      used: `${memoryUsedMB} MB`,
+      total: `${memoryTotalMB} MB`,
+      percentage: Math.round((memoryUsedMB / memoryTotalMB) * 100),
     };
 
-    // Check Redis connection (optional)
-    try {
-      if (process.env.UPSTASH_REDIS_REST_URL) {
-        const redisResponse = await fetch(
-          `${process.env.UPSTASH_REDIS_REST_URL}/ping`,
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
-            },
-            signal: AbortSignal.timeout(2000),
-          }
-        );
-        checks.redis = redisResponse.ok;
-      }
-    } catch (error) {
-      console.warn("Redis health check failed:", error);
-      checks.redis = false;
-    }
+    // 3. Uptime
+    health.details.uptime = {
+      seconds: Math.floor(process.uptime()),
+      formatted: formatUptime(process.uptime()),
+    };
 
-    // Check database (optional)
-    try {
-      // Simple check - if DATABASE_PATH exists
-      checks.database = !!process.env.DATABASE_PATH;
-    } catch {
-      checks.database = false;
-    }
+    // Overall status
+    const allChecksPass = Object.values(health.checks).every(check => check);
+    health.status = allChecksPass ? "healthy" : "degraded";
 
-    // Check AI API keys
-    checks.ai =
-      !!process.env.ANTHROPIC_API_KEY || !!process.env.GOOGLE_API_KEY;
-
-    // Determine overall health
-    const isHealthy = checks.ai; // At minimum, AI must be available
-    const status = isHealthy ? "healthy" : "unhealthy";
-
-    return NextResponse.json(
-      {
-        ...health,
-        status,
-        checks,
-      },
-      {
-        status: isHealthy ? 200 : 503,
-        headers: {
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
-      }
-    );
+    // Return appropriate status code
+    const statusCode = allChecksPass ? 200 : 503;
+    
+    return NextResponse.json(health, { status: statusCode });
   } catch (error) {
-    console.error("Health check error:", error);
     return NextResponse.json(
       {
-        status: "error",
+        status: "unhealthy",
         timestamp: new Date().toISOString(),
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 503 }
     );
   }
+}
+
+/**
+ * Format uptime in human-readable format
+ */
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / (3600 * 24));
+  const hours = Math.floor((seconds % (3600 * 24)) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  parts.push(`${secs}s`);
+
+  return parts.join(" ");
 }

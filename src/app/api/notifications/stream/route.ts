@@ -24,7 +24,7 @@ export async function GET() {
             .all();
 
           if (notifications.length > 0) {
-            notifications.forEach((notification) => {
+            notifications.forEach((notification: any) => {
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify(notification)}\n\n`)
               );
