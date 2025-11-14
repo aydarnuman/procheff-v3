@@ -26,7 +26,12 @@ Docker-compose'a ihale worker servisi eklendi ve deployment scriptleri hazırlan
 
 SSH ile bağlan:
 ```bash
-ssh root@161.35.217.113
+# server-config.sh dosyasından veya environment variable'dan
+source ./server-config.sh
+ssh $VPS_SSH_USER@$VPS_SERVER_IP
+
+# Veya direkt (kendi IP'nizi kullanın)
+ssh root@your.server.ip
 ```
 
 Proje dizinine git:
@@ -278,8 +283,8 @@ chmod +x monitor.sh
 ### Uptime Monitoring (UptimeRobot)
 1. https://uptimerobot.com hesabı oluştur
 2. Yeni monitor ekle:
-   - Ana uygulama: http://161.35.217.113:3001/api/health
-   - İhale Worker: http://161.35.217.113:8081/health
+   - Ana uygulama: http://YOUR_SERVER_IP:3001/api/health
+   - İhale Worker: http://YOUR_SERVER_IP:8081/health
 
 ---
 

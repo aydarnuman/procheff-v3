@@ -1,6 +1,6 @@
 # Docker Compose for DigitalOcean VPS Deployment
 # Procheff v3 - Production Configuration
-# Server: 161.35.217.113
+# Configure server IP in server-config.sh or environment variables
 
 services:
   # Main Application (Procheff v3)

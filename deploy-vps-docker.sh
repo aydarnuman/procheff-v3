@@ -1,9 +1,25 @@
 #!/bin/bash
 
 # Procheff v3 - DigitalOcean VPS Docker Deployment
-# Server: 161.35.217.113
+# Requires: server-config.sh or environment variables
 
 set -e
+
+# Load server configuration if exists
+if [ -f "./server-config.sh" ]; then
+    source ./server-config.sh
+elif [ -z "$VPS_SERVER_IP" ]; then
+    echo "❌ Error: Server configuration not found"
+    echo "Please create server-config.sh from server-config.example.sh"
+    echo "Or set VPS_SERVER_IP environment variable"
+    exit 1
+fi
+
+# Set defaults if not provided
+VPS_SSH_USER="${VPS_SSH_USER:-root}"
+VPS_APP_DIR="${VPS_APP_DIR:-/root/procheff-v3}"
+VPS_PORT_APP="${VPS_PORT_APP:-3001}"
+VPS_PORT_WORKER="${VPS_PORT_WORKER:-8081}"
 
 # Colors
 RED='\033[0;31m'
@@ -87,10 +103,10 @@ echo -e "${GREEN}📋 VPS'de Çalıştırılacak Komutlar:${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo ""
 echo -e "${YELLOW}1. SSH ile sunucuya bağlan:${NC}"
-echo "   ssh root@161.35.217.113"
+echo "   ssh $VPS_SSH_USER@$VPS_SERVER_IP"
 echo ""
 echo -e "${YELLOW}2. Proje dizinine git:${NC}"
-echo "   cd /root/procheff-v3"
+echo "   cd $VPS_APP_DIR"
 echo ""
 echo -e "${YELLOW}3. docker-compose.digitalocean.yml ve .env dosyasını güncelle${NC}"
 echo ""
@@ -109,17 +125,17 @@ echo "   docker logs procheff-v3"
 echo "   docker logs ihale-worker"
 echo ""
 echo -e "${YELLOW}8. Health check:${NC}"
-echo "   curl http://localhost:3001/api/health"
-echo "   curl http://localhost:8081/health"
+echo "   curl http://localhost:$VPS_PORT_APP/api/health"
+echo "   curl http://localhost:$VPS_PORT_WORKER/health"
 echo ""
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}🌐 Deployment Adresleri:${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
-echo "  Ana Uygulama:  http://161.35.217.113:3001"
-echo "  İhale Worker:  http://161.35.217.113:8081"
+echo "  Ana Uygulama:  http://$VPS_SERVER_IP:$VPS_PORT_APP"
+echo "  İhale Worker:  http://$VPS_SERVER_IP:$VPS_PORT_WORKER"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo ""
 echo -e "${YELLOW}📝 Not: Nginx reverse proxy kurulumu için:${NC}"
-echo "   - Ana domain → localhost:3001"
-echo "   - /api/ihale/* → localhost:8081/*"
+echo "   - Ana domain → localhost:$VPS_PORT_APP"
+echo "   - /api/ihale/* → localhost:$VPS_PORT_WORKER/*"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"

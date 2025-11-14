@@ -25,6 +25,10 @@ build/
 .env.*.local
 !.env.example
 
+# Server configuration (contains sensitive IPs)
+server-config.sh
+!server-config.example.sh
+
 # Database files
 *.db
 *.db-*
