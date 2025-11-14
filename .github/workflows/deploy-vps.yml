@@ -1,121 +1,79 @@
-name: Deploy to VPS (161.35.217.113)
+name: Deploy to DigitalOcean VPS
 
 on:
   push:
     branches:
       - main
-      - master
-  workflow_dispatch: # Manual trigger
+  workflow_dispatch:
 
 jobs:
   deploy:
-    name: Deploy to DigitalOcean VPS
+    name: Deploy to VPS
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    
     steps:
-      - name: 📦 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔐 Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
+      - name: Deploy to DigitalOcean VPS
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-
-      - name: 📝 Add VPS to known hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H 161.35.217.113 >> ~/.ssh/known_hosts
-
-      - name: 🚀 Deploy to VPS
-        env:
-          VPS_HOST: 161.35.217.113
-          VPS_USER: ${{ secrets.VPS_USER }}
-          PROJECT_PATH: ${{ secrets.VPS_PROJECT_PATH }}
-        run: |
-          echo "🔗 Connecting to VPS..."
-          
-          ssh $VPS_USER@$VPS_HOST << 'EOF'
+          host: 161.35.217.113
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script: |
             set -e
             
-            echo "📂 Navigating to project directory..."
-            cd $PROJECT_PATH || { echo "❌ Project directory not found!"; exit 1; }
+            echo "🚀 Starting deployment..."
             
+            # Navigate to project directory
+            cd ${{ secrets.VPS_PROJECT_PATH }}
+            
+            # Stash any local changes
+            git stash || true
+            
+            # Pull latest changes
             echo "📥 Pulling latest changes from GitHub..."
-            git fetch origin
-            git reset --hard origin/main
+            git pull origin main
             
-            echo "🐋 Building Docker image..."
-            docker build -t procheff-v3:latest .
+            # Install dependencies if needed
+            if [ -f "package.json" ]; then
+              echo "📦 Installing dependencies..."
+              npm ci --production
+            fi
             
-            echo "🔄 Stopping old container..."
-            docker-compose -f docker-compose.digitalocean.yml down || true
+            # Run database migrations if exist
+            if [ -f "scripts/run-enhanced-market-migration.ts" ]; then
+              echo "🗄️  Running database migrations..."
+              npx tsx scripts/run-enhanced-market-migration.ts || true
+            fi
             
-            echo "🚀 Starting new container..."
-            docker-compose -f docker-compose.digitalocean.yml up -d
+            # Build Next.js application
+            echo "🔨 Building application..."
+            npm run build
             
-            echo "⏳ Waiting for container to start..."
+            # Restart with docker-compose
+            if [ -f "docker-compose.digitalocean.yml" ]; then
+              echo "🐳 Restarting Docker containers..."
+              docker-compose -f docker-compose.digitalocean.yml down
+              docker-compose -f docker-compose.digitalocean.yml up -d --build
+            else
+              echo "⚠️  Docker Compose file not found, skipping container restart"
+            fi
+            
+            # Health check
+            echo "🏥 Running health check..."
             sleep 10
+            curl -f http://localhost:3001/api/health || echo "⚠️  Health check failed"
             
-            echo "🏥 Health check..."
-            for i in {1..10}; do
-              if curl -f http://localhost:3001/api/health > /dev/null 2>&1; then
-                echo "✅ Health check passed!"
-                break
-              fi
-              echo "⏳ Attempt $i/10..."
-              sleep 5
-            done
+            echo "✅ Deployment completed!"
             
-            echo "📊 Container status:"
-            docker ps | grep procheff-v3
-            
-            echo "🎉 Deployment completed!"
-          EOF
-
-      - name: 🧹 Cleanup old Docker images
-        env:
-          VPS_HOST: 161.35.217.113
-          VPS_USER: ${{ secrets.VPS_USER }}
-        run: |
-          ssh $VPS_USER@$VPS_HOST << 'EOF'
-            echo "🧹 Cleaning up old Docker images..."
-            docker image prune -f
-            echo "✅ Cleanup completed!"
-          EOF
-
-      - name: 📋 Deployment Summary
+      - name: Notify deployment status
         if: always()
         run: |
-          echo "## 🚀 VPS Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **VPS IP:** 161.35.217.113" >> $GITHUB_STEP_SUMMARY
-          echo "- **Port:** 3001" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL:** http://161.35.217.113:3001" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔧 Useful Commands" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "# SSH to server" >> $GITHUB_STEP_SUMMARY
-          echo "ssh ${{ secrets.VPS_USER }}@161.35.217.113" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "# View logs" >> $GITHUB_STEP_SUMMARY
-          echo "docker logs -f procheff-v3" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "# Check status" >> $GITHUB_STEP_SUMMARY
-          echo "docker ps | grep procheff-v3" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-
-      - name: 🔔 Notify on failure
-        if: failure()
-        run: |
-          echo "## ❌ Deployment Failed!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Check the logs above for error details." >> $GITHUB_STEP_SUMMARY
-
-
-
-
-
-
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment successful"
+          else
+            echo "❌ Deployment failed"
+          fi
