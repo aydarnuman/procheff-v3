@@ -29,7 +29,7 @@ jobs:
       # 3. Test Build (ensure everything compiles)
       - name: Install dependencies and build
         run: |
-          npm ci
+          npm ci --ignore-scripts
           npm run build
         env:
           NEXT_PUBLIC_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
