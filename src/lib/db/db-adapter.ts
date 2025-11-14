@@ -256,6 +256,16 @@ function getDualAdapter(): UniversalDB {
 }
 
 /**
+ * Dual Adapter (PostgreSQL + SQLite Fallback)
+ * Tries PostgreSQL first, falls back to SQLite on connection failure
+ */
+function getDualAdapter(): UniversalDB {
+  // For now, return PostgreSQL adapter in dual mode
+  // TODO: Implement fallback logic
+  return getPostgresAdapter();
+}
+
+/**
  * Legacy getDB() compatibility wrapper
  * ⚠️ This function is now async and returns UniversalDB interface
  * 
