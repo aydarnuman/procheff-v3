@@ -11,7 +11,7 @@ services:
     dockerfile_path: Dockerfile
     source_dir: /
     github:
-      repo: aydarnuman/procheff-v3-enterprise
+      repo: aydarnuman/procheff-v3
       branch: main
       deploy_on_push: true
 
@@ -139,11 +139,9 @@ services:
       #   scope: RUN_TIME
       #   type: SECRET
 
-    # Persistent storage for SQLite database
-    volumes:
-      - name: data
-        path: /app/data
-        size_gb: 1 # 1GB storage (upgrade as needed)
+    # Note: Persistent storage is not available in App Platform
+    # SQLite database will be stored in container (data will be lost on redeploy)
+    # Consider using a managed database for production
 
 # Optional: Redis service (if not using Upstash)
 # databases:
@@ -152,52 +150,8 @@ services:
 #     version: "7"
 #     production: false
 
-# Scheduled Jobs (Cron Jobs)
-jobs:
-  - name: ihale-refresh
-    dockerfile_path: Dockerfile
-    source_dir: /
-    github:
-      repo: aydarnuman/procheff-v3-enterprise
-      branch: main
-    instance_count: 1
-    instance_size_slug: basic-xxs # 512 MB RAM, 0.5 vCPU (sufficient for cron)
-    
-    # Schedule: Her 6 saatte bir (0 */6 * * *)
-    # Diğer seçenekler:
-    # - Her saat: "0 * * * *"
-    # - Her 3 saat: "0 */3 * * *"
-    # - Günlük 09:00: "0 9 * * *"
-    # - Günlük 09:00 ve 18:00: "0 9,18 * * *"
-    run_command: curl -X GET "${APP_URL}/api/cron/ihale-refresh?secret=${IHALE_CRON_SECRET}" || exit 1
-    schedule:
-      cron: "0 */6 * * *" # Her 6 saatte bir
-      timezone: "Europe/Istanbul"
-    
-    envs:
-      - key: NODE_ENV
-        value: "production"
-      - key: APP_URL
-        value: "${APP_URL}" # DigitalOcean automatically provides this
-      - key: IHALE_WORKER_URL
-        value: "${IHALE_WORKER_URL}" # Set this in App Platform settings
-      - key: IHALE_CRON_SECRET
-        scope: RUN_TIME
-        type: SECRET
-      - key: IHALEBUL_USERNAME
-        scope: RUN_TIME
-        type: SECRET
-      - key: IHALEBUL_PASSWORD
-        scope: RUN_TIME
-        type: SECRET
-      - key: DATABASE_PATH
-        value: "/app/data/procheff.db"
-      - key: ANTHROPIC_API_KEY
-        scope: RUN_TIME
-        type: SECRET
-      - key: GOOGLE_API_KEY
-        scope: RUN_TIME
-        type: SECRET
+# Note: Cron jobs are not directly supported in App Platform
+# You can use external services like GitHub Actions or DigitalOcean Functions for scheduled tasks
 
 # Auto-scaling rules (optional)
 # alerts:
