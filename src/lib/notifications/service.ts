@@ -84,6 +84,10 @@ class NotificationService {
         JSON.stringify(channel.settings || {})
       ]);
 
+      if (!result || !result.id) {
+        throw new Error("Failed to create notification channel");
+      }
+
       const channelId = result.id as number;
 
       // Send verification if email
