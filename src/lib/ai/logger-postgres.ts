@@ -23,7 +23,13 @@ export class AILoggerPostgres {
   private static pool: any = null;
 
   private static async initDB() {
-    if (this.isInitialized || !isServer) return;
+    // ✅ Build sırasında hiç çalışma
+    if (this.isInitialized || 
+        !isServer || 
+        process.env.NEXT_PHASE === 'phase-production-build' ||
+        !process.env.DATABASE_URL) {
+      return;
+    }
 
     try {
       // Dynamic import PostgreSQL client
@@ -33,7 +39,10 @@ export class AILoggerPostgres {
       // Table already created in PostgreSQL
       this.isInitialized = true;
     } catch (error) {
-      console.error("❌ Logger PostgreSQL initialization failed:", error);
+      // Sadece development'ta hata göster
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("❌ Logger PostgreSQL initialization failed:", error);
+      }
     }
   }
 

@@ -23,6 +23,9 @@ const nextConfig: NextConfig = {
     formats: ['image/avif', 'image/webp'],
   },
 
+  // ✅ PostgreSQL ve SQLite'ı client bundle'a dahil etme (Next.js 16+ format)
+  serverExternalPackages: ['pg', 'better-sqlite3'],
+
   // Experimental features
   experimental: {
     serverActions: {

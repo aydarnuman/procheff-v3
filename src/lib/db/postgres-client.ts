@@ -44,6 +44,20 @@ const poolConfig = {
  * Prevents race conditions and multiple initialization
  */
 async function initializeDatabase(): Promise<void> {
+  // ✅ Build sırasında hiç çalışma
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    console.log('⚠️ Skipping PostgreSQL init (build phase)');
+    isInitialized = true;
+    return;
+  }
+
+  // ✅ DATABASE_URL yoksa devam etme
+  if (!process.env.DATABASE_URL) {
+    console.warn('⚠️ DATABASE_URL not set, skipping PostgreSQL initialization');
+    isInitialized = true;
+    return;
+  }
+
   // Prevent multiple simultaneous initialization
   if (isInitialized || isInitializing) {
     // Wait for initialization to complete
@@ -252,9 +266,14 @@ function setupGracefulShutdown(): void {
   });
 }
 
-// Initialize graceful shutdown on module load
-if (typeof process !== 'undefined') {
-  setupGracefulShutdown();
+// Initialize graceful shutdown on module load - BUT NOT DURING BUILD
+if (typeof process !== 'undefined' && 
+    process.env.NEXT_PHASE !== 'phase-production-build' &&
+    process.env.NODE_ENV !== 'test') {
+  // Only setup if we actually have a database URL
+  if (process.env.DATABASE_URL) {
+    setupGracefulShutdown();
+  }
 }
 
 /**
