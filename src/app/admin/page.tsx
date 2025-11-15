@@ -1,7 +1,11 @@
-import { getAdminStats, getActivityLogs } from "@/lib/db/admin-queries";
 import type { ActivityLogEntry } from "@/lib/db/admin-queries";
-import { Users, Building2, Activity, UserCheck } from "lucide-react";
+import { getActivityLogs, getAdminStats } from "@/lib/db/admin-queries";
+import { Activity, Building2, UserCheck, Users } from "lucide-react";
 import Link from "next/link";
+
+// Force dynamic rendering - don't generate at build time
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function AdminDashboard() {
   const stats = await getAdminStats();
