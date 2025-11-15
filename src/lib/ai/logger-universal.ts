@@ -36,10 +36,10 @@ class UniversalAILogger {
         Boolean(process.env.DATABASE_URL?.includes("postgres"));
 
         if (usePostgres) {
-          const { AILogger: PostgresLogger } = await import('./logger-postgres');
+          const { AILogger: PostgresLogger } = await import('@/lib/ai/logger-postgres');
           this.serverLogger = PostgresLogger as unknown as ServerLogger;
         } else {
-          const { AILogger: SqliteLogger } = await import('./logger-sqlite');
+          const { AILogger: SqliteLogger } = await import('@/lib/ai/logger-sqlite');
           this.serverLogger = SqliteLogger as unknown as ServerLogger;
         }
       

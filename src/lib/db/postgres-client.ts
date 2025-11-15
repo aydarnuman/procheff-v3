@@ -22,6 +22,20 @@ let isShuttingDown = false;
 /**
  * PostgreSQL Pool Configuration
  */
+const pgSslMode = (process.env.PGSSLMODE || process.env.PGSSL || '').toLowerCase();
+const sslDisabled = pgSslMode === 'disable' || pgSslMode === 'off' || process.env.POSTGRES_SSL === 'false';
+const sslRequiredExplicit =
+  pgSslMode === 'require' ||
+  pgSslMode === 'verify-ca' ||
+  pgSslMode === 'verify-full' ||
+  process.env.POSTGRES_SSL === 'true';
+const sslFromUrl =
+  process.env.DATABASE_URL?.includes('sslmode=require') ||
+  process.env.DATABASE_URL?.includes('sslmode=verify-ca') ||
+  process.env.DATABASE_URL?.includes('sslmode=verify-full');
+
+const shouldUseSSL = !sslDisabled && (sslRequiredExplicit || sslFromUrl);
+
 const poolConfig = {
   connectionString: process.env.DATABASE_URL,
   // Connection pool settings
@@ -30,13 +44,13 @@ const poolConfig = {
   idleTimeoutMillis: 30000,   // Close idle clients after 30 seconds
   connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection cannot be established
   
-  // SSL configuration - check if connection string requires SSL
-  ssl: process.env.DATABASE_URL?.includes('sslmode=require') ? {
-    rejectUnauthorized: false,
-    require: true
-  } : process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : false
+  // SSL configuration
+  ssl: shouldUseSSL
+    ? {
+        rejectUnauthorized: process.env.POSTGRES_SSL_REJECT_UNAUTHORIZED === 'true' || pgSslMode === 'verify-full',
+        require: true
+      }
+    : false
 };
 
 /**
