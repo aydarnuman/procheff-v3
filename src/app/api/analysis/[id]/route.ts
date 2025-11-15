@@ -69,8 +69,8 @@ async function handleGetAnalysis(
   if (!dataPool) {
     try {
       const { AnalysisRepository } = await import('@/lib/db/analysis-repository');
-      dataPool = AnalysisRepository.getDataPool(id);
-      
+      dataPool = await AnalysisRepository.getDataPool(id);
+
       if (dataPool) {
         AILogger.info('💾 DataPool loaded from data_pools table', { analysisId: id });
       }
@@ -127,8 +127,8 @@ async function handleGetAnalysis(
 
   try {
     const { AnalysisRepository } = await import('@/lib/db/analysis-repository');
-    const analysisResult = AnalysisRepository.getByAnalysisId(id);
-    
+    const analysisResult = await AnalysisRepository.getByAnalysisId(id);
+
     if (analysisResult) {
       contextual_analysis = analysisResult.contextual;
       market_analysis = analysisResult.market;

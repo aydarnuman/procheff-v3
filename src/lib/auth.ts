@@ -22,12 +22,12 @@ export const authOptions = {
         
         const { email, password } = parsed.data;
 
-        const user = findUserByEmail(email);
+        const user = await findUserByEmail(email);
         if (!user) return null;
-        const ok = verifyPassword(user.password_hash, password);
+        const ok = await verifyPassword(user.password_hash, password);
         if (!ok) return null;
 
-        const orgs = getUserOrgs(user.id);
+        const orgs = await getUserOrgs(user.id);
         return {
           id: user.id,
           email: user.email,

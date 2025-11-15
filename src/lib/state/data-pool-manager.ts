@@ -41,7 +41,7 @@ export class DataPoolManager {
     // 2. Check new data_pools table via AnalysisRepository
     try {
       const { AnalysisRepository } = await import('@/lib/db/analysis-repository');
-      const dataPool = AnalysisRepository.getDataPool(analysisId);
+      const dataPool = await AnalysisRepository.getDataPool(analysisId);
 
       if (dataPool) {
         // Add to cache

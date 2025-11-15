@@ -150,9 +150,10 @@ export class AnalysisRepository {
   static async findById(id: string): Promise<AnalysisResultRow | null> {
     const db = await getDatabase();
     try {
-      return await db.queryOne<AnalysisResultRow>(`
+      const result = await db.queryOne<AnalysisResultRow>(`
         SELECT * FROM analysis_results_v2 WHERE id = $1
       `, [id]);
+      return result ?? null;
     } catch (error) {
       console.error('[AnalysisRepository] Failed to find analysis:', error);
       return null;

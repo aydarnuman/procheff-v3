@@ -28,11 +28,11 @@ export async function GET(req: NextRequest) {
     let jobs;
 
     if (params.search) {
-      jobs = searchOrchestrations(params.search, params.limit);
+      jobs = await searchOrchestrations(params.search, params.limit);
     } else if (params.status) {
-      jobs = getOrchestrationsByStatus(params.status, params.limit);
+      jobs = await getOrchestrationsByStatus(params.status, params.limit);
     } else {
-      jobs = getRecentOrchestrations(params.limit);
+      jobs = await getRecentOrchestrations(params.limit);
     }
 
     // Parse result and steps_json back to objects

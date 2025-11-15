@@ -137,11 +137,11 @@ export class AIProviderFactory {
 
     // 🚀 Check cache first (unless bypassed)
     if (!bypassCache) {
-      const cached = getCachedResponse<T>(prompt, model, temperature);
-      
+      const cached = await getCachedResponse<T>(prompt, model, temperature);
+
       if (cached) {
         const duration = Date.now() - startTime;
-        
+
         AILogger.success("⚡ Cache hit - no API call needed", {
           schemaName: schema.name,
           cacheType: cached.metadata.cache_hit_type,
@@ -150,7 +150,7 @@ export class AIProviderFactory {
           cacheAge: cached.metadata.age_seconds,
           duration_ms: duration,
         });
-        
+
         return {
           data: cached.data,
           metadata: {
@@ -238,7 +238,7 @@ export class AIProviderFactory {
 
       // 💾 Save to cache for future use
       try {
-        setCachedResponse(prompt, model, temperature, data, totalTokens, 24);
+        await setCachedResponse(prompt, model, temperature, data, totalTokens, 24);
         AILogger.info("💾 Response cached successfully", {
           schemaName: schema.name,
           tokens: totalTokens,

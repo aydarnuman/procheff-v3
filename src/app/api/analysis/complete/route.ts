@@ -47,8 +47,8 @@ async function handleComplete(req: NextRequest) {
     });
     
     // Get analysis record
-    const rec = getAnalysis(analysisId);
-    
+    const rec = await getAnalysis(analysisId);
+
     if (!rec) {
       AILogger.warn('Complete failed: analysis not found', { analysisId, sessionId });
       AILogger.sessionEnd(sessionId, 'failed');

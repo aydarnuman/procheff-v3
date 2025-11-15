@@ -311,7 +311,7 @@ class EnhancedJobManager extends EventEmitter {
    */
   async resumeJob(jobId: string): Promise<JobState | null> {
     // Try to load from DB
-    const dbRecord = getOrchestration(jobId);
+    const dbRecord = await getOrchestration(jobId);
     if (!dbRecord) return null;
 
     // Don't resume completed or failed jobs
