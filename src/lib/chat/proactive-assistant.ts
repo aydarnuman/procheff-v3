@@ -6,8 +6,8 @@
 import { AILogger } from '@/lib/ai/logger';
 import { getDatabase } from '@/lib/db/universal-client';
 
-import * as TenderExpertModule from './expertise/tender-expert';
 import * as CostExpertModule from './expertise/cost-expert';
+import * as TenderExpertModule from './expertise/tender-expert';
 
 export interface ProactiveSuggestion {
   id: string;
@@ -100,11 +100,6 @@ export class ProactiveAssistant {
     } catch (error) {
       console.error('Failed to initialize proactive assistant database:', error);
     }
-  }
-    `);
-
-    // Seed default triggers
-    await this.seedDefaultTriggers();
   }
 
   private async seedDefaultTriggers() {

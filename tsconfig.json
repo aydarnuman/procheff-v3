@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "ihale-worker", "scripts"]
+  "exclude": ["node_modules", "ihale-worker", "scripts", "**/*.test.ts", "**/__tests__/**"]
 }

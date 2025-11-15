@@ -86,7 +86,7 @@ describe('AnalysisRepository', () => {
   });
 
   describe('getCostStats', () => {
-    it('should return cost statistics', () => {
+    it('should return cost statistics', async () => {
       const { getDB } = require('../sqlite-client');
       const db = getDB();
       
@@ -110,13 +110,12 @@ describe('AnalysisRepository', () => {
       };
       db.prepare.mockReturnValue(mockStmt);
 
-      const stats = AnalysisRepository.getCostStats(30);
+      const stats = await AnalysisRepository.getCostStats(30);
 
       expect(stats.total_requests).toBe(2);
       expect(stats.total_cost).toBe(0.03);
       expect(stats.by_endpoint).toBeDefined();
     });
-  });
 
   describe('FTS5 Search', () => {
     it('should perform full-text search', () => {
@@ -172,7 +171,7 @@ describe('AnalysisRepository', () => {
       expect(mockStmt.run).toHaveBeenCalled();
     });
 
-    it('should get DataPool by ID', () => {
+    it('should get DataPool by ID', async () => {
       const { getDB } = require('../sqlite-client');
       const db = getDB();
       
@@ -186,13 +185,13 @@ describe('AnalysisRepository', () => {
       };
       db.prepare.mockReturnValue(mockStmt);
 
-      const result = AnalysisRepository.getDataPool('test-id');
+      const result = await AnalysisRepository.getDataPool('test-id');
 
       expect(result).toBeDefined();
       expect(result?.documents).toBeDefined();
     });
 
-    it('should return null for expired DataPool', () => {
+    it('should return null for expired DataPool', async () => {
       const { getDB } = require('../sqlite-client');
       const db = getDB();
       
@@ -201,7 +200,7 @@ describe('AnalysisRepository', () => {
       };
       db.prepare.mockReturnValue(mockStmt);
 
-      const result = AnalysisRepository.getDataPool('expired-id');
+      const result = await AnalysisRepository.getDataPool('expired-id');
 
       expect(result).toBeNull();
     });

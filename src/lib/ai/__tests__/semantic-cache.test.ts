@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import {
-  getCachedResponse,
-  setCachedResponse,
-  getCacheStats,
-  cleanupExpiredCache,
-  invalidateCacheByPattern
-} from '../semantic-cache';
 import { getDB } from '@/lib/db/sqlite-client';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+    cleanupExpiredCache,
+    getCachedResponse,
+    getCacheStats,
+    invalidateCacheByPattern,
+    setCachedResponse
+} from '../semantic-cache';
 
 describe('Semantic Cache', () => {
   beforeEach(() => {
@@ -39,7 +39,7 @@ describe('Semantic Cache', () => {
 
       setCachedResponse(prompt, model, temperature, responseData, tokensUsed);
 
-      const cached = getCachedResponse(prompt, model, temperature);
+      const cached = await getCachedResponse(prompt, model, temperature);
       expect(cached).not.toBeNull();
       expect(cached?.data).toEqual(responseData);
       expect(cached?.metadata.tokens_saved).toBe(tokensUsed);
@@ -79,7 +79,7 @@ describe('Semantic Cache', () => {
 
       setCachedResponse(prompt, model, temperature, responseData, 150);
 
-      const cached = getCachedResponse(prompt, model, temperature);
+      const cached = await getCachedResponse(prompt, model, temperature);
       
       expect(cached).not.toBeNull();
       expect(cached?.metadata.cache_hit_type).toBe('exact');
@@ -95,7 +95,7 @@ describe('Semantic Cache', () => {
 
       setCachedResponse(originalPrompt, model, temperature, responseData, 200);
 
-      const cached = getCachedResponse(similarPrompt, model, temperature, 0.9);
+      const cached = await getCachedResponse(similarPrompt, model, temperature, 0.9);
       
       expect(cached).not.toBeNull();
       expect(cached?.metadata.cache_hit_type).toBe('semantic');
@@ -143,15 +143,15 @@ describe('Semantic Cache', () => {
   });
 
   describe('getCacheStats', () => {
-    it('should return zero stats for empty cache', () => {
-      const stats = getCacheStats();
+    it('should return zero stats for empty cache', async () => {
+      const stats = await getCacheStats();
       
       expect(stats.totalEntries).toBe(0);
       expect(stats.totalHits).toBe(0);
       expect(stats.totalTokensSaved).toBe(0);
     });
 
-    it('should calculate stats correctly after caching', () => {
+    it('should calculate stats correctly after caching', async () => {
       const prompt = 'Stats test';
       const model = 'claude-sonnet-4-20250514';
       const temperature = 0.4;
@@ -159,10 +159,10 @@ describe('Semantic Cache', () => {
       setCachedResponse(prompt, model, temperature, { data: 'test' }, 100);
       
       // Hit cache twice
-      getCachedResponse(prompt, model, temperature);
-      getCachedResponse(prompt, model, temperature);
+      await getCachedResponse(prompt, model, temperature);
+      await getCachedResponse(prompt, model, temperature);
 
-      const stats = getCacheStats();
+      const stats = await getCacheStats();
       
       expect(stats.totalEntries).toBe(1);
       expect(stats.totalHits).toBe(2);
