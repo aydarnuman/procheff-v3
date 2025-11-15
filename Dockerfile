@@ -31,16 +31,19 @@ RUN npm ci
 COPY . .
 
 # Build Next.js application
-# Set build-time environment variables
+# Set build-time environment variables to prevent DB initialization
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PHASE=phase-production-build
-ENV DB_MODE=sqlite
 ENV SKIP_BUILD_DB_INIT=true
-ENV DATABASE_PATH="/tmp/build.db"
 ENV NODE_ENV=production
 ENV ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-sk-default}
 ENV GOOGLE_API_KEY=${GOOGLE_API_KEY:-sk-default}
 ENV ANTHROPIC_MODEL=claude-sonnet-4-20250514
+
+# Create dummy database file for build if needed
+RUN mkdir -p /tmp && touch /tmp/build.db
+
+# Run build
 RUN npm run build
 
 # Stage 3: Runner
@@ -81,8 +84,8 @@ USER nextjs
 # Expose port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+# Health check with longer timeout for DB connection
+HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
     CMD node -e "require('http').get('http://localhost:8080/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start application
