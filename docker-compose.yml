@@ -39,14 +39,23 @@ services:
       - PORT=8080
       # PostgreSQL Connection (Primary)
       - DATABASE_URL=postgresql://procheff_user:${POSTGRES_PASSWORD:-procheff_password_change_me}@postgres:5432/procheff
-      # SQLite Fallback
+      # Database Configuration
       - DATABASE_PATH=/app/data/procheff.db
+      - DB_MODE=postgres
+      - DB_DISABLE_SSL=true
+      - DB_REQUIRE_SSL=false
+      # Auth
       - NEXTAUTH_URL=http://localhost:3001
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      # AI Services
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}
-      - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}
+      - GEMINI_API_KEY=${GOOGLE_API_KEY}
+      # Redis (Upstash)
+      - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL:-}
+      - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN:-}
+      # Local Redis Fallback
+      - REDIS_URL=redis://redis:6379
     volumes:
       - procheff-data:/app/data
       - procheff-uploads:/app/public/uploads
@@ -82,35 +91,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # Background Worker (Optional)
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: procheff-worker
-    environment:
-      - NODE_ENV=production
-      - WORKER_MODE=true
-      # PostgreSQL Connection
-      - DATABASE_URL=postgresql://procheff_user:${POSTGRES_PASSWORD:-procheff_password_change_me}@postgres:5432/procheff
-      # SQLite Fallback
-      - DATABASE_PATH=/app/data/procheff.db
-      - REDIS_URL=redis://redis:6379
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-    volumes:
-      - procheff-data:/app/data
-      - procheff-uploads:/app/public/uploads
-    restart: unless-stopped
-    networks:
-      - procheff-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: ["node", "worker.js"]
 
 volumes:
   postgres-data:

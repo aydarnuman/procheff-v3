@@ -32,6 +32,9 @@ COPY . .
 
 # Build Next.js application
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PHASE=phase-production-build
+ENV DATABASE_MODE=sqlite
+ENV DATABASE_PATH="/tmp/build.db"
 RUN npm run build
 
 # Stage 3: Runner
@@ -57,14 +60,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 
-# Create data directory for SQLite
+# Create data directory (for logs and cache)
 RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 
 # Environment variables
 ENV NODE_ENV=production
 ENV PORT=8080
 ENV HOSTNAME="0.0.0.0"
-ENV DATABASE_PATH="/app/data/procheff.db"
+# Note: DATABASE_URL will be set by docker-compose for PostgreSQL
 
 # Switch to non-root user
 USER nextjs

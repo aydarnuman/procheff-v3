@@ -1,5 +1,5 @@
 // Type-only imports to prevent client-side bundling
-import type { QueryParams, DatabaseRow } from '@/types/database';
+import type { DatabaseRow, QueryParams } from '@/types/database';
 
 // Use 'any' for pg types to prevent client-side issues
 type Pool = any;
@@ -22,6 +22,19 @@ let isShuttingDown = false;
 /**
  * PostgreSQL Pool Configuration
  */
+console.log('🔍 [DEBUG] DATABASE_URL:', process.env.DATABASE_URL?.substring(0, 50) + '...');
+console.log('🔍 [DEBUG] DB_MODE:', process.env.DB_MODE);
+console.log('🔍 [DEBUG] USE_POSTGRES:', process.env.USE_POSTGRES);
+
+const shouldDisableSSL = process.env.DB_DISABLE_SSL === 'true' || process.env.PGSSLMODE === 'disable';
+const shouldForceSSL = process.env.DB_REQUIRE_SSL === 'true' || process.env.DATABASE_URL?.includes('sslmode=require');
+
+const resolvedSSL = shouldDisableSSL
+  ? false
+  : shouldForceSSL
+    ? { rejectUnauthorized: false, require: true }
+    : false;
+
 const poolConfig = {
   connectionString: process.env.DATABASE_URL,
   // Connection pool settings
@@ -29,14 +42,7 @@ const poolConfig = {
   min: 2,                     // Minimum number of clients in pool
   idleTimeoutMillis: 30000,   // Close idle clients after 30 seconds
   connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection cannot be established
-  
-  // SSL configuration - check if connection string requires SSL
-  ssl: process.env.DATABASE_URL?.includes('sslmode=require') ? {
-    rejectUnauthorized: false,
-    require: true
-  } : process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : false
+  ssl: resolvedSSL
 };
 
 /**

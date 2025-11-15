@@ -114,6 +114,9 @@ export class AILoggerPostgres {
     this.info(`📊 Session başladı: ${sessionId}`);
   }
 
+  // Alias for compatibility
+  static sessionStart = this.startSession;
+
   static endSession(sessionId: string, status: "completed" | "failed" = "completed") {
     const session = this.activeSessions.get(sessionId);
     
@@ -135,6 +138,22 @@ export class AILoggerPostgres {
       }
       
       this.activeSessions.delete(sessionId);
+    }
+  }
+
+  // Alias for compatibility
+  static sessionEnd = this.endSession;
+
+  // General log method
+  static log(message: string, data?: unknown) {
+    this.info(message, data);
+  }
+
+  // Debug method
+  static debug(message: string, data?: unknown) {
+    if (process.env.NODE_ENV === 'development') {
+      console.debug(`[AI DEBUG] ${message}`, data);
+      this.saveToDB("info", `[DEBUG] ${message}`, data);
     }
   }
 

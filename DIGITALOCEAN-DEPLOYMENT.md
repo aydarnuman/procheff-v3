@@ -69,6 +69,9 @@ Apps → Settings → App-Level Environment Variables
 ```bash
 # Database
 DATABASE_URL=postgresql://doadmin:XXXX@db-postgresql-fra1-12345.ondigitalocean.com:25060/procheff?sslmode=require
+DB_MODE=postgres
+DB_REQUIRE_SSL=true
+DB_DISABLE_SSL=false
 
 # NextAuth
 NEXTAUTH_URL=https://your-app.ondigitalocean.app
@@ -90,6 +93,8 @@ NEXT_PUBLIC_APP_VERSION=3.0.0
 # Build Settings
 SKIP_BUILD_DB_INIT=false
 ```
+
+> 💡 **Not:** DigitalOcean Managed PostgreSQL SSL zorunludur. Local Docker veya VPS içindeki `postgres` servisine bağlanırken `DB_REQUIRE_SSL=false` ve `DB_DISABLE_SSL=true` ayarlayın; aksi halde `The server does not support SSL connections` hatası alırsınız.
 
 **NEXTAUTH_SECRET Oluşturma:**
 ```bash
@@ -140,6 +145,9 @@ cp env.example .env.local
 ```bash
 # PostgreSQL container kullanacağız
 DATABASE_URL=postgresql://procheff_user:procheff_password_change_me@postgres:5432/procheff
+DB_MODE=postgres
+DB_REQUIRE_SSL=false
+DB_DISABLE_SSL=true
 
 # Diğer secrets'ları ekle
 ANTHROPIC_API_KEY=sk-ant-your-key
@@ -197,7 +205,8 @@ echo $DATABASE_URL
 # App'in IP'sini ekle veya "All addresses" seç (development için)
 
 # 3. SSL mode doğru mu?
-# CONNECTION_STRING'de ?sslmode=require olmalı
+# Managed PostgreSQL için CONNECTION_STRING'de ?sslmode=require olmalı ve DB_REQUIRE_SSL=true olmalı
+# Local Docker için DB_REQUIRE_SSL=false ve DB_DISABLE_SSL=true kullan
 ```
 
 ### **Yavaş Performans**

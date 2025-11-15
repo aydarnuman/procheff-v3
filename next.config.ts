@@ -66,6 +66,17 @@ const nextConfig: NextConfig = {
       };
     }
 
+    // ✅ Fix critical dependency warnings for dynamic imports
+    config.module.parser = {
+      ...config.module.parser,
+      javascript: {
+        ...config.module.parser?.javascript,
+        // Suppress critical dependency warnings for dynamic imports
+        exprContextCritical: false,
+        wrappedContextCritical: false,
+      },
+    };
+
     // ✅ Tesseract WASM Support
     // Disable Node worker module for Tesseract - force WASM mode
     config.resolve.alias = {
@@ -78,6 +89,8 @@ const nextConfig: NextConfig = {
     config.externals.push({
       'better-sqlite3': 'commonjs better-sqlite3',
       '@napi-rs/canvas': 'commonjs @napi-rs/canvas',
+      'pg': 'commonjs pg',
+      'pg-pool': 'commonjs pg-pool',
     });
 
     return config;

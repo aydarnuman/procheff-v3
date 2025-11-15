@@ -103,6 +103,9 @@ export class AILogger {
     this.info(`Oturum başlatıldı: ${sessionId}`, { sessionId });
   }
 
+  // Alias for compatibility
+  static startSession = this.sessionStart;
+
   /**
    * End a session with status
    */
@@ -128,6 +131,22 @@ export class AILogger {
       status,
       duration
     });
+  }
+
+  // Alias for compatibility
+  static endSession = this.sessionEnd;
+
+  // General log method
+  static log(message: string, data?: unknown) {
+    this.info(message, data);
+  }
+
+  // Debug method
+  static debug(message: string, data?: unknown) {
+    if (process.env.NODE_ENV === 'development') {
+      console.debug(`[AI DEBUG] ${message}`, data);
+      this.saveToDB("info", `[DEBUG] ${message}`, data);
+    }
   }
 
   /**

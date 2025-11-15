@@ -30,6 +30,7 @@ class UniversalAILogger {
     try {
       // Check if we should use PostgreSQL
       const usePostgres = 
+        process.env.USE_POSTGRES === "true" ||
         process.env.USE_POSTGRES_FOR_AI === "true" ||
         process.env.DB_MODE === "postgres" ||
         process.env.DB_MODE === "dual" ||
@@ -37,12 +38,10 @@ class UniversalAILogger {
 
       if (usePostgres) {
         // Completely dynamic import to prevent webpack bundling
-        const loggerPath = './logger-postgres';
-        const loggerModule = await import(loggerPath);
+        const loggerModule = await import('./logger-postgres');
         this.serverLogger = loggerModule.AILogger;
       } else {
-        const loggerPath = './logger-sqlite';
-        const loggerModule = await import(loggerPath);
+        const loggerModule = await import('./logger-sqlite');
         this.serverLogger = loggerModule.AILogger;
       }
       

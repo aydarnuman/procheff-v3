@@ -14,7 +14,11 @@ services:
       NODE_ENV: production
       PORT: 8080
       HOSTNAME: "0.0.0.0"
+      DATABASE_URL: ${DATABASE_URL}
       DATABASE_PATH: "/app/data/procheff.db"
+      DB_MODE: ${DB_MODE:-postgres}
+      DB_REQUIRE_SSL: ${DB_REQUIRE_SSL:-true}
+      DB_DISABLE_SSL: ${DB_DISABLE_SSL:-false}
 
       # API Keys (set via .env file)
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
