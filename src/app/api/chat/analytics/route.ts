@@ -3,14 +3,17 @@
  * Returns chat usage metrics
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { chatAnalytics } from '@/lib/chat/analytics-tracker';
 import { AILogger } from '@/lib/ai/logger';
+import { getChatAnalytics } from '@/lib/chat/analytics-tracker';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { timeRange, action } = body;
+
+    // Lazy-init tracker
+    const chatAnalytics = getChatAnalytics();
 
     // Get metrics for specified time range
     if (timeRange) {
@@ -83,6 +86,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const chatAnalytics = getChatAnalytics();
     // Get query parameters
     const { searchParams } = new URL(req.url);
     const conversationId = searchParams.get('conversationId');

@@ -267,8 +267,8 @@ function setupGracefulShutdown(): void {
   // Handle unhandled promise rejections
   process.on('unhandledRejection', async (reason, promise) => {
     console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-    await closePool();
-    process.exit(1);
+    try { await closePool(); } catch {}
+    // Do not exit; let the server continue to run
   });
 }
 

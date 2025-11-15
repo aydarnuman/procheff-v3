@@ -18,15 +18,14 @@ let pgQuery: ((sql: string, params?: QueryParams) => Promise<{ rows: DatabaseRow
 let getClient: (() => Promise<{ query: (sql: string, params?: QueryParams) => Promise<unknown>; release: () => void }>) | null = null;
 
 // Determine database mode based on available environment variables
-// In production, default to postgres if NODE_ENV is production
 const USE_POSTGRES = process.env.USE_POSTGRES === 'true';
 const HAS_DATABASE_URL = !!process.env.DATABASE_URL;
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const IS_BUILD_PHASE = process.env.NEXT_PHASE === 'phase-production-build' || process.env.SKIP_BUILD_DB_INIT === 'true';
 
-// Force postgres in production even if env vars are undefined during build
-const DB_MODE = process.env.DB_MODE || 
-  (IS_PRODUCTION ? 'postgres' : 
-   (USE_POSTGRES && HAS_DATABASE_URL ? 'postgres' : 'sqlite'));
+// Build aşamasında her zaman SQLite kullan; runtime'da env'e göre belirle
+const DB_MODE = IS_BUILD_PHASE
+  ? 'sqlite'
+  : (process.env.DB_MODE || ((USE_POSTGRES && HAS_DATABASE_URL) || HAS_DATABASE_URL ? 'postgres' : 'sqlite'));
 
 /**
  * Universal Database Interface
@@ -338,8 +337,10 @@ export function getDBMode(): string {
   return DB_MODE;
 }
 
-// Log current mode on initialization
-console.log(`🗄️  Database mode: ${DB_MODE.toUpperCase()}`);
+// Build aşamasında loglama yapma
+if (!IS_BUILD_PHASE) {
+  console.log(`🗄️  Database mode: ${DB_MODE.toUpperCase()}`);
+}
 
 
 

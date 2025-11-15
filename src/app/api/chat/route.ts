@@ -3,15 +3,15 @@
  * Integrates with MCP memory for context-aware responses
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { AIProviderFactory } from '@/lib/ai/provider-factory';
 import { AILogger } from '@/lib/ai/logger';
-import { MemoryManager } from '@/lib/chat/memory-manager';
-import { LearningEngine } from '@/lib/chat/learning-engine';
-import { isCommand, executeCommand } from '@/lib/chat/commands';
+import { AIProviderFactory } from '@/lib/ai/provider-factory';
 import { estimateTokens } from '@/lib/ai/utils';
-import { chatAnalytics } from '@/lib/chat/analytics-tracker';
+import { getChatAnalytics } from '@/lib/chat/analytics-tracker';
+import { executeCommand, isCommand } from '@/lib/chat/commands';
 import { domainKnowledge, type DomainContext } from '@/lib/chat/domain-knowledge';
+import { LearningEngine } from '@/lib/chat/learning-engine';
+import { MemoryManager } from '@/lib/chat/memory-manager';
+import { NextRequest, NextResponse } from 'next/server';
 
 const CHAT_ASSISTANT_PROMPT = `
 SYSTEM TALİMATI:
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    // Track user message
+    const chatAnalytics = getChatAnalytics();
     await chatAnalytics.trackMessage({
       messageId,
       conversationId,

@@ -81,6 +81,12 @@ export class ChatAnalyticsTracker {
    */
   private async initDatabase(): Promise<void> {
     try {
+      // Build aşamasında DB şema kurulumunu atla
+      if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.SKIP_BUILD_DB_INIT === 'true') {
+        AILogger.info('Skipping chat analytics DB init (build phase)');
+        return;
+      }
+
       const db = await this.getDB();
       const sql = getSQLSyntax();
       
@@ -551,8 +557,7 @@ export class ChatAnalyticsTracker {
   }
 }
 
-// Export singleton instance
-export const chatAnalyticsTracker = ChatAnalyticsTracker.getInstance();
-
-// Export for backward compatibility
-export const chatAnalytics = chatAnalyticsTracker;
+// Factory export: lazy-init, modül yüklemede tetikleme yok
+export function getChatAnalytics(): ChatAnalyticsTracker {
+  return ChatAnalyticsTracker.getInstance();
+}

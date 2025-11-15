@@ -34,7 +34,8 @@ COPY . .
 # Set build-time environment variables
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PHASE=phase-production-build
-ENV DATABASE_MODE=sqlite
+ENV DB_MODE=sqlite
+ENV SKIP_BUILD_DB_INIT=true
 ENV DATABASE_PATH="/tmp/build.db"
 ENV NODE_ENV=production
 ENV ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-sk-default}
