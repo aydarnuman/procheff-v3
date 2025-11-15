@@ -113,7 +113,7 @@ export function UltimateFileUploader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const folderMapRef = useRef<Map<File, string>>(new Map());
-  const { success, error, warning, info, loading, updateToast, removeToast } = useToast();
+  const { success, error: showError, warning, info, loading, updateToast, removeToast } = useToast();
   
   // Loading state for initial document load from detail page
   const [isLoadingFromDetail, setIsLoadingFromDetail] = useState(false);
@@ -184,8 +184,8 @@ export function UltimateFileUploader() {
       ctx.fillText(size, canvas.width / 2, canvas.height / 2 + 60);
       
       return canvas.toDataURL('image/png');
-    } catch (e) {
-      console.error('PDF thumbnail generation failed:', e);
+    } catch (error) {
+      console.error('PDF thumbnail generation failed:', error);
       return undefined;
     }
   };
@@ -430,9 +430,9 @@ export function UltimateFileUploader() {
           }
         }
       }
-    } catch (err) {
-      console.error('File processing error:', err);
-      const message = err instanceof Error ? err.message : 'İşlem başarısız';
+    } catch (error) {
+      console.error('File processing error:', error);
+      const message = error instanceof Error ? error.message : 'İşlem başarısız';
       setFiles(prev => prev.map(f => 
         f.id === fileId 
           ? { 
@@ -444,7 +444,7 @@ export function UltimateFileUploader() {
           : f
       ));
       
-      error(`${fileItem.file.name} işlenemedi`, err instanceof Error ? err.message : String(err));
+      showError(`${fileItem.file.name} işlenemedi`, error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -485,14 +485,14 @@ export function UltimateFileUploader() {
       } else {
         throw new Error(result.error || 'Chunk upload failed');
       }
-    } catch (err) {
+    } catch (error) {
       removeToast(loadingId);
       setFiles(prev => prev.map(f => 
         f.id === fileId 
-          ? { ...f, status: 'error', error: err instanceof Error ? err.message : String(err), endTime: Date.now() }
+          ? { ...f, status: 'error', error: error instanceof Error ? error.message : String(error), endTime: Date.now() }
           : f
       ));
-      error(`${fileItem.file.name} yüklenemedi`, err instanceof Error ? err.message : String(err));
+      showError(`${fileItem.file.name} yüklenemedi`, error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -503,7 +503,7 @@ export function UltimateFileUploader() {
   /**
    * Handle tender selection - fetch all documents and add to file list
    */
-  const handleTenderSelect = async (tender: any) => {
+  const handleTenderSelect = async (tender: { id: string; title: string; organization?: string; deadline?: string; documents?: { url: string; name: string; format?: string }[] }) => {
     setIsLoadingTender(true);
     const loadingId = loading(
       `🏢 ${tender.title}`,
@@ -924,16 +924,16 @@ export function UltimateFileUploader() {
       // 5. Hemen sonuç sayfasına yönlendir (polling yapacak)
       router.push(`/analysis/${analysisId}`);
 
-    } catch (err) {
+    } catch (error) {
       removeToast(loadingId);
 
-      const errorMessage = err instanceof Error ? err.message : 'Bilinmeyen hata';
-      error('💥 Analiz Başarısız', errorMessage);
+      const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata';
+      showError('💥 Analiz Başarısız', errorMessage);
 
       AILogger.error('Deep analysis error', { error: errorMessage });
       AILogger.sessionEnd(analysisId, 'failed');
 
-      console.error('Deep analysis error:', err);
+      console.error('Deep analysis error:', error);
     } finally {
       setIsAnalyzing(false);
     }
@@ -1118,7 +1118,7 @@ export function UltimateFileUploader() {
           allFiles.push(...extractedFiles);
           success(`${file.name} açıldı`, `${result.files.length} dosya çıkarıldı`);
         } else {
-          error(`${file.name} açılamadı`, result.error || 'Bilinmeyen hata');
+          showError(`${file.name} açılamadı`, result.error || 'Bilinmeyen hata');
         }
       } else {
         // Normal dosya
@@ -1450,8 +1450,8 @@ export function UltimateFileUploader() {
                     if (lastPart && lastPart.includes('.')) {
                       filename = lastPart;
                     }
-                  } catch (e) {
-                    console.warn('Failed to parse URL for filename:', e);
+                  } catch (error) {
+                    console.warn('Failed to parse URL for filename:', error);
                   }
                 }
 
@@ -1498,8 +1498,8 @@ export function UltimateFileUploader() {
                   message: `📄 ${filename} indirildi`
                 });
               }
-            } catch (err) {
-              console.error('Failed to load document:', err);
+            } catch (error) {
+              console.error('Failed to load document:', error);
               // Don't show individual error toasts, will be handled in final catch
             }
           }
@@ -1529,8 +1529,8 @@ export function UltimateFileUploader() {
                 description: `${completedFiles}/${totalFiles} dosya hazır`,
                 progress: Math.round((completedFiles / totalFiles) * 100)
               });
-            } catch (err) {
-              console.error(`❌ ${format.toUpperCase()} export error:`, err);
+            } catch (error) {
+              console.error(`❌ ${format.toUpperCase()} export error:`, error);
               // Don't show individual error toasts, will be handled in final catch
             }
           }
@@ -1611,8 +1611,8 @@ export function UltimateFileUploader() {
         
         // Hide loading overlay
         setIsLoadingFromDetail(false);
-      } catch (err) {
-        console.error('Error loading documents from storage:', err);
+      } catch (error) {
+        console.error('Error loading documents from storage:', error);
         
         // Hide loading overlay on error
         setIsLoadingFromDetail(false);
@@ -1623,7 +1623,7 @@ export function UltimateFileUploader() {
           updateToast(progressToastId, {
             type: 'error',
             title: '❌ Yükleme hatası',
-            description: err instanceof Error ? err.message : 'Bilinmeyen hata',
+            description: error instanceof Error ? error.message : 'Bilinmeyen hata',
             progress: undefined,
             persistent: false
           });
@@ -2134,13 +2134,8 @@ export function UltimateFileUploader() {
                 const isSelected = selectedFiles.has(fileItem.id);
                 const isProcessing = fileItem.status !== 'idle' && fileItem.status !== 'complete' && fileItem.status !== 'error';
                 const detection = fileItem.smartDetection;
-                const qualityBadgeClass = detection
-                  ? detection.quality === 'Yüksek'
-                    ? 'bg-green-600/20 text-green-400'
-                    : detection.quality === 'Orta'
-                      ? 'bg-yellow-600/20 text-yellow-400'
-                      : 'bg-red-600/20 text-red-400'
-                  : '';
+                // Removed unused qualityBadgeClass variable
+                
                 const languageLabel = detection
                   ? detection.language === 'TR'
                     ? 'TR'

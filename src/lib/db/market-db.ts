@@ -291,7 +291,7 @@ export function getPriceLevel(price: number, allPrices: number[]): string {
   const sorted = [...allPrices].sort((a, b) => a - b);
   const avg = sorted.reduce((sum, p) => sum + p, 0) / sorted.length;
   const min = sorted[0];
-  const max = sorted[sorted.length - 1];
+  // const max = sorted[sorted.length - 1];  // Unused variable
   
   if (price === min) return 'best_price'; // 🏆
   if (price < avg * 0.9) return 'cheap'; // ✅

@@ -74,9 +74,9 @@ export function useAutoSave<T>({
       await onSave(dataRef.current);
       setLastSaved(new Date());
       hasChangesRef.current = false;
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Save failed'));
-      console.error('Auto-save error:', err);
+    } catch (error) {
+      setError(error instanceof Error ? error : new Error('Save failed'));
+      console.error('Auto-save error:', error);
     } finally {
       setIsSaving(false);
     }

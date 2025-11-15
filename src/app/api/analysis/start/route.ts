@@ -6,9 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AILogger } from '@/lib/ai/logger';
 import { DataPoolManager } from '@/lib/state/data-pool-manager';
-import { createSSEResponse } from '@/lib/utils/sse-stream';
-import type { SSEStream } from '@/lib/utils/sse-stream';
-import type { DataPool } from '@/lib/document-processor/types';
+
+import type {} from '@/lib/utils/sse-stream';
+import type {} from '@/lib/document-processor/types';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     if (tempAnalysisId) {
       try {
         await DataPoolManager.delete(tempAnalysisId);
-      } catch (e) {
+      } catch (error) {
         // Ignore deletion errors
       }
     }

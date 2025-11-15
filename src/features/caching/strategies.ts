@@ -94,9 +94,9 @@ export async function cacheWithSWR<T>(
           key,
           { data: freshData, timestamp: Date.now() },
           { ttl }
-        ).catch((err) => console.error(`[SWR] Failed to update ${key}:`, err));
+        ).catch((error) => console.error(`[SWR] Failed to update ${key}:`, error));
       })
-      .catch((err) => console.error(`[SWR] Revalidation failed for ${key}:`, err));
+      .catch((error) => console.error(`[SWR] Revalidation failed for ${key}:`, error));
 
     return staleData;
   }

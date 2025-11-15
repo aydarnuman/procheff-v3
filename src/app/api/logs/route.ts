@@ -9,8 +9,8 @@ export async function GET() {
       .all();
     
     return NextResponse.json({ success: true, logs });
-  } catch (err) {
-    const error = err instanceof Error ? err.message : "Failed to fetch logs";
-    return NextResponse.json({ success: false, error }, { status: 500 });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to fetch logs";
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }

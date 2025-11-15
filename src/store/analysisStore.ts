@@ -367,8 +367,8 @@ export function useLoadAnalysis(id: string) {
           }
         }
 
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Unknown error');
         setLoading(false);
         
         // Stop polling on error

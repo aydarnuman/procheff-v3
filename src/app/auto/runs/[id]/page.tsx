@@ -51,7 +51,7 @@ function pretty(obj: unknown) {
   try {
     const str = JSON.stringify(obj, null, 2) || "-";
     return str.length > MAX_JSON ? `${str.slice(0, MAX_JSON)}\n... (truncated)` : str;
-  } catch {
+  } catch (error) {
     return "-";
   }
 }
@@ -78,8 +78,8 @@ export default function OrchestrationRunPage() {
       } else {
         throw new Error(data.error || "Job not found");
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
       setError(msg);
       toast.error(`Kayıt alınamadı: ${msg}`);
     } finally {
@@ -109,7 +109,7 @@ export default function OrchestrationRunPage() {
     if (!detail?.result) return null;
     try {
       return JSON.parse(detail.result) as OrchestrationResult;
-    } catch {
+    } catch (error) {
       return null;
     }
   }, [detail?.result]);
@@ -128,7 +128,7 @@ export default function OrchestrationRunPage() {
     }
     try {
       return JSON.parse(detail.steps_json);
-    } catch {
+    } catch (error) {
       return [];
     }
   }, [detail?.steps_json]);
@@ -152,7 +152,7 @@ export default function OrchestrationRunPage() {
       if (!res.ok || !json?.jobId) throw new Error("Yeniden başlatma başarısız");
       toast.success("Yeni pipeline başlatıldı");
       router.push("/auto");
-    } catch {
+    } catch (error) {
       toast.error("Yeniden çalıştırılamadı");
     }
   };
@@ -170,8 +170,8 @@ export default function OrchestrationRunPage() {
       } else {
         throw new Error(data.error);
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Bilinmeyen hata";
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Bilinmeyen hata";
       toast.error("Silme işlemi başarısız: " + msg);
     }
   };

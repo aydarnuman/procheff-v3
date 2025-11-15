@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
           unit: item.unit,
           ...data,
         });
-      } catch (_error) {
+      } catch (error) {
         results.push({
           product: item.product,
           unit: item.unit,

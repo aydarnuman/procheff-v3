@@ -298,3 +298,4 @@ export function getDBMode(): string {
 // Log current mode on initialization
 console.log(`🗄️  Database mode: ${DB_MODE.toUpperCase()}`);
 
+

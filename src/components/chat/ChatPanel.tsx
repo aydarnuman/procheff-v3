@@ -26,7 +26,7 @@ import { AnalyticsWidget } from './AnalyticsWidget';
 import { FeedbackMetrics } from './FeedbackWidget';
 
 export function ChatPanel() {
-  const { isOpen, close, minimize, isMinimized } = useChatWidget();
+  const { isOpen, close} = useChatWidget();
   const { messages, sendMessage, clearHistory, isLoading } = useChatStore();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 

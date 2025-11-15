@@ -159,7 +159,7 @@ export default function PerformanceSettingsPage() {
               <div>
                 <p className="font-semibold">Rate Limiting Aktif</p>
                 <p className="text-sm text-gray-400">
-                  API isteklerini sınırlandırır ve abuse'i önler
+                  API isteklerini sınırlandırır ve abuse&rsquo;i önler
                 </p>
               </div>
               <label htmlFor="rate-limiting-enabled" className="relative inline-flex items-center cursor-pointer">
@@ -207,7 +207,7 @@ export default function PerformanceSettingsPage() {
                 <div>
                   <p className="text-sm font-medium mb-2">Endpoint Limitleri</p>
                   <div className="space-y-2 text-sm text-gray-400">
-                    <p>Endpoint bazlı limitler backend'de tanımlıdır.</p>
+                    <p>Endpoint bazlı limitler backend&rsquo;de tanımlıdır.</p>
                     <p className="text-xs">
                       Değiştirmek için: <code className="bg-slate-800 px-2 py-1 rounded">src/features/config.ts</code>
                     </p>
@@ -231,7 +231,7 @@ export default function PerformanceSettingsPage() {
               <div>
                 <p className="font-semibold">Caching Aktif</p>
                 <p className="text-sm text-gray-400">
-                  AI analiz sonuçlarını cache'ler, performansı artırır
+                  AI analiz sonuçlarını cache&rsquo;ler, performansı artırır
                 </p>
               </div>
               <label htmlFor="caching-enabled" className="relative inline-flex items-center cursor-pointer">
@@ -274,7 +274,7 @@ export default function PerformanceSettingsPage() {
                   aria-label="Default cache TTL - saniye cinsinden"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  Cache'lenmiş verilerin ne kadar süre geçerli kalacağı
+                  Cache&rsquo;lenmiş verilerin ne kadar süre geçerli kalacağı
                 </p>
               </div>
             )}
@@ -328,12 +328,12 @@ export default function PerformanceSettingsPage() {
                   placeholder="https://your-redis.upstash.io"
                   className="glass p-3 rounded-lg w-full bg-transparent text-white border border-slate-700"
                   disabled
-                  title="Redis bağlantı URL'i"
-                  aria-label="Redis bağlantı URL'i"
+                  title="Redis bağlantı URL&rsquo;i"
+                  aria-label="Redis bağlantı URL&rsquo;i"
                 />
                 <p className="text-xs text-yellow-400 mt-1 flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3" />
-                  Environment variable'dan yönetilir: UPSTASH_REDIS_REST_URL
+                  Environment variable&rsquo;dan yönetilir: UPSTASH_REDIS_REST_URL
                 </p>
               </div>
 
@@ -357,7 +357,7 @@ export default function PerformanceSettingsPage() {
                 />
                 <p className="text-xs text-yellow-400 mt-1 flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3" />
-                  Environment variable'dan yönetilir: UPSTASH_REDIS_REST_TOKEN
+                  Environment variable&rsquo;dan yönetilir: UPSTASH_REDIS_REST_TOKEN
                 </p>
               </div>
             </div>

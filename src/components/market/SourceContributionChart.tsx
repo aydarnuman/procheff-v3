@@ -20,6 +20,81 @@ interface SourceContributionChartProps {
  *
  * Fixes: "Fiyat güvenilirlik kaynağı belirsiz" problemi
  */
+interface ContributionPayload {
+  name: string;
+  value: number;
+  fill: string;
+  icon: string;
+  details: string;
+}
+
+interface ChartTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload?: ContributionPayload }>;
+}
+
+interface ChartLegendPayload {
+  color?: string;
+  value?: string | number;
+  payload?: ContributionPayload;
+}
+
+function SourceTooltip({ active, payload }: ChartTooltipProps) {
+  if (active && payload && payload.length) {
+    const data = payload[0]?.payload;
+    if (!data) return null;
+
+    return (
+      <div className="glass-card p-3 border border-white/20">
+        <p className="font-semibold text-white flex items-center gap-2">
+          <span>{data.icon}</span>
+          <span>{data.name}</span>
+        </p>
+        <p className="text-emerald-400 text-lg font-bold">
+          {data.value.toFixed(1)}%
+        </p>
+        <p className="text-slate-300 text-sm mt-1">
+          {data.details}
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
+
+function SourceLegend({ payload }: { payload?: ChartLegendPayload[] }) {
+  if (!payload) return null;
+
+  return (
+    <div className="flex flex-col gap-2 mt-4">
+      {payload.map((entry, index) => {
+        const legendPayload = entry?.payload;
+        if (!legendPayload) return null;
+
+        return (
+          <div
+            key={`legend-${index}`}
+            className="flex items-center justify-between text-sm"
+          >
+            <div className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="text-slate-300">
+                {legendPayload.icon} {entry.value}
+              </span>
+            </div>
+            <span className="font-semibold text-white">
+              {legendPayload.value.toFixed(1)}%
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function SourceContributionChart({
   sourceContribution,
   size = 'md'
@@ -72,55 +147,6 @@ export default function SourceContributionChart({
   // Filter out 0% entries
   const filteredData = chartData.filter(d => d.value > 0);
 
-  // Custom tooltip
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="glass-card p-3 border border-white/20">
-          <p className="font-semibold text-white flex items-center gap-2">
-            <span>{data.icon}</span>
-            <span>{data.name}</span>
-          </p>
-          <p className="text-emerald-400 text-lg font-bold">
-            {data.value.toFixed(1)}%
-          </p>
-          <p className="text-slate-300 text-sm mt-1">
-            {data.details}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // Custom legend
-  const CustomLegend = ({ payload }: any) => {
-    return (
-      <div className="flex flex-col gap-2 mt-4">
-        {payload.map((entry: any, index: number) => (
-          <div
-            key={`legend-${index}`}
-            className="flex items-center justify-between text-sm"
-          >
-            <div className="flex items-center gap-2">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="text-slate-300">
-                {entry.payload.icon} {entry.value}
-              </span>
-            </div>
-            <span className="font-semibold text-white">
-              {entry.payload.value.toFixed(1)}%
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   return (
     <div className="glass-card p-6">
       <div className="flex items-center justify-between mb-4">
@@ -150,8 +176,8 @@ export default function SourceContributionChart({
               <Cell key={`cell-${index}`} fill={entry.fill} />
             ))}
           </Pie>
-          <Tooltip content={<CustomTooltip />} />
-          <Legend content={<CustomLegend />} />
+          <Tooltip content={<SourceTooltip />} />
+          <Legend content={<SourceLegend />} />
         </PieChart>
       </ResponsiveContainer>
 

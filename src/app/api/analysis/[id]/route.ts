@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/db/sqlite-client';
 import { AILogger } from '@/lib/ai/logger';
-import { errorHandler } from '@/lib/middleware/error-handler';
+
 import { createErrorResponse } from '@/lib/utils/error-codes';
 import { DataPoolManager } from '@/lib/state/data-pool-manager';
 
@@ -116,7 +116,7 @@ async function handleGetAnalysis(
     inputFiles = typeof historyRow.input_files === 'string'
       ? JSON.parse(historyRow.input_files)
       : historyRow.input_files || [];
-  } catch (parseError) {
+  } catch (_parseError) {
     AILogger.warn('Failed to parse input files', { analysisId: id });
   }
 

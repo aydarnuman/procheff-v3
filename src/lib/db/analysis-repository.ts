@@ -108,13 +108,13 @@ export class AnalysisRepository {
 
         insertStmt.run(
           result.analysis_id,
-          (result.extracted_fields as any)?.tender_id || null,
+          result.extracted_fields?.ihale_no || null,
           result.status,
-          (result.extracted_fields as any)?.institution || null,
-          (result.extracted_fields as any)?.budget_amount || null,
-          (result.extracted_fields as any)?.person_count || null,
-          (result.extracted_fields as any)?.duration_days || null,
-          (result.extracted_fields as any)?.tender_type || null,
+          result.extracted_fields?.kurum || null,
+          result.extracted_fields?.tahmini_butce || null,
+          result.extracted_fields?.kisi_sayisi || null,
+          result.extracted_fields?.gun_sayisi || null,
+          result.extracted_fields?.ihale_turu || null,
           result.contextual?.genel_degerlendirme?.puan || null,
           result.market?.comparison?.risk_level || null,
           result.validation?.data_quality_score || null,
@@ -130,15 +130,15 @@ export class AnalysisRepository {
         // Update FTS index
         if (result.data_pool) {
           const textContent = result.data_pool.textBlocks
-            ?.map((block: any) => block.text)
+            ?.map((block) => block.text)
             .join(' ') || '';
-          
+
           const ftsStmt = db.prepare(`
             INSERT INTO analysis_fts (analysis_id, content)
             VALUES (?, ?)
             ON CONFLICT(analysis_id) DO UPDATE SET content = excluded.content
           `);
-          
+
           ftsStmt.run(result.analysis_id, textContent);
         }
       });
@@ -240,7 +240,7 @@ export class AnalysisRepository {
       expiresAt.setHours(expiresAt.getHours() + ttlHours);
 
       const textContent = dataPool.textBlocks
-        ?.map((block: any) => block.text)
+        ?.map((block) => block.text)
         .join(' ') || '';
 
       // Validate JSON before storing
@@ -307,9 +307,9 @@ export class AnalysisRepository {
    * Returns contextual, market, and deep analysis results
    */
   static getByAnalysisId(analysisId: string): {
-    contextual: any | null;
-    market: any | null;
-    deep: any | null;
+    contextual: unknown | null;
+    market: unknown | null;
+    deep: unknown | null;
   } | null {
     const db = getDB();
     try {
@@ -326,10 +326,14 @@ export class AnalysisRepository {
       if (!rows || rows.length === 0) return null;
 
       // Parse each stage
-      const result = {
-        contextual: null as any,
-        market: null as any,
-        deep: null as any
+      const result: {
+        contextual: unknown | null;
+        market: unknown | null;
+        deep: unknown | null;
+      } = {
+        contextual: null,
+        market: null,
+        deep: null
       };
 
       for (const row of rows) {
@@ -467,7 +471,7 @@ export class AnalysisRepository {
       const result = db.prepare(`
         DELETE FROM data_pools WHERE expires_at < datetime('now')
       `).run();
-      return (result as any).changes || 0;
+      return result.changes || 0;
     } catch (error) {
       console.error('[AnalysisRepository] Failed to cleanup expired DataPools:', error);
       return 0;

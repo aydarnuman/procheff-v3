@@ -15,13 +15,13 @@ import {
 import { proactiveAssistant, type ProactiveSuggestion } from '@/lib/chat/proactive-assistant';
 
 // Helper functions
-const getIcon = (type: string) => {
+const getIcon = (type: string, className = 'w-4 h-4') => {
   switch (type) {
-    case 'alert': return AlertCircle;
-    case 'tip': return Lightbulb;
-    case 'insight': return TrendingUp;
-    case 'reminder': return Clock;
-    default: return Info;
+    case 'alert': return <AlertCircle className={className} />;
+    case 'tip': return <Lightbulb className={className} />;
+    case 'insight': return <TrendingUp className={className} />;
+    case 'reminder': return <Clock className={className} />;
+    default: return <Info className={className} />;
   }
 };
 
@@ -94,27 +94,6 @@ export function ProactiveSuggestions({
         next.delete(suggestion.id);
         return next;
       });
-    }
-  };
-
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'alert': return AlertCircle;
-      case 'tip': return Lightbulb;
-      case 'opportunity': return TrendingUp;
-      case 'reminder': return Clock;
-      case 'insight': return BookOpen;
-      default: return Info;
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical': return 'from-red-500 to-red-600';
-      case 'high': return 'from-orange-500 to-orange-600';
-      case 'medium': return 'from-indigo-500 to-purple-600';
-      case 'low': return 'from-slate-500 to-slate-600';
-      default: return 'from-slate-500 to-slate-600';
     }
   };
 
@@ -222,8 +201,6 @@ function SuggestionItem({
   isDismissed: boolean;
   delay?: number;
 }) {
-  const Icon = getIcon(suggestion.type);
-
   if (isDismissed) return null;
 
   return (
@@ -242,7 +219,7 @@ function SuggestionItem({
           {suggestion.icon ? (
             <span className="text-lg">{suggestion.icon}</span>
           ) : (
-            <Icon className="w-4 h-4 text-white" />
+            getIcon(suggestion.type, 'w-4 h-4 text-white')
           )}
         </div>
 
@@ -313,8 +290,6 @@ function FloatingSuggestion({
   isExecuting: boolean;
   isDismissed: boolean;
 }) {
-  const Icon = getIcon(suggestion.type);
-
   if (isDismissed) return null;
 
   return (
@@ -331,7 +306,7 @@ function FloatingSuggestion({
           {suggestion.icon ? (
             <span className="text-lg">{suggestion.icon}</span>
           ) : (
-            <Icon className="w-5 h-5 text-white" />
+            getIcon(suggestion.type, 'w-5 h-5 text-white')
           )}
         </div>
 

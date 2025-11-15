@@ -90,7 +90,7 @@ export async function webQuote(product_key: string): Promise<MarketQuote | null>
     try {
     const { webQuote: realWebQuote } = await import('./web-real');
     return await realWebQuote(product_key);
-    } catch {
+    } catch (error) {
       // Scraping de başarısızsa null dön
       return null;
     }

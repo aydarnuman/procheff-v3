@@ -174,7 +174,7 @@ export async function migrateToIndexedDB(options: {
           const parsed = JSON.parse(item);
           // Check if it's a StorageItem wrapper
           data = parsed.value !== undefined ? parsed.value : parsed;
-        } catch {
+        } catch (error) {
           // Not JSON, store as-is
           data = item;
         }

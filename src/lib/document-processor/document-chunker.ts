@@ -197,7 +197,7 @@ function chunkSemanticaly(
   let chunkIndex = 0;
   let position = basePosition;
 
-  paragraphs.forEach((para, index) => {
+  paragraphs.forEach((para, _index) => {
     const paraSize = para.length;
 
     // Check if adding this paragraph exceeds max chunk size

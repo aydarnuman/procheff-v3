@@ -30,7 +30,7 @@ export function useAutoResume() {
         localStorage.removeItem(STORAGE_KEY);
         setJobId(null);
       }
-    } catch {
+    } catch (error) {
       localStorage.removeItem(STORAGE_KEY);
       setJobId(null);
     } finally {

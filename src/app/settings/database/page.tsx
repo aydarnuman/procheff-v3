@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Database, Trash2, Download, HardDrive } from "lucide-react";
+import { Trash2, Download, HardDrive } from "lucide-react";
 
 export default function DatabaseSettingsPage() {
   const [dbSize, setDbSize] = useState("0 MB");

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { IntegrationConfig } from "@/lib/integrations/integration-service";
 import { CheckCircle, XCircle, RefreshCw, Settings, TestTube } from "lucide-react";
-import { toast } from "sonner";
+
 
 interface IntegrationToggleProps {
   integration: IntegrationConfig;

@@ -58,8 +58,8 @@ export default function WorkspacePage() {
       setJobId(data.jobId);
       listenJob(data.jobId);
       setStatus("Analiz Başladı");
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Bilinmeyen hata";
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Bilinmeyen hata";
       setStatus("Hata: " + errorMsg);
       setError(errorMsg);
     }

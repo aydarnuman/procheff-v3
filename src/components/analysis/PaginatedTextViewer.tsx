@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatSmartText } from '@/lib/utils/smart-text-formatter';
 

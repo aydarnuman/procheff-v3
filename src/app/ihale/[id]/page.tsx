@@ -112,7 +112,7 @@ export default function IhaleDetailPage() {
     if (selectedFormatsState.json) formats.push('json');
     return formats;
   }, [selectedFormatsState]);
-  const selectedFormatsCount = selectedDataFormats.length;
+  // const selectedFormatsCount = selectedDataFormats.length;  // Unused variable
   const [previewFormat, setPreviewFormat] = useState<string | null>(null); // Önizleme formatı
   const [previewContent, setPreviewContent] = useState<string>(''); // Önizleme içeriği
   const [loadingPreview] = useState(false); // Önizleme yükleniyor mu
@@ -120,7 +120,7 @@ export default function IhaleDetailPage() {
   const [hoverContent, setHoverContent] = useState<string>(''); // Hover önizleme içeriği
   const [loadingHover, setLoadingHover] = useState(false); // Hover önizleme yükleniyor mu
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null); // Hover popup pozisyonu
-  const hoverButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const buttonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Hover kapanma timeout'u
   const [expandedDocuments, setExpandedDocuments] = useState<DocumentType[]>([]); // ZIP içinden çıkarılmış dosyalar
   const [loadingZip, setLoadingZip] = useState<Set<string>>(new Set()); // ZIP açılıyor mu
@@ -156,8 +156,8 @@ export default function IhaleDetailPage() {
         return;
       }
       StorageManager.set(`tender_detail_expanded_${id}`, docs, 24 * 60 * 60 * 1000);
-    } catch (err) {
-      console.warn('Expanded documents cache save failed:', err);
+    } catch (error) {
+      console.warn('Expanded documents cache save failed:', error);
     }
   }, [id]);
 
@@ -169,8 +169,8 @@ export default function IhaleDetailPage() {
         return;
       }
       StorageManager.set(`tender_detail_processed_zip_${id}`, urls, 24 * 60 * 60 * 1000);
-    } catch (err) {
-      console.warn('Processed ZIP cache save failed:', err);
+    } catch (error) {
+      console.warn('Processed ZIP cache save failed:', error);
     }
   }, [id]);
   
@@ -238,8 +238,8 @@ export default function IhaleDetailPage() {
               setError('');
               return; // Skip API fetch
             }
-          } catch (err) {
-            console.warn('Cache read failed:', err);
+          } catch (error) {
+            console.warn('Cache read failed:', error);
           }
         }
 
@@ -331,8 +331,8 @@ export default function IhaleDetailPage() {
               } else {
                 console.warn('⚠️ Skipping cache - tender detail is empty');
               }
-            } catch (err) {
-              console.warn('Cache save failed:', err);
+            } catch (error) {
+              console.warn('Cache save failed:', error);
             }
           })();
           
@@ -1795,10 +1795,10 @@ export default function IhaleDetailPage() {
 
                       console.log('✅ [DEBUG] Storage verified, navigating to analysis page');
                       await router.push('/analysis');
-                      } catch (err) {
-                        console.error('Analiz sayfasına yönlendirme başarısız:', err);
+                      } catch (error) {
+                        console.error('Analiz sayfasına yönlendirme başarısız:', error);
                         setIsRedirecting(false);
-                        const errorMessage = err instanceof Error ? err.message : 'Analiz sayfasına yönlendirme sırasında bir hata oluştu. Lütfen tekrar deneyin.';
+                        const errorMessage = error instanceof Error ? error.message : 'Analiz sayfasına yönlendirme sırasında bir hata oluştu. Lütfen tekrar deneyin.';
                         alert(errorMessage);
                       }
                     }}

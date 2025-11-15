@@ -5,7 +5,7 @@
 
 import { AILogger } from '@/lib/ai/logger';
 import { getDB } from '@/lib/db/sqlite-client';
-import { domainKnowledge } from './domain-knowledge';
+
 import * as TenderExpertModule from './expertise/tender-expert';
 import * as CostExpertModule from './expertise/cost-expert';
 

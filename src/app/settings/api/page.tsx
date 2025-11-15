@@ -487,7 +487,7 @@ export default function ApiIntegrationsPage() {
 
           {/* Top Endpoints */}
           <div className="glass-card">
-            <h3 className="text-lg font-semibold mb-4">En Çok Kullanılan Endpoint'ler</h3>
+            <h3 className="text-lg font-semibold mb-4">En Çok Kullanılan Endpoint&rsquo;ler</h3>
             <div className="space-y-2">
               {apiStats.slice(0, 10).map((stat) => (
                 <div key={`${stat.endpoint}-${stat.method}`} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">

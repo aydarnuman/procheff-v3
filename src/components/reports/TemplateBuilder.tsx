@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Save, FileText, ChevronRight } from "lucide-react";
+import { X, Save, FileText} from "lucide-react";
 import { reportSections, formatOptions } from "@/lib/reports/templates";
 import { ReportTemplate } from "@/lib/reports/service";
 

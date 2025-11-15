@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { reportService } from "@/lib/reports/service";
 import { formatFileSize } from "@/lib/reports/generator";
 import fs from "fs";
-import path from "path";
 
 /**
  * GET /api/settings/reports/history

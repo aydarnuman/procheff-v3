@@ -257,3 +257,4 @@ export class UploadQueueManager {
 // Export singleton instance
 export const uploadQueue = UploadQueueManager.getInstance();
 
+

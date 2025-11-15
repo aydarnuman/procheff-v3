@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { products, enhanced = true, minSources = 2, maxAge = 30 } = body;
+    const { products= true, minSources = 2, maxAge = 30 } = body;
 
     if (!products || !Array.isArray(products) || products.length === 0) {
       return NextResponse.json(

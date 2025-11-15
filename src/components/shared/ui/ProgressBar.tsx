@@ -204,7 +204,7 @@ export function SteppedProgress({
           const stepNumber = index + 1;
           const isCompleted = stepNumber < currentStep;
           const isCurrent = stepNumber === currentStep;
-          const isFuture = stepNumber > currentStep;
+  // const isFuture = stepNumber > currentStep;  // Unused variable
 
           return (
             <div key={index} className="flex-1 flex items-center">

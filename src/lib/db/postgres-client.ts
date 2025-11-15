@@ -99,7 +99,7 @@ async function initializeDatabase(): Promise<void> {
     import("@/lib/ai/semantic-cache").then(({ initSemanticCache }) => {
       try {
         initSemanticCache();
-      } catch {
+      } catch (error) {
         // Already initialized, ignore
       }
     }).catch(() => {

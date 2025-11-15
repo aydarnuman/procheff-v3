@@ -5,10 +5,10 @@
 
 import { AILogger } from './logger';
 import { GeminiDocumentClassifier } from './gemini-document-classifier';
-import { EnhancedSmartDetection as EnhancedDetector } from './enhanced-smart-detection';
+import { EnhancedSmartDetection } from './enhanced-smart-detection';
 
 // Import types for usage
-import type { SmartDetection, DetectionEvidence } from './enhanced-smart-detection';
+import type {} from './enhanced-smart-detection';
 
 // Re-export enhanced detection as primary detector
 export { EnhancedSmartDetection as AIDocumentDetector } from './enhanced-smart-detection';

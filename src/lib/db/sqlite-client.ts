@@ -74,7 +74,7 @@ async function initializeDatabase(): Promise<void> {
     import("@/lib/ai/semantic-cache").then(({ initSemanticCache }) => {
       try {
         initSemanticCache();
-      } catch {
+      } catch (error) {
         // Already initialized, ignore
       }
     }).catch(() => {
@@ -104,7 +104,7 @@ export function getDB(): Database {
       // Test connection is still alive
       db.prepare("SELECT 1").get();
       return db;
-    } catch {
+    } catch (error) {
       // Connection lost, reset and reinitialize
       console.log("⚠️ Database connection lost, reinitializing...");
       db = null;
@@ -156,7 +156,7 @@ export function getDB(): Database {
         
         try {
           runMigrations();
-        } catch {
+        } catch (error) {
           // Migrations already applied
         }
 
@@ -188,7 +188,7 @@ function initializeAutoCleanup() {
       }).catch(() => {
         // Ignore if module not available or in browser
       });
-    } catch {
+    } catch (error) {
       // Ignore if module not available or in browser
     }
   }

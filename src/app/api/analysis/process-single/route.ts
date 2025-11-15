@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildDataPool } from '@/lib/document-processor/data-pool';
 import { AILogger } from '@/lib/ai/logger';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+
 import { fileTypeFromBuffer } from 'file-type';
 import mammoth from 'mammoth';
 import crypto from 'crypto';
@@ -15,7 +15,7 @@ import { createSSEResponse, SSEStream } from '@/lib/utils/sse-stream';
 import { DataPoolManager } from '@/lib/state/data-pool-manager';
 
 // Dynamic import for pdf-parse
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const pdfParse = require('pdf-parse');
 
 /** SHA-256 hash */
@@ -48,7 +48,7 @@ async function detectMime(buf: Buffer, filename?: string): Promise<string> {
         return 'text/plain';
       }
     }
-  } catch {
+  } catch (error) {
     // Not valid UTF-8
   }
   
@@ -61,7 +61,7 @@ async function extractText(buf: Buffer, mime: string): Promise<string> {
     try {
       const data = await pdfParse(buf);
       return data.text;
-    } catch {
+    } catch (error) {
       return '';
     }
   }
@@ -132,9 +132,9 @@ async function runOCRGemini(buf: Buffer): Promise<string> {
         }
         AILogger.warn('Batch OCR returned empty text, falling back to direct OCR');
       }
-    } catch (err) {
+    } catch (error) {
       AILogger.error('Rasterize+batch OCR failed, falling back', {
-        error: err instanceof Error ? err.message : String(err)
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   }
@@ -535,7 +535,7 @@ function createStreamingResponse(sessionId: string, request: NextRequest): Respo
               fileToProcess = new File([encodedText], file.name.replace(/\.\w+$/, '.txt'), { type: 'text/plain' });
               stream.sendProgress('ocr', 50, '✅ Resim OCR başarılı');
             }
-          } catch (ocrError) {
+          } catch (_ocrError) {
             stream.sendProgress('ocr', 50, '⚠️ Resim OCR başarısız');
           }
         }

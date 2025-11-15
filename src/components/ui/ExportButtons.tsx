@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { Download, FileText, Table, Loader2 } from 'lucide-react';
+import { FileText, Table, Loader2 } from 'lucide-react';
 
 interface Props {
   analysisId?: string;

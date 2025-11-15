@@ -79,8 +79,8 @@ export class EmailService {
         console.log("📧 Email service initialized in PRODUCTION mode");
         
         // Verify connection in background (non-blocking)
-        this.verifyConnection().catch(err => {
-          console.warn("⚠️  SMTP verification failed (non-critical):", err.message);
+        this.verifyConnection().catch(error => {
+          console.warn("⚠️  SMTP verification failed (non-critical):", error.message);
         });
       } else {
         console.log("📧 Email service disabled (no SMTP credentials provided)");

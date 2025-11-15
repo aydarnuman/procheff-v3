@@ -14,7 +14,7 @@ describe('Semantic Cache', () => {
     const db = getDB();
     try {
       db.prepare('DELETE FROM semantic_cache').run();
-    } catch {
+    } catch (error) {
       // Table might not exist yet, ignore
     }
   });
@@ -24,7 +24,7 @@ describe('Semantic Cache', () => {
     const db = getDB();
     try {
       db.prepare('DELETE FROM semantic_cache').run();
-    } catch {
+    } catch (error) {
       // Ignore
     }
   });

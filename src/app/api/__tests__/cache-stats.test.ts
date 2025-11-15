@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GET, DELETE } from '../cache/stats/route';
-import { setCachedResponse, cleanupExpiredCache } from '@/lib/ai/semantic-cache';
+import { setCachedResponse} from '@/lib/ai/semantic-cache';
 import { getDB } from '@/lib/db/sqlite-client';
 
 describe('Cache Stats API', () => {
@@ -9,7 +9,7 @@ describe('Cache Stats API', () => {
     const db = getDB();
     try {
       db.prepare('DELETE FROM semantic_cache').run();
-    } catch {
+    } catch (error) {
       // Ignore if table doesn't exist
     }
   });

@@ -34,8 +34,8 @@ export async function postWithRetry(
       }
 
       return await res.json();
-    } catch (e) {
-      if (i === tries - 1) throw e; // Son deneme başarısız
+    } catch (error) {
+      if (i === tries - 1) throw error; // Son deneme başarısız
       // Retry öncesi kısa bekleme
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
@@ -70,8 +70,8 @@ export async function postFormDataWithRetry(
       }
 
       return await res.json();
-    } catch (e) {
-      if (i === tries - 1) throw e;
+    } catch (error) {
+      if (i === tries - 1) throw error;
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }

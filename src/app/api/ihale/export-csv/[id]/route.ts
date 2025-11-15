@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest} from 'next/server';
 import { ihbDetail, ihbLogin } from '@/lib/ihale/client';
 import { getDB } from '@/lib/db/sqlite-client';
 import { generateFilename } from '@/lib/utils/export-csv';
@@ -21,7 +21,7 @@ export async function GET(
   if (!sessionId) {
     try {
       sessionId = await ihbLogin();
-    } catch (loginError) {
+    } catch (_loginError) {
       return new Response('İhalebul.com\'a giriş yapılamadı', { status: 401 });
     }
   }

@@ -432,7 +432,7 @@ async function extractFromPDF(
                       if (r.T) {
                         try {
                           pageText += decodeURIComponent(r.T) + ' ';
-                        } catch {
+                        } catch (error) {
                           pageText += r.T + ' ';
                         }
                       }
@@ -444,8 +444,8 @@ async function extractFromPDF(
               });
 
               resolve(text);
-            } catch (err) {
-              reject(err instanceof Error ? err : new Error(String(err)));
+            } catch (error) {
+              reject(error instanceof Error ? error : new Error(String(error)));
             }
           });
 
@@ -902,7 +902,7 @@ function calculateHash(buffer: Buffer): string {
 export function guessDocumentType(filename: string, content: string): DocumentTypeGuess {
   const lower = filename.toLowerCase();
   const contentLower = content.toLowerCase();
-  const contentLength = content.length;
+  // const contentLength = content.length;  // Unused variable
 
   // Calculate confidence based on matches
   // Strong match in filename = high confidence
@@ -1077,7 +1077,7 @@ async function extractFromDOC(
         // Clean up
         try {
           fs.unlinkSync(tempFilePath);
-        } catch {}
+        } catch (error) {}
 
         if (stdout?.trim()) {
           rawText = TurkishNormalizer.normalize(stdout);
@@ -1098,7 +1098,7 @@ async function extractFromDOC(
         // Clean up on error
         try {
           fs.unlinkSync(tempFilePath);
-        } catch {}
+        } catch (error) {}
         AILogger.warn('antiword failed, trying LibreOffice', { error: antiwordError });
       }
 
@@ -1124,7 +1124,7 @@ async function extractFromDOC(
             try {
               fs.unlinkSync(tempDocPath);
               fs.unlinkSync(tempDocxPath);
-            } catch {}
+            } catch (error) {}
 
             if (mammothText.length > 50) {
               rawText = TurkishNormalizer.normalize(mammothText);
@@ -1147,7 +1147,7 @@ async function extractFromDOC(
           try {
             if (fs.existsSync(tempDocPath)) fs.unlinkSync(tempDocPath);
             if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
-          } catch {}
+          } catch (error) {}
         }
       } catch (loError) {
         AILogger.warn('LibreOffice conversion failed', { error: loError });
@@ -1288,7 +1288,7 @@ async function extractFromCSV(
 
     // Parse CSV rows
     const rows: string[][] = [];
-    lines.forEach((line, index) => {
+    lines.forEach((line, _index) => {
       // Simple CSV parsing (handle quoted fields)
       const parsedRow: string[] = [];
       let currentField = '';

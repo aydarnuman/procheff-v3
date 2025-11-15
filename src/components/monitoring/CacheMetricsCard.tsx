@@ -70,7 +70,7 @@ export function CacheMetricsCard({ stats, loading }: CacheMetricsCardProps) {
   }
 
   const hitRate = stats.hitRate || 0;
-  const totalRequests = (stats.totalHits || 0) + (stats.totalMisses || 0);
+  // const totalRequests = (stats.totalHits || 0) + (stats.totalMisses || 0);  // Unused variable
 
   return (
     <Card variant="elevated">

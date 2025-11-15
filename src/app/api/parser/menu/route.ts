@@ -107,9 +107,9 @@ ${text}
         items_count: menuItems.length,
       },
     });
-  } catch (err) {
-    const error = err instanceof Error ? err.message : "Unknown error occurred";
-    AILogger.error("💥 Menü parser hatası", err);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    AILogger.error("💥 Menü parser hatası", errorMessage);
     
     // Save error metric (non-blocking)
     try {
@@ -117,12 +117,12 @@ ${text}
         endpoint: "/api/parser/menu",
         model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
         success: false,
-        error_message: error,
+        error_message: errorMessage,
       });
-    } catch (metricError) {
+    } catch (_metricError) {
       // Ignore metric errors
     }
     
-    return NextResponse.json({ success: false, error }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }

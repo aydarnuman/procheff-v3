@@ -132,7 +132,7 @@ ProCheff Security
           <div className="space-y-4">
             <div className="text-center py-8">
               <Smartphone className="w-16 h-16 text-indigo-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">2FA'yı Etkinleştir</h3>
+              <h3 className="text-lg font-medium mb-2">2FA&rsquo;yı Etkinleştir</h3>
               <p className="text-gray-400 text-sm mb-6">
                 Hesabınıza ekstra güvenlik katmanı ekleyin. Google Authenticator,
                 Authy veya benzeri bir uygulama kullanarak giriş yapabileceksiniz.
@@ -144,7 +144,7 @@ ProCheff Security
               <ul className="space-y-1 text-sm text-yellow-200">
                 <li>• Telefonunuzda authenticator uygulaması yüklü olmalı</li>
                 <li>• Yedek kodlarınızı güvenli bir yerde saklamalısınız</li>
-                <li>• 2FA'yı kapatmak için yedek kodlara ihtiyacınız olabilir</li>
+                <li>• 2FA&rsquo;yı kapatmak için yedek kodlara ihtiyacınız olabilir</li>
               </ul>
             </div>
 
@@ -175,6 +175,7 @@ ProCheff Security
             {/* QR Code */}
             {qrCode && (
               <div className="bg-white p-4 rounded-lg mx-auto w-fit">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={qrCode} alt="2FA QR Code" className="w-48 h-48" />
               </div>
             )}

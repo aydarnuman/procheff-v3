@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
-import { Badge, ProgressBadge, NotificationBadge } from '@/components/shared/ui/Badge';
+import { ProgressBadge, NotificationBadge } from '@/components/shared/ui/Badge';
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
 
 export type TabType = 'data-pool' | 'contextual' | 'deep';
@@ -42,7 +42,7 @@ export function EnhancedTabNavigation({
 
   return (
     <div className={`flex gap-2 mb-6 overflow-x-auto pb-2 ${className}`}>
-      {tabs.map((tab, index) => {
+      {tabs.map((tab, _index) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
 

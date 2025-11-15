@@ -80,7 +80,7 @@ export default function AISettingsPage() {
       } else {
         alert("❌ " + data.error);
       }
-    } catch {
+    } catch (error) {
       alert("❌ Ayarlar kaydedilemedi");
     } finally {
       setSaving(false);

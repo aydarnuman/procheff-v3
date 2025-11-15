@@ -55,7 +55,7 @@ function getDaysRemaining(dateStr: string | null | undefined): number | null {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     return diffDays;
-  } catch {
+  } catch (error) {
     return null;
   }
 }
@@ -84,7 +84,7 @@ export default function IhalePage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const router = useRouter();
-  const { startNewPipeline, resetPipeline } = usePipelineStore();
+  const { startNewPipeline} = usePipelineStore();
 
   const fetchTenders = async (refresh = false) => {
     try {

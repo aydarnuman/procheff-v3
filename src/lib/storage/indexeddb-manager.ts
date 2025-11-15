@@ -411,7 +411,7 @@ export class IndexedDBManager {
     }
 
     try {
-      const db = await this.init();
+  // const db = await this.init();  // Unused variable
       const now = Date.now();
       const storesToClean = storeName ? [storeName] : Object.values(STORES);
       let totalRemoved = 0;
@@ -540,7 +540,7 @@ export class IndexedDBManager {
     }
 
     try {
-      const db = await this.init();
+  // const db = await this.init();  // Unused variable
       const items = await this.getAll(storeName);
 
       // Sort by lastAccessed (oldest first)

@@ -248,7 +248,7 @@ export function ContextualAnalysisTab({
       {/* Expandable Cards */}
       <div className="space-y-3">
         {EXPANDABLE_CARDS.map((card, index) => {
-          const Icon = card.icon;
+  // const Icon = card.icon;  // Unused variable
           const isExpanded = expandedCards.has(card.id);
 
           return (

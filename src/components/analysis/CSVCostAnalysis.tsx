@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { DollarSign, TrendingUp, AlertTriangle, CheckCircle, X } from 'lucide-react';
+import { DollarSign, TrendingUp, AlertTriangle, X } from 'lucide-react';
 import type { MarketAnalysis } from '@/lib/tender-analysis/types';
 
 interface CSVCostAnalysisProps {

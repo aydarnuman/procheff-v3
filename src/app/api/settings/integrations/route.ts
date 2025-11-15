@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { integrationService, IntegrationType } from "@/lib/integrations/integration-service";
-import { z } from "zod";
+
 
 /**
  * GET /api/settings/integrations
  * Get all integration configurations
  */
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     const session = await auth();
     if (!session) {

@@ -103,8 +103,8 @@ export function MenuItemDetailModal({ itemId, onClose }: Props) {
       } else {
         setError(json.error || 'Failed to load details');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setLoading(false);
     }

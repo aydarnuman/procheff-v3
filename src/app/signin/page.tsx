@@ -8,7 +8,7 @@ export default function SignInPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [err, setErr] = useState<string | null>(null);
+  const [error, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
@@ -51,7 +51,7 @@ export default function SignInPage() {
               required
             />
           </div>
-          {err && <p className="text-sm text-rose-400">{err}</p>}
+          {error && <p className="text-sm text-rose-400">{error}</p>}
           <button
             type="submit"
             disabled={loading}

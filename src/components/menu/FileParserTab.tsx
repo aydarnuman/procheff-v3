@@ -89,10 +89,10 @@ export function FileParserTab() {
         setMenuData(data.data);
         markStepCompleted(PIPELINE_STEPS.MENU_UPLOAD);
       }
-    } catch (err) {
+    } catch (error) {
       setResult({
         success: false,
-        error: err instanceof Error ? err.message : "Bilinmeyen hata",
+        error: error instanceof Error ? error.message : "Bilinmeyen hata",
       });
     } finally {
       setLoading(false);

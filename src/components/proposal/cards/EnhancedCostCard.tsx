@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Trash2, Calculator } from 'lucide-react';
-import { Badge } from '@/components/shared/ui/Badge';
+
 
 interface CostItem {
   id: string;

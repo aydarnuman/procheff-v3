@@ -44,7 +44,7 @@ function decodeEkapHash(url: string): { decodedUrl: string; filename: string | n
       
       return { decodedUrl: decoded, filename: null };
     }
-  } catch (e) {
+  } catch (error) {
     // URL parse hatası, devam et
   }
   
@@ -63,7 +63,7 @@ function normalizeProxyUrl(url: string): string {
       if (targetUrl) {
         return decodeURIComponent(targetUrl);
       }
-    } catch (e) {
+    } catch (error) {
       // Parse hatası, orijinal URL'i döndür
     }
   }
@@ -144,7 +144,7 @@ export function normalizeDocuments(docs: RawDocument[]): NormalizedDocument[] {
         if (lastPart && lastPart.includes('.')) {
           extractedFilename = lastPart;
         }
-      } catch (e) {
+      } catch (error) {
         // URL parse hatası
       }
     }

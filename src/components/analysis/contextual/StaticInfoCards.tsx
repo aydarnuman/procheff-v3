@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Building2, Calendar, Briefcase, FileCheck, TrendingUp } from 'lucide-react';
+import { Building2, Calendar, Briefcase, FileCheck} from 'lucide-react';
 import { AnimatedCounter } from '@/components/shared/animations/AnimatedCounter';
 import { staggerContainer, staggerItem } from '@/lib/utils/animation-variants';
 

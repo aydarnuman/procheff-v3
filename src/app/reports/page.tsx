@@ -161,8 +161,8 @@ export default function ReportsPage() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Bilinmeyen hata");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Bilinmeyen hata");
     } finally {
       setLoading(null);
     }

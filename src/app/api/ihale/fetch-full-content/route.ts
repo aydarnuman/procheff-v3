@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
         'a[href*="/download"], .documents, .document-list, [class*="document"], button[onclick*="download"]',
         { timeout: 7000 }
       );
-    } catch {
+    } catch (error) {
       AILogger.warn('No document section found immediately, continuing...');
     }
 
@@ -169,14 +169,14 @@ export async function POST(request: NextRequest) {
       const btns = Array.from(document.querySelectorAll('button[onclick*="download"]'));
       btns.forEach((b) => {
         if (b instanceof HTMLElement) {
-          try { b.click(); } catch {}
+          try { b.click(); } catch (error) {}
         }
       });
 
       const acc = Array.from(document.querySelectorAll('.accordion, .collapse, .tab'));
       acc.forEach((a) => {
         if (a instanceof HTMLElement) {
-          try { a.click(); } catch {}
+          try { a.click(); } catch (error) {}
         }
       });
     });
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
               links.push({ title: title || 'Doküman', url: href, type });
             }
           });
-        } catch (err) {
+        } catch (error) {
           // Ignore selector errors
         }
       });

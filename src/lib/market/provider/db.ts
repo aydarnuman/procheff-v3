@@ -49,9 +49,9 @@ export async function dbQuote(product_key: string): Promise<MarketQuote | null> 
           data_points: row.data_points,
           period: '90 days',
           reliability: 'high',
-        },
+        }
       };
-    } catch (dbError) {
+    } catch (error) {
       // Tablo henüz yoksa null dön
       console.warn('[DB Provider] market_prices tablosu bulunamadı, null dönüyor');
       return null;
@@ -85,7 +85,7 @@ export async function last12Months(product_key: string): Promise<number[]> {
       const rows = db.prepare(query).all(product_key) as any[];
 
       return rows.map(r => Number(r.avg_price.toFixed(2)));
-    } catch (dbError) {
+    } catch (error) {
       // Tablo henüz yoksa boş array dön
       return [];
     }
@@ -121,7 +121,7 @@ export async function seriesOf(product_key: string, months = 12): Promise<Array<
         date: r.date,
         price: Number(r.avg_price.toFixed(2)),
       }));
-    } catch (dbError) {
+    } catch (error) {
       return [];
     }
   } catch (error) {
@@ -150,7 +150,7 @@ export async function savePriceRecord(
     try {
       db.prepare(query).run(product_key, unit, unit_price, source);
       return true;
-    } catch (dbError) {
+    } catch (error) {
       console.warn('[DB Provider] market_prices tablosuna yazılamadı');
       return false;
     }

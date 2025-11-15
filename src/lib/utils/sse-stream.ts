@@ -93,7 +93,7 @@ export class SSEStream {
   close(): void {
     try {
       this.controller.close();
-    } catch {
+    } catch (error) {
       // Stream already closed
     }
   }
@@ -115,7 +115,7 @@ export function createSSEResponse(
           isClosed = true;
           try {
             sse.close();
-          } catch {
+          } catch (error) {
             // Already closed
           }
         }

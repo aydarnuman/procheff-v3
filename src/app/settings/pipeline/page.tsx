@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Clock, RefreshCw } from "lucide-react";
+
 
 export default function PipelineSettingsPage() {
   const [loading, setLoading] = useState(true);

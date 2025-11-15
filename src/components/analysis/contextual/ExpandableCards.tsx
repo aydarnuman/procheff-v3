@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, DollarSign, Users, Package, Wrench, Brain } from 'lucide-react';
+import { ChevronDown, DollarSign, Users} from 'lucide-react';
 import { expand } from '@/lib/utils/animation-variants';
 
 interface CardData {

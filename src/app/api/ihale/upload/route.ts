@@ -11,7 +11,7 @@ import mammoth from "mammoth";
 import { NextRequest, NextResponse } from "next/server";
 
 // Dynamic import for pdf-parse (CommonJS module)
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const pdfParse = require("pdf-parse");
 
 export const config = { api: { bodyParser: false } };
@@ -28,7 +28,7 @@ async function extractText(buf: Buffer, mime: string): Promise<string> {
     try {
       const data = await pdfParse(buf);
       return data.text;
-    } catch {
+    } catch (error) {
       return "";
     }
   }
@@ -79,7 +79,7 @@ async function runOCRGemini(buf: Buffer): Promise<string> {
         const text = results.map(r => r.text || '').filter(t => t.length > 0).join('\n\n');
         if (text.trim().length > 0) return text;
       }
-    } catch {
+    } catch (error) {
       // Fallback to direct performOCR below
     }
   }
@@ -365,16 +365,16 @@ export async function POST(req: NextRequest) {
         preprocessing_stats: preprocessingStats || null,
       },
     });
-  } catch (err: unknown) {
-    const error = err instanceof Error ? err.message : "Unknown error";
-    AILogger.error("❌ İhale analizi başarısız", { jobId, error });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    AILogger.error("❌ İhale analizi başarısız", { jobId, error: errorMessage });
     
     jobManager.updateJob(jobId, {
       status: 'error',
-      error,
+      error: errorMessage,
       progress: 0
     });
 
-    return NextResponse.json({ success: false, error }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }

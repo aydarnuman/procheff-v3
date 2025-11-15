@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, ChevronLeft, Mail, Plus, RefreshCw, Settings, Smartphone, MessageSquare, X } from "lucide-react";
+import { Bell, ChevronLeft, Mail, Plus, RefreshCw, MessageSquare, X } from "lucide-react";
 import Link from "next/link";
 import { ChannelCard } from "@/components/notifications/ChannelCard";
 import { VerificationModal } from "@/components/notifications/VerificationModal";

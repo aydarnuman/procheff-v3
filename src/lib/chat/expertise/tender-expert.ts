@@ -3,7 +3,7 @@
  * Domain-specific knowledge for tender analysis
  */
 
-import { AILogger } from '@/lib/ai/logger';
+
 
 // Institution profiles with historical patterns
 export const INSTITUTION_PROFILES = {

@@ -3,7 +3,7 @@
  * Provides detailed scoring breakdown and confidence calculation
  */
 
-import { normalizeText, hasPattern, hasRegexPattern, normalizeFilename } from '@/lib/utils/normalize-utils';
+import { normalizeText, hasPattern, normalizeFilename } from '@/lib/utils/normalize-utils';
 import { 
   DOCUMENT_PATTERNS, 
   AMENDMENT_WORDS, 

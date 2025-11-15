@@ -14,7 +14,7 @@
 import type { MarketQuote, MarketQuoteV2, MarketScore, Source } from './schema';
 import { BASE_SOURCE_WEIGHTS } from './trust-score';
 import { scraperHealthMonitor } from './providers/scraper/health-monitor';
-import { AILogger } from '@/lib/ai/logger';
+
 
 // ========================================
 // SCORING CONFIGURATION

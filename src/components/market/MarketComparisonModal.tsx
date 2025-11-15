@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShoppingCart, TrendingUp, TrendingDown, AlertCircle, Store, Loader2, ExternalLink } from 'lucide-react';
-import type { MarketFusion } from '@/lib/market/schema';
+import { X, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
+import type {} from '@/lib/market/schema';
 
 interface MarketPrice {
   market: string;
@@ -55,9 +55,9 @@ export function MarketComparisonModal({
       } else {
         throw new Error(data.error || 'Veri alınamadı');
       }
-    } catch (err) {
+    } catch (error) {
       setError('Market fiyatları yüklenemedi');
-      console.error(err);
+      console.error(error);
     } finally {
       setLoading(false);
     }

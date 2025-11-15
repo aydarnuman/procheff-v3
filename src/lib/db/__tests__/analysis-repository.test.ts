@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AnalysisRepository } from '../analysis-repository';
-import type { TenderAnalysisResult } from '@/lib/tender-analysis/types';
+import type {} from '@/lib/tender-analysis/types';
 import type { DataPool, SourceLocation } from '@/lib/document-processor/types';
 
 const createMockDataPool = (): DataPool => ({

@@ -4,7 +4,7 @@
  */
 
 import { UserPriceData } from './user-price-input';
-import { TrustScore } from './trust-score';
+
 
 export interface VerificationRule {
   name: string;

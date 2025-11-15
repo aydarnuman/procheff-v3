@@ -211,7 +211,7 @@ export function BrandComparisonCompact({ brands }: { brands: BrandPriceOption[] 
   if (brands.length === 0) return null;
 
   const sorted = [...brands].sort((a, b) => a.price - b.price);
-  const cheapest = sorted[0];
+  // const cheapest = sorted[0];  // Unused variable
 
   return (
     <div className="flex items-center gap-2 flex-wrap">

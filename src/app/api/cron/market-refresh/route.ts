@@ -5,9 +5,9 @@ import { webQuote } from '@/lib/market/provider/web';
 import { dbQuote } from '@/lib/market/provider/db';
 import { aiQuote, shouldUseAI } from '@/lib/market/provider/ai';
 import { fuse } from '@/lib/market/fuse';
-import { cacheSet, cacheClearAll } from '@/lib/market/cache';
+import { cacheSet} from '@/lib/market/cache';
 import type { MarketQuote } from '@/lib/market/schema';
-import { getDB } from '@/lib/db/sqlite-client';
+
 
 /**
  * Market cache refresh cron job

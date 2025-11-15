@@ -125,7 +125,7 @@ export async function importTUIKCSV(csvPath: string): Promise<{
 
   try {
     const fs = await import('fs');
-    // @ts-ignore - csv-parse/sync types not installed
+    // @ts-expect-error - csv-parse/sync types not installed
     const csv = await import('csv-parse/sync');
     
     if (!fs.existsSync(csvPath)) {
@@ -162,8 +162,8 @@ export async function importTUIKCSV(csvPath: string): Promise<{
         `).run(productKey, unit, price, 'TUIK', date, 0.95);
 
         imported++;
-      } catch (err) {
-        errors.push(`Import hatası: ${err instanceof Error ? err.message : 'Unknown'}`);
+      } catch (error) {
+        errors.push(`Import hatası: ${error instanceof Error ? error.message : 'Unknown'}`);
       }
     }
 

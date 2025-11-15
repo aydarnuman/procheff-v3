@@ -128,7 +128,7 @@ GÖREV: Yukarıdaki verileri analiz et ve net bir teklif kararı ver.
         success: false,
         error_message: errorMessage,
       });
-    } catch (metricError) {
+    } catch (_metricError) {
       // Ignore metric errors
     }
 

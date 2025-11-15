@@ -31,8 +31,8 @@ export function createNotification(input: NotificationInput): number {
 
   // Optional: Send to external services if configured
   if (process.env.SLACK_WEBHOOK_URL) {
-    sendToSlack(input).catch((err) =>
-      console.error("Failed to send Slack notification:", err)
+    sendToSlack(input).catch((error) =>
+      console.error("Failed to send Slack notification:", error)
     );
   }
 

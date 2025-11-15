@@ -206,16 +206,16 @@ export async function GET(
             likelyTimeout: elapsedTime >= 59000
           });
         }
-      } catch (err: unknown) {
+      } catch (error: unknown) {
         const elapsedTime = Date.now() - startTime;
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        const errorStack = err instanceof Error ? err.stack : 'No stack trace';
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : 'No stack trace';
         
         // Check for authentication errors
         const isAuthError = errorMessage?.includes('authentication') ||
                            errorMessage?.includes('401') ||
                            errorMessage?.includes('invalid x-api-key') ||
-                           (err as any)?.name === 'APIError';
+                           (error as any)?.name === 'APIError';
 
         AILogger.error('AI parsing error', {
           error: errorMessage,
@@ -223,7 +223,7 @@ export async function GET(
           tenderId: id,
           elapsedTime: `${elapsedTime}ms`,
           isAuthError,
-          errorName: (err as any)?.name || 'UnknownError'
+          errorName: (error as any)?.name || 'UnknownError'
         });
         
         // Log critical auth errors separately

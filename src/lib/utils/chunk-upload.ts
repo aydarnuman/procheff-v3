@@ -136,7 +136,7 @@ export class ChunkUploader {
           if (response.ok) {
             return true;
           }
-        } catch {}
+        } catch (error) {}
       }
       
       return false;

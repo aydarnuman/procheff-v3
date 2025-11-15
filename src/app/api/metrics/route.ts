@@ -67,12 +67,12 @@ export async function GET() {
       status: "healthy",
       timestamp: new Date().toISOString(),
     });
-  } catch (err) {
-    const error = err instanceof Error ? err.message : "Failed to fetch metrics";
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to fetch metrics";
     return NextResponse.json(
       { 
         success: false, 
-        error,
+        error: errorMessage,
         status: "error" 
       }, 
       { status: 500 }

@@ -46,7 +46,7 @@ export function DecisionBadge({
     }
   };
 
-  const { icon: Icon, color, bg, text, border } = config[decision];
+  const { icon: Icon, bg, text, border } = config[decision];
 
   return (
     <motion.div

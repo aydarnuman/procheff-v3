@@ -109,10 +109,10 @@ export default function DecisionPage() {
         saveDecision(data.data);
         markStepCompleted(PIPELINE_STEPS.DECISION);
       }
-    } catch (err) {
+    } catch (error) {
       setDecision({
         success: false,
-        error: err instanceof Error ? err.message : "Bilinmeyen hata",
+        error: error instanceof Error ? error.message : "Bilinmeyen hata",
       });
     } finally {
       setLoading(false);

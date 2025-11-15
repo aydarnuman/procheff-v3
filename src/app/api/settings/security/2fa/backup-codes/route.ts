@@ -6,7 +6,7 @@ import { twoFactorAuthService } from "@/lib/auth/2fa-service";
  * POST /api/settings/security/2fa/backup-codes
  * Regenerate backup codes
  */
-export async function POST(request: Request) {
+export async function POST(_request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.email) {

@@ -56,13 +56,7 @@ export function WeightSelector({
     // Calculate new price based on normalized price per kg/lt
     let newPrice = currentPrice;
     
-    if (currentNormalized.normalized_price_per_kg > 0) {
-      const targetNormalized = WeightNormalizer.normalizePrice(
-        1, // Dummy price
-        option.value,
-        option.unit,
-        productName
-      );
+  if (currentNormalized.normalized_price_per_kg > 0) {
       
       // If both are weight-based (kg/g) or volume-based (lt/ml), we can convert
       const currentIsWeight = ['kg', 'g'].includes(currentUnit);

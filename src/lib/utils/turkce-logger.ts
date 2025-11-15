@@ -62,7 +62,7 @@ export class TurkceLogger {
     if (typeof detay === 'object') {
       try {
         return JSON.stringify(detay, null, 2);
-      } catch {
+      } catch (error) {
         return String(detay);
       }
     }
@@ -240,7 +240,7 @@ export class TurkceLogger {
       TurkceLogger.islemBaslat(`${metod} isteği gönderiliyor`, { url, parametreler });
     },
     yanit: (metod: string, url: string, durum: number, sure?: number) => {
-      const emoji = durum >= 200 && durum < 300 ? '✅' : durum >= 400 ? '❌' : '⚠️';
+  // const emoji = durum >= 200 && durum < 300 ? '✅' : durum >= 400 ? '❌' : '⚠️';  // Unused variable
       const mesaj = `${metod} ${url} - Durum: ${durum}${sure ? ` (${sure}ms)` : ''}`;
       
       if (durum >= 200 && durum < 300) {
@@ -262,6 +262,7 @@ export class TurkceLogger {
 
 // Kısa yol için export
 export const Log = TurkceLogger;
+
 
 
 

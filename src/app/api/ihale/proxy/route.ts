@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     if (!url.hostname.includes('ihalebul.com')) {
       return new Response('Only ihalebul.com resources are allowed', { status: 403 });
     }
-  } catch (e) {
+  } catch (error) {
     return new Response('Invalid URL', { status: 400 });
   }
 
@@ -245,7 +245,7 @@ export async function GET(req: NextRequest) {
         const pathParts = url.pathname.split('/');
         filename = pathParts[pathParts.length - 1] || 'document';
       }
-    } catch (e) {
+    } catch (error) {
       filename = 'document';
     }
 
@@ -327,7 +327,7 @@ function rewriteCssUrls(css: string): string {
 /**
  * OPTIONS handler for CORS
  */
-export async function OPTIONS(req: NextRequest) {
+export async function OPTIONS(_req: NextRequest) {
   return new Response(null, {
     status: 200,
     headers: {

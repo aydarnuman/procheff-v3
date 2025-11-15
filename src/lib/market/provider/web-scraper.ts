@@ -166,7 +166,7 @@ async function scrapeHalAnkara(page: any, product_key: string): Promise<number |
  */
 async function scrapeHalIstanbul(page: any, product_key: string): Promise<number | null> {
   try {
-    const turkishName = productKeyToTurkish(product_key);
+  // const turkishName = productKeyToTurkish(product_key);  // Unused variable
 
     // Site-specific implementation
     // TODO: Gerçek selectors'ları ekle
@@ -244,7 +244,7 @@ export async function scraperHealthCheck(): Promise<{
           signal: AbortSignal.timeout(5000)
         });
         targetStatus[key] = response.ok;
-      } catch {
+      } catch (error) {
         targetStatus[key] = false;
       }
     }
@@ -314,7 +314,7 @@ export async function checkRobotsTxt(baseUrl: string): Promise<{
       allowed: !disallowed,
       crawlDelay
     };
-  } catch {
+  } catch (error) {
     return { allowed: true };
   }
 }

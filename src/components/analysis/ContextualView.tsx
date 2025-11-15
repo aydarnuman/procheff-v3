@@ -14,9 +14,9 @@ import {
   Activity
 } from 'lucide-react';
 import type { ContextualAnalysis } from '@/lib/tender-analysis/types';
-import { getRiskColor, getConfidenceColor } from '@/lib/utils/color-helpers';
+import { getRiskColor} from '@/lib/utils/color-helpers';
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+
 
 interface ContextualViewProps {
   analysis: ContextualAnalysis;
@@ -28,13 +28,6 @@ export function ContextualView({ analysis }: ContextualViewProps) {
     cost: true,
     time: true
   });
-
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
 
   const getRiskIcon = (level: string) => {
     switch (level) {

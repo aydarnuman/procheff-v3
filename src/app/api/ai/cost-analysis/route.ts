@@ -82,9 +82,9 @@ ${JSON.stringify(extracted_data, null, 2)}
         cost_usd: metadata.cost_usd,
       },
     });
-  } catch (err) {
-    const error = err instanceof Error ? err.message : "Unknown error occurred";
-    AILogger.error("💥 Maliyet analizi hatası", err);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    AILogger.error("💥 Maliyet analizi hatası", errorMessage);
     
     // Save error metric (non-blocking)
     try {
@@ -92,12 +92,12 @@ ${JSON.stringify(extracted_data, null, 2)}
         endpoint: "/api/ai/cost-analysis",
         model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
         success: false,
-        error_message: error,
+        error_message: errorMessage,
       });
-    } catch (metricError) {
+    } catch (_metricError) {
       // Ignore metric errors
     }
     
-    return NextResponse.json({ success: false, error }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }

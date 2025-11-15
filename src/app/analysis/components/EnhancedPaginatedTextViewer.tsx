@@ -58,7 +58,7 @@ export function EnhancedPaginatedTextViewer({
     if (!searchQuery || !syntaxHighlight) return text;
     
     const parts = text.split(new RegExp(`(${searchQuery})`, 'gi'));
-    return parts.map((part, index) => 
+    return parts.map((part, _index) => 
       part.toLowerCase() === searchQuery.toLowerCase() 
         ? `<mark class="bg-yellow-400/30 text-yellow-300">${part}</mark>`
         : part

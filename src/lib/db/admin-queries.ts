@@ -15,7 +15,7 @@ export function getAdminStats() {
     if (statusCheck !== undefined) {
       activeUsers = db.prepare("SELECT COUNT(*) as count FROM users WHERE status = 'active'").get() as { count: number };
     }
-  } catch {
+  } catch (error) {
     // Status column doesn't exist yet, use total users count
   }
   
@@ -60,7 +60,7 @@ export function getAllUsers(options?: {
   try {
     db.prepare("SELECT status, last_login_at FROM users LIMIT 1").get();
     hasStatusColumn = true;
-  } catch {
+  } catch (error) {
     // Columns don't exist yet
   }
 
@@ -131,7 +131,7 @@ export function getUserById(userId: string) {
   try {
     db.prepare("SELECT status, last_login_at, last_ip FROM users LIMIT 1").get();
     hasStatusColumn = true;
-  } catch {
+  } catch (error) {
     // Columns don't exist yet
   }
 
@@ -215,7 +215,7 @@ export function getOrgMembers(orgId: string) {
   try {
     db.prepare("SELECT status FROM users LIMIT 1").get();
     hasStatusColumn = true;
-  } catch {
+  } catch (error) {
     // Column doesn't exist yet
   }
 

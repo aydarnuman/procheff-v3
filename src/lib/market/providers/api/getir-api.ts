@@ -84,7 +84,7 @@ export class GetirAPIProvider extends BaseAPIProvider {
     const match = unitInfo.match(/(\d+(?:\.\d+)?)\s*(kg|g|lt|ml|l)/i);
     if (match) {
       let weight = parseFloat(match[1]);
-      const unit = match[2].toLowerCase();
+  // const unit = match[2].toLowerCase();  // Unused variable
       
       // Çoklu paketlerde toplam ağırlığı hesapla
       const multiMatch = unitInfo.match(/(\d+)\s*x\s*(\d+(?:\.\d+)?)/i);

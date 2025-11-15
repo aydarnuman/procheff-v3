@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Plus, Download, History, RefreshCw, ChevronLeft } from "lucide-react";
+import { FileText, Plus, History, RefreshCw, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { TemplateCard } from "@/components/reports/TemplateCard";
 import { TemplateBuilder } from "@/components/reports/TemplateBuilder";

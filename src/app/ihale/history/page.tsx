@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState} from "react";
 import { useRouter } from "next/navigation";
-import { Clock, FileText, CheckCircle2, Loader2 } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
 
 // Gün farkı hesaplama
 function getDaysRemaining(dateStr: string | null | undefined): number | null {
@@ -15,7 +15,7 @@ function getDaysRemaining(dateStr: string | null | undefined): number | null {
     const diffTime = targetDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
-  } catch {
+  } catch (error) {
     return null;
   }
 }
@@ -43,7 +43,7 @@ interface IhaleHistoryItem {
 }
 
 export default function IhaleHistoryPage() {
-  const router = useRouter();
+  // const router = useRouter();  // Unused variable
   const [loadingItemId, setLoadingItemId] = useState<string | null>(null);
 
   // TODO: Fetch from /api/ihale/history

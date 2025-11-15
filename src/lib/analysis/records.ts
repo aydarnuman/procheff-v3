@@ -58,7 +58,7 @@ export function getAnalysis(analysisId: string): AnalysisRecord | null {
           ? JSON.parse(row.input_files) 
           : row.input_files;
       }
-    } catch (e) {
+    } catch (error) {
       AILogger.warn('Failed to parse input_files', { analysisId });
     }
     
@@ -68,7 +68,7 @@ export function getAnalysis(analysisId: string): AnalysisRecord | null {
           ? JSON.parse(row.data_pool)
           : row.data_pool;
       }
-    } catch (e) {
+    } catch (error) {
       AILogger.warn('Failed to parse data_pool', { analysisId });
     }
     

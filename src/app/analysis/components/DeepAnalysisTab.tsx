@@ -37,7 +37,7 @@ interface DeepAnalysisTabProps {
 
 interface ModelComparison {
   model: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   confidence: number;
   verdict: 'recommended' | 'caution' | 'not-recommended';
   reasoning: string;
@@ -171,18 +171,7 @@ export function DeepAnalysisTab({
     }
   };
 
-  const getVerdictColor = (verdict: string) => {
-    switch (verdict) {
-      case 'recommended':
-        return 'from-green-500 to-emerald-500';
-      case 'caution':
-        return 'from-yellow-500 to-orange-500';
-      case 'not-recommended':
-        return 'from-red-500 to-rose-500';
-      default:
-        return 'from-slate-500 to-slate-600';
-    }
-  };
+  // Removed unused getVerdictColor function
 
   return (
     <div className="space-y-6">

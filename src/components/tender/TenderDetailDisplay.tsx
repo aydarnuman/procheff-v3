@@ -61,7 +61,7 @@ function parseHTMLTables(html: string): TenderDetailSection[] {
   return sections;
 }
 
-export function TenderDetailDisplay({ html, fallbackSections, aiParsedData }: TenderDetailDisplayProps) {
+export function TenderDetailDisplay({ html, aiParsedData }: TenderDetailDisplayProps) {
   if (!html && !aiParsedData) {
     return (
       <div className="p-6 bg-slate-800/30 rounded-lg border border-slate-700/50">

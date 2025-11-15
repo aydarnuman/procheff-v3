@@ -6,7 +6,7 @@ import { twoFactorAuthService } from "@/lib/auth/2fa-service";
  * POST /api/settings/security/2fa/setup
  * Generate 2FA setup (QR code, secret, backup codes)
  */
-export async function POST(request: Request) {
+export async function POST(_request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.email) {
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
  * GET /api/settings/security/2fa/setup
  * Get 2FA status
  */
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.email) {
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
  * DELETE /api/settings/security/2fa/setup
  * Disable 2FA
  */
-export async function DELETE(request: Request) {
+export async function DELETE(_request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.email) {

@@ -113,8 +113,8 @@ export default function AutoPipelinePage() {
         }
         if (ev.message) setStatus(ev.message);
         if (ev.result) setResult(ev.result);
-      } catch (err) {
-        console.error("SSE parse error:", err);
+      } catch (error) {
+        console.error("SSE parse error:", error);
       }
     };
 
@@ -159,8 +159,8 @@ export default function AutoPipelinePage() {
 
       localStorage.setItem("lastJobId", data.jobId);
       listen(data.jobId);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
       setStatus("Hata: " + msg);
       setIsProcessing(false);
       toast.error("İşlem başlatılırken hata oluştu: " + msg);

@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { startTenderAnalysis } from '@/lib/tender-analysis/engine';
 import type { DataPool } from '@/lib/document-processor/types';
 import { AILogger } from '@/lib/ai/logger';
-import { getDB } from '@/lib/db/sqlite-client';
+
 import { errorHandler } from '@/lib/middleware/error-handler';
 import { createErrorResponse } from '@/lib/utils/error-codes';
 import { DataPoolManager } from '@/lib/state/data-pool-manager';
@@ -48,8 +48,8 @@ async function handleProcess(request: NextRequest) {
   // BACKGROUND MODE: Return immediately, process in background
   if (background) {
     // Fire and forget - don't await
-    processAnalysisInBackground(analysisId, dataPool, options, startTime).catch(err => {
-      AILogger.error('Background analysis failed', { analysisId, error: err });
+    processAnalysisInBackground(analysisId, dataPool, options, startTime).catch(error => {
+      AILogger.error('Background analysis failed', { analysisId, error: error });
     });
 
     return NextResponse.json({

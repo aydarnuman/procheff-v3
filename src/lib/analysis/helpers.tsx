@@ -228,7 +228,7 @@ export function extractCriticalDates(dataPool: DataPool): CriticalDate[] {
       // Sort chronologically
       try {
         return new Date(a.value).getTime() - new Date(b.value).getTime();
-      } catch {
+      } catch (error) {
         return 0;
       }
     });
@@ -486,7 +486,7 @@ export function formatDate(dateStr: string): string {
       day: 'numeric',
       weekday: 'long'
     });
-  } catch {
+  } catch (error) {
     return dateStr;
   }
 }

@@ -41,15 +41,15 @@ function parseErrorMessage(error: unknown): string {
   }
   if (typeof error === "object" && error !== null) {
     // Check common API error formats
-    const err = error as Record<string, unknown>;
-    if (err.message && typeof err.message === "string") {
-      return err.message;
+    const errorObject = error as Record<string, unknown>;
+    if (errorObject.message && typeof errorObject.message === "string") {
+      return errorObject.message;
     }
-    if (err.error && typeof err.error === "string") {
-      return err.error;
+    if (errorObject.error && typeof errorObject.error === "string") {
+      return errorObject.error;
     }
-    if (err.detail && typeof err.detail === "string") {
-      return err.detail;
+    if (errorObject.detail && typeof errorObject.detail === "string") {
+      return errorObject.detail;
     }
   }
   return String(error);

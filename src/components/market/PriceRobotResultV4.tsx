@@ -15,10 +15,10 @@ import {
   ChevronUp,
   Store
 } from 'lucide-react';
-import type { MarketFusion, ConfidenceBreakdown } from '@/lib/market/schema';
+import type { MarketFusion} from '@/lib/market/schema';
 import type { NormalizedProduct } from '@/lib/market';
 import { TrendChart } from './TrendChart';
-import { VolatilityIndicator } from './VolatilityIndicator';
+
 import { BrandComparisonList } from './BrandComparisonList';
 import { MarketComparisonModal } from './MarketComparisonModal';
 import { useState } from 'react';

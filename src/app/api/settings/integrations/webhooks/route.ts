@@ -21,7 +21,7 @@ const UpdateWebhookSchema = WebhookSchema.partial();
  * GET /api/settings/integrations/webhooks
  * Get all webhooks
  */
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     const session = await auth();
     if (!session) {

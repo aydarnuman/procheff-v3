@@ -11,3 +11,4 @@ ALTER TABLE users ADD COLUMN last_ip TEXT;
 -- Create index on status for faster queries
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 
+

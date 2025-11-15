@@ -4,11 +4,11 @@
  */
 
 import { AILogger } from './logger';
-import { GeminiDocumentClassifier } from './gemini-document-classifier';
+
 import { EvidenceBasedDetector, DetectionResult } from './evidence-detector';
-import { getCategoryLabel } from './document-patterns';
+
 import { normalizeText } from '@/lib/utils/normalize-utils';
-import { handleLowTextDensity, hasOCRIssues, cleanOCRText } from './ocr-handler';
+
 
 export interface SmartDetection {
   documentType:

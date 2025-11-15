@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AILogger } from "@/lib/ai/logger-postgres";
 import { getPool } from "@/lib/db/postgres-client";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     // Test logging
     AILogger.info("🧪 PostgreSQL AI test başladı");

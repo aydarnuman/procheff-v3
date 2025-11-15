@@ -132,7 +132,7 @@ function generateRecommendation(
   metrics: VolatilityMetrics,
   trend: 'rising' | 'falling' | 'stable'
 ): string {
-  const { volatilityScore, avgDailyChange } = metrics;
+  const { volatilityScore} = metrics;
   
   // Yüksek volatilite
   if (volatilityScore > 0.7) {

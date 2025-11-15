@@ -44,7 +44,7 @@ export function ProductDetailModal({ isOpen, productId, onClose }: ProductDetail
       fetch(`/api/market/history/${encodeURIComponent(product.normalized_name || product.name)}`)
         .then(res => res.json())
         .then(data => setPriceHistory(data.history || []))
-        .catch(err => console.error('Failed to load history:', err));
+        .catch(error => console.error('Failed to load history:', error));
     }
   }, [product, activeTab]);
 
@@ -285,7 +285,7 @@ export function ProductDetailModal({ isOpen, productId, onClose }: ProductDetail
                               <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                                 <span>Güven: {(price.confidence_score * 100).toFixed(0)}%</span>
                                 <span>Kaynak: {price.data_source.toUpperCase()}</span>
-                                <span>Güncelleme: {new Date(price.last_verified || Date.now()).toLocaleString('tr-TR')}</span>
+                                <span>Güncelleme: {price.last_verified ? new Date(price.last_verified).toLocaleString('tr-TR') : 'Bilinmiyor'}</span>
                               </div>
                             </motion.div>
                           );

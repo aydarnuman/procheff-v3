@@ -14,27 +14,27 @@ import { TablesView } from '@/components/analysis/TablesView';
 import { ExportButtons } from '@/components/ui/ExportButtons';
 import { ToastContainer, useToast } from '@/components/ui/ToastNotification';
 import type { DataPool } from '@/lib/document-processor/types';
-import type { 
-  ContextualAnalysis, 
-  MarketAnalysis 
+import type {
+    ContextualAnalysis,
+    MarketAnalysis
 } from '@/lib/tender-analysis/types';
 import { useAnalysisStore, useLoadAnalysis } from '@/store/analysisStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  AlertCircle,
-  ArrowLeft,
-  Brain,
-  Calendar,
-  Check,
-  Database,
-  Download,
-  FileText,
-  Grid3x3,
-  Hash,
-  Loader2,
-  RefreshCw,
-  Search,
-  Shield
+    AlertCircle,
+    ArrowLeft,
+    Brain,
+    Calendar,
+    Check,
+    Database,
+    Download,
+    FileText,
+    Grid3x3,
+    Hash,
+    Loader2,
+    RefreshCw,
+    Search,
+    Shield
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -57,7 +57,6 @@ export default function AnalysisResultPage() {
   const analysis = useAnalysisStore(s => s.currentAnalysis);
   const {
     setContextualAnalysis,
-    setMarketAnalysis,
     setDeepAnalysis
   } = useAnalysisStore();
 
@@ -359,35 +358,6 @@ export default function AnalysisResultPage() {
       }
     } catch (error) {
       console.error('Contextual analysis error:', error);
-      showError('❌ Analiz Başarısız', 'Bir hata oluştu. Lütfen tekrar deneyin.');
-    } finally {
-      setAnalysisLoading(null);
-    }
-  };
-
-  const triggerMarketAnalysis = async () => {
-    if (!dataPool) return;
-
-    setAnalysisLoading('market');
-    try {
-      const response = await fetch('/api/analysis/market', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ analysisId: id, dataPool })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        // ✅ Update Zustand
-        setMarketAnalysis(id, data.marketAnalysis);
-        
-        success('✅ Pazar Analizi Tamamlandı', 'Sonuçlar hazır!');
-      } else {
-        throw new Error('Market analysis failed');
-      }
-    } catch (error) {
-      console.error('Market analysis error:', error);
       showError('❌ Analiz Başarısız', 'Bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setAnalysisLoading(null);
@@ -752,7 +722,6 @@ function DataPoolTab({ dataPool }: { dataPool: DataPool }) {
 // Contextual Analysis Tab
 // ========================================
 function ContextualTab({
-  dataPool,
   analysis,
   onTriggerAnalysis,
   loading
@@ -810,7 +779,7 @@ function DeepTab({
   dataPool: DataPool;
   contextualAnalysis?: ContextualAnalysis | null;
   marketAnalysis?: MarketAnalysis | null;
-  deepAnalysis?: any;
+  deepAnalysis?: unknown;
   onTriggerAnalysis: () => void;
   loading: boolean;
 }) {

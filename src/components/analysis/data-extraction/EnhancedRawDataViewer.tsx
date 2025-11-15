@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Copy, Check, FileText, Calendar, Hash, Users, type LucideIcon } from 'lucide-react';
+import { Copy, Check, FileText, Calendar, Hash, Users, type LucideIcon } from 'lucide-react';
 import type { DataPool } from '@/lib/document-processor/types';
 import { Badge } from '@/components/shared/ui/Badge';
 import { staggerContainer, staggerItem } from '@/lib/utils/animation-variants';

@@ -88,7 +88,7 @@ export function ReplicaFrame({
           }
           setLoadError(false);
         }
-      } catch {
+      } catch (error) {
         // Cross-origin error - use default height (suppress this warning)
         // Silently ignore - this is expected for srcdoc iframes
       }

@@ -19,7 +19,7 @@ export async function GET() {
     try {
       const stats = fs.statSync(dbPath);
       dbSize = `${(stats.size / (1024 * 1024)).toFixed(2)} MB`;
-    } catch {
+    } catch (error) {
       dbSize = "N/A";
     }
 

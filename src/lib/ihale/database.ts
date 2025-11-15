@@ -72,9 +72,9 @@ export class TenderDatabase {
             data.raw_json?.organization || null,
             tenderId
           );
-        } catch (e) {
+        } catch (error) {
           // Columns might not exist, continue to separate table
-          AILogger.warn('Could not update tenders table', { error: e });
+          AILogger.warn('Could not update tenders table', { error });
         }
       }
 

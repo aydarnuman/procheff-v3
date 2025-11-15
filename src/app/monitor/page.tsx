@@ -102,8 +102,8 @@ export default function MonitorPage() {
       } else {
         setError("Metrikler alınamadı");
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Bilinmeyen hata");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Bilinmeyen hata");
     }
   };
 
@@ -114,8 +114,8 @@ export default function MonitorPage() {
       if (data.success) {
         setPerformanceStats(data.data);
       }
-    } catch (err) {
-      console.error("Failed to fetch performance stats:", err);
+    } catch (error) {
+      console.error("Failed to fetch performance stats:", error);
     } finally {
       setPerformanceLoading(false);
     }

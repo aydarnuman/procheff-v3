@@ -11,7 +11,7 @@ import {
 import { usePriceStore } from '@/store/price-store';
 import { AddPriceModalPro } from '@/components/modals/AddPriceModalPro';
 import { ProductDetailModal } from '@/components/modals/ProductDetailModal';
-import { formatPrice } from '@/lib/utils/price-utils';
+
 
 export default function PriceFeedPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);

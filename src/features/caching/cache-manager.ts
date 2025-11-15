@@ -43,7 +43,7 @@ export async function getFromCache<T>(key: string): Promise<T | null> {
     if (typeof value === "string") {
       try {
         return JSON.parse(value) as T;
-      } catch {
+      } catch (error) {
         return value as T;
       }
     }
@@ -204,8 +204,8 @@ export async function withCache<T>(
   const result = await fetcher();
 
   // Store in cache (fire and forget)
-  setCache(key, result, options).catch((err) =>
-    console.error(`[Cache] Failed to set ${key}:`, err)
+  setCache(key, result, options).catch((error) =>
+    console.error(`[Cache] Failed to set ${key}:`, error)
   );
 
   return result;

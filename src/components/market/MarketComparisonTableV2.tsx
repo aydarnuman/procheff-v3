@@ -30,9 +30,65 @@ type SortDirection = 'asc' | 'desc';
  * - 🏆 Best score highlighting
  * - 📝 Human-readable breakdown
  */
-export default function MarketComparisonTableV2({
-  quotes
-}: MarketComparisonTableV2Props) {
+interface ColumnHeaderProps {
+  field: SortField;
+  label: string;
+  width?: string;
+  sortField: SortField;
+  sortDirection: SortDirection;
+  onSort: (field: SortField) => void;
+}
+
+function ColumnHeader({
+  field,
+  label,
+  width,
+  sortField,
+  sortDirection,
+  onSort
+}: ColumnHeaderProps) {
+  return (
+    <th
+      className={`px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-700/30 transition-colors ${width || ''}`}
+      onClick={() => onSort(field)}
+    >
+      <div className="flex items-center gap-2">
+        <span>{label}</span>
+        {sortField === field && (
+          <span className="text-emerald-400">
+            {sortDirection === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </div>
+    </th>
+  );
+}
+
+interface ScoreBadgeProps {
+  score: number;
+  label?: string;
+}
+
+function ScoreBadge({ score, label }: ScoreBadgeProps) {
+  const tier = getScoreTierColor(score);
+  const bgColor = {
+    green: 'bg-emerald-500/20 border-emerald-500/30',
+    blue: 'bg-blue-500/20 border-blue-500/30',
+    yellow: 'bg-yellow-500/20 border-yellow-500/30',
+    orange: 'bg-orange-500/20 border-orange-500/30',
+    red: 'bg-red-500/20 border-red-500/30'
+  }[tier.color];
+
+  return (
+    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded border ${bgColor}`}>
+      <span>{tier.emoji}</span>
+      <span className="text-white font-semibold text-sm">{score}</span>
+      {label && <span className="text-slate-400 text-xs">/ 100</span>}
+    </div>
+  );
+}
+
+export default function MarketComparisonTableV2({ quotes }: MarketComparisonTableV2Props) {
   const [sortField, setSortField] = useState<SortField>('overall');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
@@ -69,43 +125,6 @@ export default function MarketComparisonTableV2({
   // Find best score
   const bestOverallScore = Math.max(...quotes.map(q => q.marketScore?.overall || 0));
 
-  // Column header component
-  const ColumnHeader = ({ field, label, width }: { field: SortField; label: string; width?: string }) => (
-    <th
-      className={`px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-700/30 transition-colors ${width || ''}`}
-      onClick={() => handleSort(field)}
-    >
-      <div className="flex items-center gap-2">
-        <span>{label}</span>
-        {sortField === field && (
-          <span className="text-emerald-400">
-            {sortDirection === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </div>
-    </th>
-  );
-
-  // Score badge component
-  const ScoreBadge = ({ score, label }: { score: number; label?: string }) => {
-    const tier = getScoreTierColor(score);
-    const bgColor = {
-      green: 'bg-emerald-500/20 border-emerald-500/30',
-      blue: 'bg-blue-500/20 border-blue-500/30',
-      yellow: 'bg-yellow-500/20 border-yellow-500/30',
-      orange: 'bg-orange-500/20 border-orange-500/30',
-      red: 'bg-red-500/20 border-red-500/30'
-    }[tier.color];
-
-    return (
-      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded border ${bgColor}`}>
-        <span>{tier.emoji}</span>
-        <span className="text-white font-semibold text-sm">{score}</span>
-        {label && <span className="text-slate-400 text-xs">/ 100</span>}
-      </div>
-    );
-  };
-
   return (
     <div className="glass-card overflow-hidden">
       {/* Header */}
@@ -124,16 +143,65 @@ export default function MarketComparisonTableV2({
         <table className="w-full">
           <thead className="bg-slate-800/50">
             <tr>
-              <ColumnHeader field="overall" label="Genel Skor" width="w-32" />
+              <ColumnHeader
+                field="overall"
+                label="Genel Skor"
+                width="w-32"
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">
                 Market
               </th>
-              <ColumnHeader field="unit_price" label="Fiyat" width="w-24" />
-              <ColumnHeader field="price" label="Fiyat S." width="w-20" />
-              <ColumnHeader field="reliability" label="Güvenilirlik S." width="w-28" />
-              <ColumnHeader field="completeness" label="Tamlık S." width="w-24" />
-              <ColumnHeader field="stock" label="Stok S." width="w-20" />
-              <ColumnHeader field="recency" label="Güncellik S." width="w-24" />
+              <ColumnHeader
+                field="unit_price"
+                label="Fiyat"
+                width="w-24"
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <ColumnHeader
+                field="price"
+                label="Fiyat S."
+                width="w-20"
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <ColumnHeader
+                field="reliability"
+                label="Güvenilirlik S."
+                width="w-28"
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <ColumnHeader
+                field="completeness"
+                label="Tamlık S."
+                width="w-24"
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <ColumnHeader
+                field="stock"
+                label="Stok S."
+                width="w-20"
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <ColumnHeader
+                field="recency"
+                label="Güncellik S."
+                width="w-24"
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700">

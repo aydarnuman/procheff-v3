@@ -32,8 +32,8 @@ export class AILoggerPostgres {
       
       // Table already created in PostgreSQL
       this.isInitialized = true;
-    } catch (err) {
-      console.error("❌ Logger PostgreSQL initialization failed:", err);
+    } catch (error) {
+      console.error("❌ Logger PostgreSQL initialization failed:", error);
     }
   }
 
@@ -50,8 +50,8 @@ export class AILoggerPostgres {
           [level, message, JSON.stringify(data || {})]
         );
       }
-    } catch (err) {
-      console.error("❌ Log PostgreSQL'e kaydedilemedi:", err);
+    } catch (error) {
+      console.error("❌ Log PostgreSQL'e kaydedilemedi:", error);
       // Fallback to console only
     }
   }
@@ -74,19 +74,19 @@ export class AILoggerPostgres {
     this.saveToDB("warn", msg, data);
   }
 
-  static error(msg: string, err?: unknown) {
+  static error(msg: string, error?: unknown) {
     let errorMsg: string;
-    if (err instanceof Error) {
-      errorMsg = err.message;
-    } else if (typeof err === 'object' && err !== null) {
+    if (error instanceof Error) {
+      errorMsg = error.message;
+    } else if (typeof error === 'object' && error !== null) {
       // Serialize object to JSON for better logging
       try {
-        errorMsg = JSON.stringify(err);
-      } catch {
-        errorMsg = String(err);
+        errorMsg = JSON.stringify(error);
+      } catch (error) {
+        errorMsg = String(error);
       }
     } else {
-      errorMsg = String(err);
+      errorMsg = String(error);
     }
     
     const zaman = new Date().toLocaleTimeString('tr-TR');

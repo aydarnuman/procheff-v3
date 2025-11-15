@@ -238,8 +238,8 @@ export async function POST(req: NextRequest) {
         if (!decision) {
           throw new Error("Karar verisi alınamadı");
         }
-      } catch (err) {
-        const errorInfo = categorizeAIError(err);
+      } catch (error) {
+        const errorInfo = categorizeAIError(error);
         throw new Error(`Karar motoru başarısız: ${errorInfo.message}`);
       }
 
@@ -266,10 +266,10 @@ export async function POST(req: NextRequest) {
           { analysis, cost, decision }
         )) as { path?: string };
         pdfPath = pdfResult?.path || null;
-      } catch (e) {
+      } catch (error) {
         AILogger.warn("PDF rapor üretilemedi", {
           jobId,
-          error: String(e),
+          error: String(error),
         });
       }
 
@@ -280,10 +280,10 @@ export async function POST(req: NextRequest) {
           { analysis, cost, decision }
         )) as { path?: string };
         xlsxPath = xlsxResult?.path || null;
-      } catch (e) {
+      } catch (error) {
         AILogger.warn("XLSX rapor üretilemedi", {
           jobId,
-          error: String(e),
+          error: String(error),
         });
       }
 
@@ -315,8 +315,8 @@ export async function POST(req: NextRequest) {
         xlsxPath,
         duration_ms: duration,
       });
-    } catch (err: unknown) {
-      const errorInfo = categorizeAIError(err);
+    } catch (error: unknown) {
+      const errorInfo = categorizeAIError(error);
       const errorMessage = errorInfo.message;
       const errorType = errorInfo.type;
       const recoverable = errorInfo.recoverable;
@@ -344,7 +344,7 @@ export async function POST(req: NextRequest) {
         errorType,
         recoverable,
         message: errorMessage,
-        stack: err instanceof Error ? err.stack : String(err),
+        stack: error instanceof Error ? error.stack : String(error),
       });
     }
   })();

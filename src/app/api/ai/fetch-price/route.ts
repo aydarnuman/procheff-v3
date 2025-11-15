@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
-import { anthropicClient, AILogger } from '@/lib/ai/core';
+import { AILogger } from '@/lib/ai/core';
 import { saveMarketPrice, getProductCard, type MarketPrice } from '@/lib/db/market-db';
 import { validateRequest } from '@/lib/utils/validate';
 import { MarketFetchPriceSchema } from '@/lib/validation/market-fetch-price';
 
-// Real market API URLs (these would be actual API endpoints in production)
-const MARKET_APIS = {
-  migros: 'https://www.migros.com.tr/api/products/search',
-  carrefoursa: 'https://www.carrefoursa.com/api/v1/products',
-  a101: 'https://www.a101.com.tr/api/products',
-  bim: 'https://www.bim.com.tr/api/products',
-  sok: 'https://www.sokmarket.com.tr/api/products',
-  getir: 'https://api.getir.com/products',
-  trendyol: 'https://api.trendyol.com/market/products'
-};
-
+    
+    // Real market API URLs (these would be actual API endpoints in production)
+    // Removed unused MARKET_APIS variable
 // Market-specific price fetchers
 async function fetchMigrosPrice(productName: string): Promise<MarketPrice | null> {
   try {

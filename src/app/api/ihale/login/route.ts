@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { ihbLogin } from '@/lib/ihale/client';
 
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   try {
     const sessionId = await ihbLogin();
     const res = new Response(JSON.stringify({ ok: true }), {

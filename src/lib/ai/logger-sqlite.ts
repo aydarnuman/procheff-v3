@@ -33,8 +33,8 @@ export class AILogger {
         )
       `).run();
       this.isInitialized = true;
-    } catch (err) {
-      console.error("❌ Logger DB initialization failed:", err);
+    } catch (error) {
+      console.error("❌ Logger DB initialization failed:", error);
     }
   }
 
@@ -48,8 +48,8 @@ export class AILogger {
       const db = getDB();
       db.prepare("INSERT INTO logs (level, message, data) VALUES (?, ?, ?)")
         .run(level, message, JSON.stringify(data || {}));
-    } catch (err) {
-      console.error("❌ Log veritabanına kaydedilemedi:", err);
+    } catch (error) {
+      console.error("❌ Log veritabanına kaydedilemedi:", error);
     }
   }
 
@@ -71,22 +71,22 @@ export class AILogger {
     this.saveToDB("warn", msg, data);
   }
 
-  static error(msg: string, err?: unknown) {
+  static error(msg: string, error?: unknown) {
     let errorMsg: string;
-    if (err instanceof Error) {
-      errorMsg = err.message;
-    } else if (typeof err === 'object' && err !== null) {
+    if (error instanceof Error) {
+      errorMsg = error.message;
+    } else if (typeof error === 'object' && error !== null) {
       // Serialize object to JSON for better logging
       try {
-        errorMsg = JSON.stringify(err, null, 2);
-      } catch {
-        errorMsg = String(err);
+        errorMsg = JSON.stringify(error, null, 2);
+      } catch (error) {
+        errorMsg = String(error);
       }
     } else {
-      errorMsg = String(err || "");
+      errorMsg = String(error || "");
     }
     const zaman = new Date().toLocaleTimeString('tr-TR');
-    console.error(`\x1b[31m❌ [${zaman}] [HATA]\x1b[0m ${msg}`, err && typeof err === 'object' ? err : errorMsg);
+    console.error(`\x1b[31m❌ [${zaman}] [HATA]\x1b[0m ${msg}`, error && typeof error === 'object' ? error : errorMsg);
     this.saveToDB("error", msg, { error: errorMsg });
   }
 

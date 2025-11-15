@@ -29,7 +29,7 @@ import {
   Store,
   LineChart
 } from 'lucide-react';
-import type { MarketFusion, ConfidenceBreakdown } from '@/lib/market/schema';
+import type { MarketFusion} from '@/lib/market/schema';
 import type { NormalizedProduct } from '@/lib/market';
 
 interface PriceRobotResultV5Props {
@@ -505,10 +505,10 @@ export function PriceRobotResultV5({
                           </h6>
                           <ul className="text-sm text-slate-300 space-y-1">
                             {breakdown.variant < 0.5 && (
-                              <li>• Daha spesifik ürün adı kullanın (örn: "tavuk" yerine "tavuk göğsü")</li>
+                              <li>• Daha spesifik ürün adı kullanın (örn: &quot;tavuk&quot; yerine &quot;tavuk göğsü&quot;)</li>
                             )}
                             {breakdown.category < 0.5 && (
-                              <li>• Ürün kategorisini netleştirin (örn: "et" yerine "kırmızı et")</li>
+                              <li>• Ürün kategorisini netleştirin (örn: &quot;et&quot; yerine &quot;kırmızı et&quot;)</li>
                             )}
                             {breakdown.marketPrice < 0.5 && (
                               <li>• Piyasa verisi sınırlı, alternatif varyantları deneyin</li>
@@ -532,7 +532,7 @@ export function PriceRobotResultV5({
                             Kategori Filtresi Aktif
                           </h6>
                           <p className="text-sm text-slate-300">
-                            Alternatif ürünler <strong>"{normalized.category}"</strong> kategorisi içinde filtrelendi.
+                            Alternatif ürünler <strong>&quot;{normalized.category}&quot;</strong> kategorisi içinde filtrelendi.
                             Bu, daha alakalı önerilerin sunulmasını sağlar ve hatalı eşleşmeleri önler.
                           </p>
                         </div>

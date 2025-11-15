@@ -3,7 +3,7 @@
  * Domain-specific knowledge for cost calculation and optimization
  */
 
-import { AILogger } from '@/lib/ai/logger';
+
 
 // Ingredient price database with seasonal variations
 export const INGREDIENT_PRICES = {

@@ -112,10 +112,10 @@ export default function CostAnalysisPage() {
         setCostAnalysis(data.data);
         markStepCompleted(PIPELINE_STEPS.COST_ANALYSIS);
       }
-    } catch (err) {
+    } catch (error) {
       setResult({
         success: false,
-        error: err instanceof Error ? err.message : "Bilinmeyen hata",
+        error: error instanceof Error ? error.message : "Bilinmeyen hata",
       });
     } finally {
       setLoading(false);

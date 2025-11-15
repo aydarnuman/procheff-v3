@@ -34,7 +34,7 @@ export class StorageManager {
       // Simple run-length encoding for repeated patterns
       // In production, use pako or lz-string library
       return btoa(encodeURIComponent(str));
-    } catch {
+    } catch (error) {
       return str; // Return original if compression fails
     }
   }
@@ -45,7 +45,7 @@ export class StorageManager {
   private static decompress(str: string): string {
     try {
       return decodeURIComponent(atob(str));
-    } catch {
+    } catch (error) {
       return str; // Return as-is if not compressed
     }
   }
@@ -203,7 +203,7 @@ export class StorageManager {
       data.lastAccessed = Date.now();
       try {
         localStorage.setItem(fullKey, JSON.stringify(data));
-      } catch {
+      } catch (error) {
         // Ignore if update fails
       }
       
@@ -212,8 +212,8 @@ export class StorageManager {
         try {
           const decompressed = this.decompress(data.value);
           return JSON.parse(decompressed) as T;
-        } catch (err) {
-          console.warn('Decompression failed for', key, err);
+        } catch (error) {
+          console.warn('Decompression failed for', key, error);
           return data.value;
         }
       }
@@ -284,7 +284,7 @@ export class StorageManager {
                 removed++;
               }
             }
-          } catch {
+          } catch (error) {
             // Corrupted item, remove it
             localStorage.removeItem(key);
             removed++;
@@ -319,7 +319,7 @@ export class StorageManager {
                 size: item.length
               });
             }
-          } catch {
+          } catch (error) {
             // Skip corrupted items
           }
         }
@@ -376,7 +376,7 @@ export class StorageManager {
       });
       
       return total;
-    } catch {
+    } catch (error) {
       return 0;
     }
   }
@@ -420,7 +420,7 @@ export class StorageManager {
                 compressedItems++;
                 totalOriginalSize += data.size || 0;
               }
-            } catch {
+            } catch (error) {
               // Corrupted item
             }
           }

@@ -31,8 +31,8 @@ export default function LogViewer() {
       } else {
         setError(result.error || "Failed to fetch logs");
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -71,7 +71,7 @@ export default function LogViewer() {
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleString("tr-TR");
-    } catch {
+    } catch (error) {
       return dateString;
     }
   };
@@ -79,7 +79,7 @@ export default function LogViewer() {
   const parseData = (data: string) => {
     try {
       return JSON.parse(data);
-    } catch {
+    } catch (error) {
       return data;
     }
   };

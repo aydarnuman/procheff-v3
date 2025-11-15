@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, Star, TrendingDown, ShoppingCart, X, Search } from 'lucide-react';
-import { BrandClassifier, BrandInfo } from '@/lib/market/normalizers/brand-classifier';
+import { BrandInfo } from '@/lib/market/normalizers/brand-classifier';
 
 export interface BrandFilterSelection {
   tiers: ('premium' | 'standard' | 'economy')[];

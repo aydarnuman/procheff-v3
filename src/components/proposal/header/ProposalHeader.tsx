@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Save, Download, Undo2, Redo2, Clock, CheckCircle2 } from 'lucide-react';
-import { Badge } from '@/components/shared/ui/Badge';
+
 import { useAutoSave, useAutoSaveStatus } from '@/lib/hooks/useAutoSave';
 import { fadeInDown } from '@/lib/utils/animation-variants';
 

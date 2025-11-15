@@ -90,10 +90,10 @@ export async function POST(req: NextRequest) {
       },
     });
     return addRateLimitHeaders(response, limitResult);
-  } catch (err) {
-    const error =
-      err instanceof Error ? err.message : "Unknown error occurred";
-    AILogger.error("💥 Claude analiz hatası", err);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    AILogger.error("💥 Claude analiz hatası", errorMessage);
     
     // Save error metric (non-blocking)
     try {
@@ -101,12 +101,12 @@ export async function POST(req: NextRequest) {
         endpoint: "/api/ai/deep-analysis",
         model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
         success: false,
-        error_message: error,
+        error_message: errorMessage,
       });
-    } catch (metricError) {
+    } catch (_metricError) {
       // Ignore metric errors
     }
     
-    return NextResponse.json({ success: false, error }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }

@@ -7,7 +7,7 @@
 
 import { useChatWidget } from '@/hooks/useChatWidget';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, X, Sparkles } from 'lucide-react';
+import { MessageSquare, Sparkles } from 'lucide-react';
 import { ChatPanel } from './ChatPanel';
 
 export function FloatingChatWidget() {

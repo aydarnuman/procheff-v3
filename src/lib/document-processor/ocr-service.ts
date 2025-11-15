@@ -5,7 +5,7 @@
  * - Tesseract.js (slower, no limits)
  */
 
-import Tesseract, { createWorker, type Worker } from 'tesseract.js';
+import { createWorker, type Worker } from 'tesseract.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { AILogger } from '@/lib/ai/logger';
 

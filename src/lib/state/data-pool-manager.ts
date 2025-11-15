@@ -280,7 +280,7 @@ export class DataPoolManager {
       `).get(analysisId);
       
       return !!row;
-    } catch {
+    } catch (error) {
       return false;
     }
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/db/sqlite-client';
 import { webQuoteRealData } from '@/lib/market/provider/web-real';
-import type { MarketQuote } from '@/lib/market/schema';
+import type {} from '@/lib/market/schema';
 import { ZodError } from 'zod';
 import { MarketCompareQuerySchema } from '@/lib/validation/market-compare';
 
@@ -66,8 +66,8 @@ export async function GET(req: NextRequest) {
           url: quote.meta?.product_url as string,
           last_updated: (quote.meta?.scraped_at as string) || new Date().toISOString()
         }));
-      } catch (err) {
-        console.error('[Market Compare] Scraping failed:', err);
+      } catch (error) {
+        console.error('[Market Compare] Scraping failed:', error);
         // Fallback mock data
         marketPrices = getMockPrices(product);
       }
