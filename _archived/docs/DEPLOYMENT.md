@@ -13,7 +13,7 @@ chmod +x deploy-production.sh
 
 ### 1. Sunucuya Bağlanın
 ```bash
-ssh root@178.62.193.50
+ssh root@104.248.254.171
 cd /var/www/procheff
 ```
 
@@ -41,8 +41,8 @@ docker logs ihale-worker --tail=50
 
 ### 1. Domain DNS Ayarları
 DNS kayıtlarınızı şu şekilde ayarlayın:
-- A Record: `@` → `178.62.193.50`
-- A Record: `www` → `178.62.193.50`
+- A Record: `@` → `104.248.254.171`
+- A Record: `www` → `104.248.254.171`
 
 ### 2. Nginx & SSL Kurulumu
 ```bash
@@ -55,7 +55,7 @@ chmod +x setup-nginx-ssl.sh
 
 ### 1. Repository Secrets Ekleyin
 GitHub repo ayarlarında şu secret'ları ekleyin:
-- `SERVER_IP`: 178.62.193.50
+- `SERVER_IP`: 104.248.254.171
 - `SERVER_USER`: root
 - `SERVER_SSH_KEY`: Sunucu SSH private key
 - `SLACK_WEBHOOK`: (Opsiyonel) Slack bildirimleri için
@@ -65,7 +65,7 @@ GitHub repo ayarlarında şu secret'ları ekleyin:
 # Lokal makinede
 ssh-keygen -t rsa -b 4096 -C "deploy@procheff"
 # Public key'i sunucuya ekleyin
-ssh-copy-id -i ~/.ssh/id_rsa.pub root@178.62.193.50
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@104.248.254.171
 ```
 
 ## Environment Variables
