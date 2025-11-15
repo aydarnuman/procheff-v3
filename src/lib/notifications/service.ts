@@ -1,4 +1,4 @@
-import { getDatabase, query, queryOne, execute } from '@/lib/db/universal-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { emailService, EmailService } from "./email-service";
 
 export interface NotificationChannel {
