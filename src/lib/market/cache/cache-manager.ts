@@ -142,9 +142,9 @@ export class CacheManager {
             tags: row.tags ? JSON.parse(row.tags) : undefined,
             hitCount: row.hit_count
           };
-          
+
           if (this.isExpired(entry)) {
-            this.delete(key);
+            await this.delete(key);
             this.stats.expired++;
             this.stats.misses++;
             return null;

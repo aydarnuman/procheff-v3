@@ -185,11 +185,11 @@ async function getValidationHistory(
         timestamp
       FROM price_validations
       WHERE source = $1
-        AND timestamp >= CURRENT_TIMESTAMP - INTERVAL '${days} days'
+        AND timestamp >= CURRENT_TIMESTAMP - make_interval(days => $2)
       ORDER BY timestamp DESC
     `;
 
-    const rows = await db.query(query, [source]) as any[];
+    const rows = await db.query(query, [source, days]) as any[];
 
     return rows.map(row => ({
       source: row.source as Source,

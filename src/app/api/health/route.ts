@@ -23,14 +23,14 @@ export async function GET() {
     // 1. Database check
     try {
       const db = await getDatabase();
-      const result = await db.queryOne("SELECT 1 as check") as { check: number };
+      const result = await db.queryOne("SELECT 1 as check") as { check: number } | undefined;
       health.checks.database = result?.check === 1;
 
       // Get database stats (PostgreSQL-specific)
       const tableCount = await db.queryOne(
         "SELECT COUNT(*) as count FROM pg_tables WHERE schemaname = 'public'"
-      ) as { count: number };
-      
+      ) as { count: number } | undefined;
+
       health.details.database = {
         connected: true,
         tables: tableCount?.count || 0,

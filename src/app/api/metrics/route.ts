@@ -6,11 +6,11 @@ export async function GET() {
     const db = await getDatabase();
 
     // Toplam log sayısı
-    const totalResult = await db.queryOne("SELECT COUNT(*) AS count FROM logs") as { count: number };
+    const totalResult = await db.queryOne("SELECT COUNT(*) AS count FROM logs") as { count: number } | undefined;
     const total = totalResult?.count || 0;
 
     // Hata sayısı
-    const errorsResult = await db.queryOne("SELECT COUNT(*) AS count FROM logs WHERE level='error'") as { count: number };
+    const errorsResult = await db.queryOne("SELECT COUNT(*) AS count FROM logs WHERE level='error'") as { count: number } | undefined;
     const errors = errorsResult?.count || 0;
 
     // Son 24 saatteki log sayısı
@@ -18,7 +18,7 @@ export async function GET() {
       SELECT COUNT(*) AS count
       FROM logs
       WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '1 day'
-    `) as { count: number };
+    `) as { count: number } | undefined;
     const last24h = last24hResult?.count || 0;
 
     // Ortalama süre (sadece success loglarından) - PostgreSQL JSON operators
@@ -26,7 +26,7 @@ export async function GET() {
       SELECT AVG((data->>'duration_ms')::numeric) AS avg_ms
       FROM logs
       WHERE level='success' AND data->>'duration_ms' IS NOT NULL
-    `) as { avg_ms: number | null };
+    `) as { avg_ms: number | null } | undefined;
     const avgDuration = avgDurationResult?.avg_ms || 0;
 
     // Ortalama token kullanımı (sadece success loglarından) - PostgreSQL JSON operators
@@ -34,7 +34,7 @@ export async function GET() {
       SELECT AVG((data->>'total_estimated_tokens')::numeric) AS avg_tokens
       FROM logs
       WHERE level='success' AND data->>'total_estimated_tokens' IS NOT NULL
-    `) as { avg_tokens: number | null };
+    `) as { avg_tokens: number | null } | undefined;
     const avgTokens = avgTokensResult?.avg_tokens || 0;
 
     // Log seviye dağılımı

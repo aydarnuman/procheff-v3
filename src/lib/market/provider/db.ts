@@ -108,14 +108,14 @@ export async function seriesOf(product_key: string, months = 12): Promise<Array<
         DATE(created_at) as date
       FROM market_prices
       WHERE product_key = $1
-        AND created_at >= CURRENT_TIMESTAMP - INTERVAL '${months} months'
+        AND created_at >= CURRENT_TIMESTAMP - make_interval(months => $2)
         AND unit_price > 0
       GROUP BY date
       ORDER BY date ASC
     `;
 
     try {
-      const rows = await db.query(query, [product_key]) as any[];
+      const rows = await db.query(query, [product_key, months]) as any[];
 
       return rows.map(r => ({
         date: r.date,

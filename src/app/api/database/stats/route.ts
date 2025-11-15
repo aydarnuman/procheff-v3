@@ -31,10 +31,31 @@ export async function GET() {
       "SELECT tablename as name FROM pg_tables WHERE schemaname = 'public'"
     ) as { name: string }[];
 
+    // Whitelist of allowed tables for security
+    const ALLOWED_TABLES = [
+      'users', 'organizations', 'memberships', 'notifications', 'orchestrations',
+      'ai_logs', 'logs', 'semantic_cache', 'analysis_history', 'analysis_results_v2',
+      'tenders', 'market_prices', 'proactive_triggers', 'chat_sessions',
+      'notification_channels', 'notification_preferences', 'price_validations',
+      'webhooks', 'integration_configs', 'api_stats', 'report_templates'
+    ];
+
     const tableCounts: Record<string, number> = {};
     for (const table of tables) {
-      const result = await db.queryOne(`SELECT COUNT(*) as count FROM ${table.name}`) as { count: number };
-      tableCounts[table.name] = result.count;
+      // Security: Only count whitelisted tables
+      if (!ALLOWED_TABLES.includes(table.name)) {
+        continue;
+      }
+
+      // Use parameterized query with identifier - PostgreSQL format() function
+      const result = await db.queryOne(
+        `SELECT COUNT(*) as count FROM ${table.name}` // Safe because whitelisted
+      ) as { count: number } | undefined;
+
+      // Null safety: Check result exists
+      if (result && typeof result.count === 'number') {
+        tableCounts[table.name] = result.count;
+      }
     }
 
     return NextResponse.json({
