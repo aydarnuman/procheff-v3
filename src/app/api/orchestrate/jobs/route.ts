@@ -25,15 +25,17 @@ export async function GET(req: NextRequest) {
       limit: searchParams.get("limit"),
     });
 
-    let jobs;
+    let jobsPromise;
 
     if (params.search) {
-      jobs = searchOrchestrations(params.search, params.limit);
+      jobsPromise = searchOrchestrations(params.search, params.limit);
     } else if (params.status) {
-      jobs = getOrchestrationsByStatus(params.status, params.limit);
+      jobsPromise = getOrchestrationsByStatus(params.status, params.limit);
     } else {
-      jobs = getRecentOrchestrations(params.limit);
+      jobsPromise = getRecentOrchestrations(params.limit);
     }
+
+    const jobs = await jobsPromise;
 
     // Parse result and steps_json back to objects
     const parsedJobs = jobs.map((job) => ({

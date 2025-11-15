@@ -252,7 +252,7 @@ export async function cleanupExpiredCache(): Promise<number> {
     WHERE expires_at < CURRENT_TIMESTAMP
   `);
 
-  return result.rowCount || 0;
+  return result.changes || 0;
 }
 
 /**
@@ -296,5 +296,5 @@ export async function invalidateCacheByPattern(pattern: string): Promise<number>
     WHERE prompt_text LIKE $1
   `, [`%${pattern}%`]);
 
-  return result.rowCount || 0;
+  return result.changes || 0;
 }

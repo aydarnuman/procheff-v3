@@ -10,7 +10,7 @@ import { AILogger } from "@/lib/ai/logger";
 
 export async function GET() {
   try {
-    const stats = getCacheStats();
+    const stats = await getCacheStats();
     
     AILogger.info("Cache stats retrieved", stats);
     
@@ -35,7 +35,7 @@ export async function GET() {
 
 export async function DELETE() {
   try {
-    const deletedCount = cleanupExpiredCache();
+    const deletedCount = await cleanupExpiredCache();
     
     AILogger.success("Expired cache entries cleaned up", { deletedCount });
     

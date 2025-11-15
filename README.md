@@ -27,6 +27,26 @@
 - 📄 **Report Export** - PDF & Excel raporlama
 - 📊 **Pipeline Progress Tracking** - Visual step indicators
 
+## 🏗️ Storage Architecture (NEW!)
+
+Procheff-v3 uses **professional block storage** for production reliability:
+
+```
+/mnt/procheff/ (100GB dedicated block storage)
+├── data/           # SQLite database + backups
+├── uploads/        # PDF, CSV, analysis files  
+├── logs/           # Application logs
+├── cache/          # Temporary cache
+├── backups/        # Automated backups
+└── analysis/       # AI analysis outputs
+```
+
+**Benefits:**
+- 🚀 **100GB capacity** vs limited container storage
+- 💾 **Persistence** - survives restarts and reboots
+- ⚡ **Performance** - dedicated I/O separate from system disk
+- 🔒 **Professional** - production-ready infrastructure
+
 ## 🚀 Quick Start
 
 **For detailed setup instructions, see [Setup Guide](./docs/SETUP.md)**

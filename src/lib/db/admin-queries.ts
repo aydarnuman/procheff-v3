@@ -2,8 +2,33 @@ import { getDatabase } from "@/lib/db/universal-client";
 import bcrypt from "bcryptjs";
 import type { Role } from "@/lib/db/init-auth";
 
+export interface RoleDistributionEntry {
+  role: string;
+  count: number;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  activeUsers: number;
+  totalOrgs: number;
+  recentLogins: number;
+  roleDistribution: RoleDistributionEntry[];
+}
+
+export interface ActivityLogEntry {
+  id: string;
+  action: string;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  details?: string | null;
+  ip_address?: string | null;
+  created_at: string;
+  user_name?: string | null;
+  user_email?: string | null;
+}
+
 // Admin Dashboard Stats
-export async function getAdminStats() {
+export async function getAdminStats(): Promise<AdminStats> {
   const db = await getDatabase();
 
   const totalUsers = await db.queryOne("SELECT COUNT(*) as count FROM users") as { count: number };
@@ -264,7 +289,7 @@ export async function getActivityLogs(options?: {
   action?: string;
   limit?: number;
   offset?: number;
-}) {
+}): Promise<ActivityLogEntry[]> {
   const db = await getDatabase();
   const limit = options?.limit || 50;
   const offset = options?.offset || 0;
@@ -295,5 +320,6 @@ export async function getActivityLogs(options?: {
   query += ` ORDER BY a.created_at DESC LIMIT $${paramCounter++} OFFSET $${paramCounter}`;
   params.push(limit, offset);
 
-  return await db.query(query, params);
+  const rows = await db.query<ActivityLogEntry>(query, params);
+  return rows;
 }

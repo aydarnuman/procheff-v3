@@ -41,7 +41,7 @@ export class DataPoolManager {
     // 2. Check new data_pools table via AnalysisRepository
     try {
       const { AnalysisRepository } = await import('@/lib/db/analysis-repository');
-      const dataPool = AnalysisRepository.getDataPool(analysisId);
+      const dataPool = await AnalysisRepository.getDataPool(analysisId);
 
       if (dataPool) {
         // Add to cache
@@ -96,7 +96,7 @@ export class DataPoolManager {
     try {
       // 1. Save to new data_pools table via AnalysisRepository
       const { AnalysisRepository } = await import('@/lib/db/analysis-repository');
-      AnalysisRepository.saveDataPool(analysisId, dataPool, 24); // 24 hour TTL
+      await AnalysisRepository.saveDataPool(analysisId, dataPool, 24); // 24 hour TTL
 
       // 2. Also save to legacy analysis_history table for backward compatibility (optional)
       try {

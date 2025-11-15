@@ -7,8 +7,14 @@ type QueryResult<T = any> = any;
 type QueryResultRow = any;
 type PoolClient = any;
 
+// Only import pg on server side
+let Pool: any;
+if (typeof window === 'undefined') {
+  Pool = require('pg').Pool;
+}
+
 // PostgreSQL connection pool
-let pool: Pool | null = null;
+let pool: any | null = null;
 let isInitialized = false;
 let isInitializing = false;
 let isShuttingDown = false;
@@ -50,8 +56,10 @@ async function initializeDatabase(): Promise<void> {
   isInitializing = true;
 
   try {
-    // Dynamically import pg only on server-side
-    const { Pool } = await import('pg');
+    // Use the Pool that was imported at module level
+    if (!Pool) {
+      throw new Error('PostgreSQL client not available');
+    }
 
     // Create connection pool
     pool = new Pool(poolConfig);
@@ -152,7 +160,8 @@ export async function query<T extends QueryResultRow = DatabaseRow>(
   params?: QueryParams
 ): Promise<QueryResult<T>> {
   const pool = await getPool();
-  return pool.query<T>(text, params);
+  const result = await pool.query(text, params);
+  return result as QueryResult<T>;
 }
 
 /**

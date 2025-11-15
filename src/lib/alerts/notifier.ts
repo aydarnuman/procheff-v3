@@ -34,7 +34,11 @@ export async function createNotification(input: NotificationInput): Promise<numb
     );
   }
 
-  return result.id as number;
+  if (!result) {
+    throw new Error("Failed to insert notification");
+  }
+
+  return Number((result as { id: number }).id);
 }
 
 /**

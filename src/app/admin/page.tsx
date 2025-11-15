@@ -1,10 +1,11 @@
 import { getAdminStats, getActivityLogs } from "@/lib/db/admin-queries";
+import type { ActivityLogEntry } from "@/lib/db/admin-queries";
 import { Users, Building2, Activity, UserCheck } from "lucide-react";
 import Link from "next/link";
 
 export default async function AdminDashboard() {
-  const stats = getAdminStats();
-  const recentActivity = getActivityLogs({ limit: 10 });
+  const stats = await getAdminStats();
+  const recentActivity = await getActivityLogs({ limit: 10 });
 
   return (
     <div>
@@ -63,7 +64,7 @@ export default async function AdminDashboard() {
         </div>
         <div className="space-y-3">
           {recentActivity && Array.isArray(recentActivity) && recentActivity.length > 0 ? (
-            recentActivity.map((log: { id: string; user_name?: string; action: string; created_at: string }) => (
+            recentActivity.map((log: ActivityLogEntry) => (
               <div key={log.id} className="flex items-start gap-3 p-3 bg-white/5 rounded-lg">
                 <div className="h-2 w-2 rounded-full bg-green-400 mt-2" />
                 <div className="flex-1">

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 export async function POST(req: NextRequest) {
-  initAuthSchema();
+  await initAuthSchema();
   const body = await req.json();
   const schema = z.object({
     email: z.string().email(),
@@ -20,14 +20,14 @@ export async function POST(req: NextRequest) {
   
   const { email, password, name, orgName } = parsed.data;
 
-  const exists = findUserByEmail(email);
+  const exists = await findUserByEmail(email);
   if (exists) return NextResponse.json({ success: false, error: "Bu email zaten kayıtlı" }, { status: 409 });
 
   const userId = nanoid(12);
-  createUser({ id: userId, email, name, password });
+  await createUser({ id: userId, email, name, password });
 
   const orgId = nanoid(10);
-  createDefaultOrgForUser({ orgId, userId, orgName });
+  await createDefaultOrgForUser({ orgId, userId, orgName });
 
   return NextResponse.json({ success: true });
 }

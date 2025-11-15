@@ -11,7 +11,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const job = getOrchestration(id);
+    const job = await getOrchestration(id);
 
     if (!job) {
       return NextResponse.json(
@@ -51,7 +51,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const job = getOrchestration(id);
+    const job = await getOrchestration(id);
 
     if (!job) {
       return NextResponse.json(
@@ -62,7 +62,7 @@ export async function DELETE(
 
     // If job is running, cancel it first
     if (job.status === "running") {
-      cancelOrchestration(id);
+      await cancelOrchestration(id);
       return NextResponse.json({
         success: true,
         message: "Job cancelled successfully",
@@ -70,7 +70,7 @@ export async function DELETE(
     }
 
     // Delete completed/failed/cancelled jobs
-    deleteOrchestration(id);
+    await deleteOrchestration(id);
 
     return NextResponse.json({
       success: true,
@@ -104,7 +104,7 @@ export async function PATCH(
       );
     }
 
-    const job = getOrchestration(id);
+    const job = await getOrchestration(id);
 
     if (!job) {
       return NextResponse.json(
@@ -120,7 +120,7 @@ export async function PATCH(
       );
     }
 
-    cancelOrchestration(id);
+    await cancelOrchestration(id);
 
     return NextResponse.json({
       success: true,

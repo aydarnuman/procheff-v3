@@ -14,7 +14,7 @@ export const authOptions = {
         password: { label: "Şifre", type: "password" },
       },
       async authorize(credentials) {
-        initAuthSchema(); // idempotent
+        await initAuthSchema(); // idempotent
         const schema = z.object({ email: z.string().email(), password: z.string().min(6) });
         const parsed = schema.safeParse(credentials);
         
@@ -22,19 +22,20 @@ export const authOptions = {
         
         const { email, password } = parsed.data;
 
-        const user = findUserByEmail(email);
+        const user = await findUserByEmail(email);
         if (!user) return null;
         const ok = verifyPassword(user.password_hash, password);
         if (!ok) return null;
 
-        const orgs = getUserOrgs(user.id);
+        const orgs = await getUserOrgs(user.id);
+        const activeOrg = orgs[0];
         return {
           id: user.id,
           email: user.email,
           name: user.name || user.email,
           orgs,
-          activeOrgId: orgs[0]?.id || null,
-          role: orgs[0]?.role || null,
+          activeOrgId: activeOrg?.id || null,
+          role: activeOrg?.role || null,
         };
       },
     }),

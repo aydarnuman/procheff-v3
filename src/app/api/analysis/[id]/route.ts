@@ -69,7 +69,7 @@ async function handleGetAnalysis(
   if (!dataPool) {
     try {
       const { AnalysisRepository } = await import('@/lib/db/analysis-repository');
-      dataPool = AnalysisRepository.getDataPool(id);
+      dataPool = await AnalysisRepository.getDataPool(id);
       
       if (dataPool) {
         AILogger.info('💾 DataPool loaded from data_pools table', { analysisId: id });
@@ -91,7 +91,7 @@ async function handleGetAnalysis(
       // Migrate to new table
       if (dataPool) {
         const { AnalysisRepository } = await import('@/lib/db/analysis-repository');
-        AnalysisRepository.saveDataPool(id, dataPool, 24);
+        await AnalysisRepository.saveDataPool(id, dataPool, 24);
       }
     } catch (parseError) {
       AILogger.error('Failed to parse legacy data pool', { 
@@ -127,7 +127,7 @@ async function handleGetAnalysis(
 
   try {
     const { AnalysisRepository } = await import('@/lib/db/analysis-repository');
-    const analysisResult = AnalysisRepository.getByAnalysisId(id);
+    const analysisResult = await AnalysisRepository.getByAnalysisId(id);
     
     if (analysisResult) {
       contextual_analysis = analysisResult.contextual;

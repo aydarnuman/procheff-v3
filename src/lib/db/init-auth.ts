@@ -1,5 +1,14 @@
-import { db } from "@/lib/db/universal-adapter";
+import { getDatabase } from "@/lib/db/universal-client";
+import type { UniversalDB } from "@/lib/db/universal-client";
 import bcrypt from "bcryptjs";
+
+let dbInstance: UniversalDB | null = null;
+async function getDBInstance(): Promise<UniversalDB> {
+  if (!dbInstance) {
+    dbInstance = await getDatabase();
+  }
+  return dbInstance;
+}
 
 export type Role = "OWNER" | "ADMIN" | "ANALYST" | "VIEWER";
 
@@ -12,6 +21,7 @@ export interface User {
 }
 
 export async function initAuthSchema() {
+  const db = await getDBInstance();
   await db.execute(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -93,10 +103,12 @@ export async function initAuthSchema() {
 }
 
 export async function findUserByEmail(email: string): Promise<User | undefined> {
+  const db = await getDBInstance();
   return await db.queryOne<User>("SELECT * FROM users WHERE email = $1", [email]);
 }
 
 export async function createUser({ id, email, name, password }: { id: string; email: string; name?: string; password: string; }) {
+  const db = await getDBInstance();
   const hash = bcrypt.hashSync(password, 10);
   await db.execute("INSERT INTO users (id, email, name, password_hash) VALUES ($1, $2, $3, $4)", [id, email, name || null, hash]);
   return await findUserByEmail(email);
@@ -107,12 +119,14 @@ export function verifyPassword(hash: string, password: string) {
 }
 
 export async function createDefaultOrgForUser({ orgId, userId, orgName }: { orgId: string; userId: string; orgName: string }) {
+  const db = await getDBInstance();
   await db.execute("INSERT INTO organizations (id, name, owner_user_id) VALUES ($1, $2, $3)", [orgId, orgName, userId]);
   await db.execute("INSERT INTO memberships (id, org_id, user_id, role) VALUES ($1, $2, $3, 'OWNER')", [`${orgId}:${userId}`, orgId, userId]);
 }
 
 export async function getUserOrgs(userId: string) {
-  return await db.queryAll<{ id: string; name: string; role: Role }>(`
+  const db = await getDBInstance();
+  return await db.query<{ id: string; name: string; role: Role }>(`
     SELECT o.id, o.name, m.role
     FROM organizations o
     JOIN memberships m ON m.org_id = o.id
@@ -153,6 +167,7 @@ export async function createOrchestration(
     userId?: string;
   }
 ) {
+  const db = await getDBInstance();
   await db.execute(`
     INSERT INTO orchestrations (id, file_name, file_size, mime_type, user_id, progress, status)
     VALUES ($1, $2, $3, $4, $5, 0, 'pending')
@@ -180,6 +195,7 @@ export async function updateOrchestration(
     duration_ms?: number;
   }
 ) {
+  const db = await getDBInstance();
   const fields: string[] = [];
   const values: unknown[] = [];
   let paramIndex = 1;
@@ -238,11 +254,13 @@ export async function updateOrchestration(
 }
 
 export async function getOrchestration(id: string): Promise<OrchestrationRecord | undefined> {
+  const db = await getDBInstance();
   return await db.queryOne<OrchestrationRecord>("SELECT * FROM orchestrations WHERE id = $1", [id]);
 }
 
 export async function getRecentOrchestrations(limit = 50): Promise<OrchestrationRecord[]> {
-  return await db.queryAll<OrchestrationRecord>(`
+  const db = await getDBInstance();
+  return await db.query<OrchestrationRecord>(`
     SELECT * FROM orchestrations
     ORDER BY created_at DESC
     LIMIT $1
@@ -253,7 +271,8 @@ export async function getOrchestrationsByStatus(
   status: string,
   limit = 50
 ): Promise<OrchestrationRecord[]> {
-  return await db.queryAll<OrchestrationRecord>(`
+  const db = await getDBInstance();
+  return await db.query<OrchestrationRecord>(`
     SELECT * FROM orchestrations
     WHERE status = $1
     ORDER BY created_at DESC
@@ -265,7 +284,8 @@ export async function searchOrchestrations(
   query: string,
   limit = 50
 ): Promise<OrchestrationRecord[]> {
-  return await db.queryAll<OrchestrationRecord>(`
+  const db = await getDBInstance();
+  return await db.query<OrchestrationRecord>(`
     SELECT * FROM orchestrations
     WHERE file_name LIKE $1 OR id LIKE $2
     ORDER BY created_at DESC
@@ -274,10 +294,12 @@ export async function searchOrchestrations(
 }
 
 export async function deleteOrchestration(id: string): Promise<void> {
+  const db = await getDBInstance();
   await db.execute("DELETE FROM orchestrations WHERE id = $1", [id]);
 }
 
 export async function cancelOrchestration(id: string): Promise<void> {
+  const db = await getDBInstance();
   await db.execute(`
     UPDATE orchestrations
     SET status = 'cancelled',
@@ -302,6 +324,7 @@ export async function createNotification(data: {
   level: string;
   message: string;
 }): Promise<void> {
+  const db = await getDBInstance();
   await db.execute(`
     INSERT INTO notifications (level, message)
     VALUES ($1, $2)
@@ -309,6 +332,7 @@ export async function createNotification(data: {
 }
 
 export async function getUnreadNotificationCount(): Promise<number> {
+  const db = await getDBInstance();
   const result = await db.queryOne<{ count: number }>("SELECT COUNT(*) as count FROM notifications WHERE is_read = 0");
   return result?.count || 0;
 }

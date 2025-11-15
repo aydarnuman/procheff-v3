@@ -38,6 +38,14 @@ Generate with:
 - Framer Motion animations
 - Glass-card styling
 
+### Storage & File Handling
+When working with file operations:
+- Use volume paths: `/mnt/procheff/{data,uploads,logs,cache,analysis}`
+- Database: Always reference `/app/data/procheff.db` (Docker internal)
+- Uploads: Save to `/app/public/uploads` (mounts to volume)
+- Logs: Write to `/app/logs` directory (volume-mounted)
+- Include error handling for disk space
+
 ### Helper Functions
 Include:
 - JSDoc comments

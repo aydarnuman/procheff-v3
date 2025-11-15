@@ -150,9 +150,10 @@ export class AnalysisRepository {
   static async findById(id: string): Promise<AnalysisResultRow | null> {
     const db = await getDatabase();
     try {
-      return await db.queryOne<AnalysisResultRow>(`
+      const row = await db.queryOne<AnalysisResultRow>(`
         SELECT * FROM analysis_results_v2 WHERE id = $1
       `, [id]);
+      return row ?? null;
     } catch (error) {
       console.error('[AnalysisRepository] Failed to find analysis:', error);
       return null;
@@ -461,7 +462,7 @@ export class AnalysisRepository {
       const result = await db.execute(`
         DELETE FROM data_pools WHERE expires_at < CURRENT_TIMESTAMP
       `);
-      return result.rowCount || 0;
+      return result.changes || 0;
     } catch (error) {
       console.error('[AnalysisRepository] Failed to cleanup expired DataPools:', error);
       return 0;

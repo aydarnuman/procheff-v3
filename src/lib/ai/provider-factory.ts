@@ -137,7 +137,7 @@ export class AIProviderFactory {
 
     // 🚀 Check cache first (unless bypassed)
     if (!bypassCache) {
-      const cached = getCachedResponse<T>(prompt, model, temperature);
+      const cached = await getCachedResponse<T>(prompt, model, temperature);
       
       if (cached) {
         const duration = Date.now() - startTime;
@@ -238,7 +238,7 @@ export class AIProviderFactory {
 
       // 💾 Save to cache for future use
       try {
-        setCachedResponse(prompt, model, temperature, data, totalTokens, 24);
+        await setCachedResponse(prompt, model, temperature, data, totalTokens, 24);
         AILogger.info("💾 Response cached successfully", {
           schemaName: schema.name,
           tokens: totalTokens,

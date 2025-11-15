@@ -27,6 +27,7 @@ Procheff-v3 is an **AI-powered public procurement analysis platform** built with
 - **Export**: pdfkit ^0.17.2, exceljs ^4.4.0
 - **File Processing**: formidable ^3.5.4, pdf-parse, mammoth, file-type
 - **Deployment**: DigitalOcean (App Platform / Droplets), Docker
+- **Storage**: Professional Block Storage (100GB, ext4, bind-mounted)
 
 ## 🧩 Architecture Summary
 
@@ -1076,6 +1077,35 @@ export async function analyzeData(input: AnalysisInput) {
 **Remember**: This is an enterprise-grade application. Code quality, type safety, and proper logging are not optional—they are requirements.
 
 ## 🚀 Deployment
+
+### Storage Architecture (Critical)
+
+Procheff-v3 uses **professional block storage** for production reliability:
+
+```
+/mnt/procheff/ (100GB dedicated block storage)
+├── data/           # SQLite database + backups (22MB+)
+├── uploads/        # PDF, CSV, analysis files
+├── logs/           # Application logs 
+├── cache/          # Temporary cache, sessions
+├── backups/        # Automated database backups
+└── analysis/       # AI analysis outputs
+```
+
+**Docker Volume Mapping:**
+```yaml
+volumes:
+  - /mnt/procheff/data:/app/data
+  - /mnt/procheff/uploads:/app/public/uploads
+  - /mnt/procheff/logs:/app/logs
+  - /mnt/procheff/cache:/app/cache
+```
+
+**File Path Guidelines:**
+- Database: `/app/data/procheff.db` (container path)
+- Uploads: Save to `/app/public/uploads/` (auto-mounted to volume)
+- Logs: Write to `/app/logs/` (volume-mounted for persistence)
+- Cache: Use `/app/cache/` for temporary files
 
 ### DigitalOcean App Platform (Recommended)
 ```bash

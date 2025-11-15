@@ -4,9 +4,9 @@ npm-debug.log
 .env
 .env.local
 *.log
-dist
-src
-tsconfig.json
 .git
 .gitignore
 README.md
+start-clean.sh
+.vscode
+.idea

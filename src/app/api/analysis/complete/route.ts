@@ -47,7 +47,7 @@ async function handleComplete(req: NextRequest) {
     });
     
     // Get analysis record
-    const rec = getAnalysis(analysisId);
+    const rec = await getAnalysis(analysisId);
     
     if (!rec) {
       AILogger.warn('Complete failed: analysis not found', { analysisId, sessionId });
@@ -113,7 +113,7 @@ async function handleComplete(req: NextRequest) {
     }
 
     // Update analysis record: mark as queued
-    const updateSuccess = updateAnalysis(analysisId, {
+    const updateSuccess = await updateAnalysis(analysisId, {
       status: 'queued',
       progress: 1, // Start at 1%
       storagePath: finalStoragePath,
