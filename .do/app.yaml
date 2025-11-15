@@ -172,14 +172,8 @@ services:
 #     window: FIVE_MINUTES
 #     operator: GREATER_THAN
 
-# App-level environment variables (available to all components)
-env:
-  - key: APP_ENV
-    value: "production"
-    scope: RUN_TIME
-  - key: LOG_LEVEL
-    value: "info"
-    scope: RUN_TIME
+# App-level environment variables are managed via UI or API
+# To set: doctl apps update <app-id> --set-global-envs KEY=VALUE
 
 # Domains configuration
 domains:
@@ -191,5 +185,12 @@ domains:
 
 # Alert policies for monitoring (configured via UI or API)
 # To create alerts: doctl apps create-alerts <app-id> --rule <RULE> --component <COMPONENT>
+
+# Log forwarding (optional - uncomment to enable)
+# log_destinations:
+#   - name: datadog
+#     type: DATADOG
+#     api_key: ${DATADOG_API_KEY}
+
 
 
