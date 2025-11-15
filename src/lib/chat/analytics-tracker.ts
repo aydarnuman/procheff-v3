@@ -134,7 +134,7 @@ export class ChatAnalyticsTracker {
         INSERT INTO chat_analytics (
           id, conversation_id, user_id, timestamp, message_type,
           content, response_time, tokens_used, command, success, error
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       `, [
         metadata.messageId,
         metadata.conversationId,
@@ -169,7 +169,7 @@ export class ChatAnalyticsTracker {
       const params: (string | number)[] = [];
 
       if (timeRange) {
-        whereClause = 'WHERE timestamp BETWEEN ? AND ?';
+        whereClause = 'WHERE timestamp BETWEEN $1 AND $2';
         params.push(timeRange.start, timeRange.end);
       }
 
@@ -327,8 +327,8 @@ export class ChatAnalyticsTracker {
       const db = await this.getDB();
       
       const messages = await db.query(`
-        SELECT * FROM chat_analytics 
-        WHERE conversation_id = ? 
+        SELECT * FROM chat_analytics
+        WHERE conversation_id = $1
         ORDER BY timestamp ASC
       `, [conversationId]);
 
@@ -462,8 +462,8 @@ export class ChatAnalyticsTracker {
       const db = await this.getDB();
       
       const history = await db.query(`
-        SELECT * FROM chat_analytics 
-        WHERE conversation_id = ? 
+        SELECT * FROM chat_analytics
+        WHERE conversation_id = $1
         ORDER BY timestamp ASC
       `, [conversationId]);
 
@@ -482,15 +482,15 @@ export class ChatAnalyticsTracker {
       const db = await this.getDB();
       
       const stats = await db.query(`
-        SELECT 
+        SELECT
           COUNT(*) as total_messages,
           COUNT(DISTINCT conversation_id) as total_conversations,
           AVG(response_time) as avg_response_time,
           SUM(tokens_used) as total_tokens,
           COUNT(CASE WHEN success = 1 THEN 1 END) as successful_messages,
           COUNT(CASE WHEN success = 0 THEN 1 END) as failed_messages
-        FROM chat_analytics 
-        WHERE user_id = ?
+        FROM chat_analytics
+        WHERE user_id = $1
       `, [userId]);
 
       return (stats[0] as DatabaseRow) || {};
@@ -508,8 +508,8 @@ export class ChatAnalyticsTracker {
       const db = await this.getDB();
       
       await db.execute(`
-        DELETE FROM chat_analytics 
-        WHERE timestamp < NOW() - INTERVAL '? days'
+        DELETE FROM chat_analytics
+        WHERE timestamp < NOW() - INTERVAL '$1 days'
       `, [daysOld]);
 
       AILogger.info('Old analytics data cleared', { daysOld });
