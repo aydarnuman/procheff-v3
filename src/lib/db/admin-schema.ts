@@ -1,4 +1,5 @@
 import { getDB } from "@/lib/db/sqlite-client";
+import { getSQLSyntax } from './db-adapter';
 
 /**
  * Admin panel için veritabanı şeması genişletmeleri
@@ -6,13 +7,14 @@ import { getDB } from "@/lib/db/sqlite-client";
  * - users tablosuna yeni kolonlar: status, last_login_at, last_ip
  */
 
-export function initAdminSchema() {
+export async function ensureAdminSchema(): Promise<void> {
   const db = getDB();
+  const syntax = getSQLSyntax();
 
-  // 1. Activity Logs Tablosu
+    // 1. Activity Logs Tablosu
   db.prepare(`
     CREATE TABLE IF NOT EXISTS activity_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id ${syntax.serialPrimaryKey},
       user_id TEXT,
       action TEXT NOT NULL,
       entity_type TEXT,
@@ -20,10 +22,9 @@ export function initAdminSchema() {
       details TEXT,
       ip_address TEXT,
       user_agent TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      created_at ${syntax.timestampDefault},
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
-  `).run();
 
   // 2. Activity Logs İndeksleri
   db.prepare(`

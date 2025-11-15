@@ -3,30 +3,27 @@ import { getDB } from './sqlite-client';
 /**
  * Initialize tenders table for ihalebul.com integration
  */
-export function initTendersTable() {
+export function initTenderDB() {
   const db = getDB();
-
+  const syntax = getSQLSyntax();
+  
   // Create tenders table
   db.exec(`
     CREATE TABLE IF NOT EXISTS tenders (
       id TEXT PRIMARY KEY,
-      tender_number TEXT,
-      title TEXT,
-      organization TEXT,
-      city TEXT,
-      tender_type TEXT,
-      partial_bid_allowed INTEGER DEFAULT 0,
-      publish_date TEXT,
+      kurum TEXT NOT NULL,
+      baslik TEXT NOT NULL,
+      butce TEXT,
+      ihale_turu TEXT,
+      kisilik INTEGER,
       tender_date TEXT,
       days_remaining INTEGER,
       url TEXT,
       status TEXT DEFAULT 'active',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at ${syntax.timestampDefault},
+      updated_at ${syntax.timestampDefault}
     )
-  `);
-
-  // Create indexes for better query performance
+  `);  // Create indexes for better query performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_tenders_tender_date ON tenders(tender_date);
     CREATE INDEX IF NOT EXISTS idx_tenders_days_remaining ON tenders(days_remaining);

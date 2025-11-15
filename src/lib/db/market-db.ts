@@ -4,19 +4,18 @@ import { getDB } from './sqlite-client';
  * Market Database Operations
  */
 
-export function initMarketTables() {
+export function initMarketDB() {
   const db = getDB();
+  const syntax = getSQLSyntax();
   
   try {
-    // Product cards table
+    // Market products table
     db.exec(`
-      CREATE TABLE IF NOT EXISTS product_cards (
-        id TEXT PRIMARY KEY,
+      CREATE TABLE IF NOT EXISTS market_products_v2 (
+        product_key TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        normalized_name TEXT,
         category TEXT,
-        subcategory TEXT,
-        icon TEXT,
+        unit TEXT NOT NULL DEFAULT 'kg',
         brand TEXT,
         tags TEXT,
         has_variants INTEGER DEFAULT 0,
@@ -25,8 +24,8 @@ export function initMarketTables() {
         nutrition_category TEXT,
         barcode TEXT,
         image_url TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at ${syntax.timestampDefault},
+        updated_at ${syntax.timestampDefault}
       )
     `);
 
@@ -44,13 +43,13 @@ export function initMarketTables() {
         unit TEXT DEFAULT 'kg',
         brand TEXT,
         is_promotion INTEGER DEFAULT 0,
-        promotion_end_date DATETIME,
+        promotion_end_date ${syntax.timestamp},
         stock_status TEXT DEFAULT 'in_stock',
         confidence_score REAL DEFAULT 1.0,
         data_source TEXT DEFAULT 'web',
-        last_verified DATETIME DEFAULT CURRENT_TIMESTAMP,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        last_verified ${syntax.timestampDefault},
+        created_at ${syntax.timestampDefault},
+        updated_at ${syntax.timestampDefault}
       )
     `);
 
@@ -65,7 +64,7 @@ export function initMarketTables() {
         change_percent REAL,
         change_reason TEXT,
         detected_by TEXT DEFAULT 'system',
-        changed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        changed_at ${syntax.timestampDefault}
       )
     `);
 
