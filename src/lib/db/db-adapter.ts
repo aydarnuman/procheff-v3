@@ -9,15 +9,18 @@
  * - dual: Use PostgreSQL with SQLite fallback
  */
 
+import type { DatabaseRow, QueryParams } from '@/types/database';
 import type Database from 'better-sqlite3';
-import type { QueryParams, DatabaseRow } from '@/types/database';
 
 // Dynamic imports to avoid circular dependencies
 let getSQLiteDB: (() => Database) | null = null;
 let pgQuery: ((sql: string, params?: QueryParams) => Promise<{ rows: DatabaseRow[]; rowCount: number | null }>) | null = null;
 let getClient: (() => Promise<{ query: (sql: string, params?: QueryParams) => Promise<unknown>; release: () => void }>) | null = null;
 
-const DB_MODE = process.env.DB_MODE || 'sqlite'; // 'sqlite' | 'postgres' | 'dual'
+// Determine database mode based on available environment variables
+const USE_POSTGRES = process.env.USE_POSTGRES === 'true';
+const HAS_DATABASE_URL = !!process.env.DATABASE_URL;
+const DB_MODE = process.env.DB_MODE || (USE_POSTGRES && HAS_DATABASE_URL ? 'postgres' : 'sqlite');
 
 /**
  * Universal Database Interface
@@ -48,6 +51,34 @@ export interface UniversalDB {
    * Get current mode
    */
   getMode: () => string;
+}
+
+/**
+ * Get SQL syntax based on current database mode
+ */
+export function getSQLSyntax() {
+  const isPostgres = DB_MODE === 'postgres' || DB_MODE === 'dual';
+  
+  return {
+    // Primary key syntax
+    textPrimaryKey: isPostgres ? 'TEXT PRIMARY KEY' : 'TEXT PRIMARY KEY',
+    serialPrimaryKey: isPostgres ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT',
+    
+    // Timestamp syntax  
+    timestamp: isPostgres ? 'TIMESTAMPTZ' : 'TEXT',
+    timestampDefault: isPostgres ? 'TIMESTAMPTZ DEFAULT NOW()' : 'TEXT DEFAULT (datetime(\'now\'))',
+    
+    // Boolean syntax
+    boolean: isPostgres ? 'BOOLEAN' : 'INTEGER',
+    booleanDefault: (value: boolean) => isPostgres ? `BOOLEAN DEFAULT ${value}` : `INTEGER DEFAULT ${value ? 1 : 0}`,
+    
+    // Text types
+    text: 'TEXT',
+    integer: 'INTEGER',
+    
+    isPostgres,
+    isSQLite: !isPostgres
+  };
 }
 
 /**

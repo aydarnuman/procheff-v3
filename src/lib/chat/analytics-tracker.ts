@@ -5,7 +5,7 @@
 
 import { AILogger } from '@/lib/ai/logger-universal';
 import type { UniversalDB } from '@/lib/db/db-adapter';
-import { getDBAdapter } from '@/lib/db/db-adapter';
+import { getDBAdapter, getSQLSyntax } from '@/lib/db/db-adapter';
 import type { DatabaseRow } from '@/types/database';
 
 export interface ChatMetrics {
@@ -82,22 +82,23 @@ export class ChatAnalyticsTracker {
   private async initDatabase(): Promise<void> {
     try {
       const db = await this.getDB();
+      const sql = getSQLSyntax();
       
       // Create chat_analytics table if not exists
       await db.execute(`
         CREATE TABLE IF NOT EXISTS chat_analytics (
-          id TEXT PRIMARY KEY,
-          conversation_id TEXT NOT NULL,
-          user_id TEXT,
-          timestamp TIMESTAMPTZ DEFAULT NOW(),
-          message_type TEXT NOT NULL,
-          content TEXT NOT NULL,
-          response_time INTEGER,
-          tokens_used INTEGER,
-          command TEXT,
-          success INTEGER DEFAULT 1,
-          error TEXT,
-          created_at TIMESTAMPTZ DEFAULT NOW()
+          id ${sql.textPrimaryKey},
+          conversation_id ${sql.text} NOT NULL,
+          user_id ${sql.text},
+          timestamp ${sql.timestampDefault},
+          message_type ${sql.text} NOT NULL,
+          content ${sql.text} NOT NULL,
+          response_time ${sql.integer},
+          tokens_used ${sql.integer},
+          command ${sql.text},
+          success ${sql.booleanDefault(true)},
+          error ${sql.text},
+          created_at ${sql.timestampDefault}
         )
       `);
 

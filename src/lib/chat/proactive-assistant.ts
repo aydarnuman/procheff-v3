@@ -5,6 +5,7 @@
 
 import { AILogger } from '@/lib/ai/logger';
 import { getDatabase } from '@/lib/db/universal-client';
+import { getSQLSyntax } from '@/lib/db/db-adapter';
 
 import * as CostExpertModule from './expertise/cost-expert';
 import * as TenderExpertModule from './expertise/tender-expert';
@@ -59,33 +60,34 @@ export class ProactiveAssistant {
 
   private async initDatabase() {
     const db = await getDatabase();
+    const sql = getSQLSyntax();
 
     try {
       await db.execute(`
         CREATE TABLE IF NOT EXISTS proactive_suggestions (
-          id TEXT PRIMARY KEY,
-          type TEXT NOT NULL,
-          priority TEXT NOT NULL,
-          title TEXT NOT NULL,
-          message TEXT NOT NULL,
-          action_label TEXT,
-          action_command TEXT,
-          metadata TEXT,
-          shown_count INTEGER DEFAULT 0,
-          last_shown TIMESTAMPTZ,
-          dismissed BOOLEAN DEFAULT false,
-          created_at TIMESTAMPTZ DEFAULT NOW()
+          id ${sql.textPrimaryKey},
+          type ${sql.text} NOT NULL,
+          priority ${sql.text} NOT NULL,
+          title ${sql.text} NOT NULL,
+          message ${sql.text} NOT NULL,
+          action_label ${sql.text},
+          action_command ${sql.text},
+          metadata ${sql.text},
+          shown_count ${sql.integer} DEFAULT 0,
+          last_shown ${sql.timestamp},
+          dismissed ${sql.booleanDefault(false)},
+          created_at ${sql.timestampDefault}
         )
       `);
 
       await db.execute(`
         CREATE TABLE IF NOT EXISTS proactive_triggers (
-          id SERIAL PRIMARY KEY,
-          trigger_type TEXT NOT NULL,
-          condition TEXT NOT NULL,
-          suggestion_template TEXT NOT NULL,
-          active BOOLEAN DEFAULT true,
-          created_at TIMESTAMPTZ DEFAULT NOW()
+          id ${sql.serialPrimaryKey},
+          trigger_type ${sql.text} NOT NULL,
+          condition ${sql.text} NOT NULL,
+          suggestion_template ${sql.text} NOT NULL,
+          active ${sql.booleanDefault(true)},
+          created_at ${sql.timestampDefault}
         )
       `);
 

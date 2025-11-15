@@ -4,6 +4,7 @@
  */
 
 import { AILogger } from '@/lib/ai/logger';
+import { getSQLSyntax } from '@/lib/db/db-adapter';
 import { getDatabase } from '@/lib/db/universal-client';
 import { mcpIntegration } from './mcp-integration';
 
@@ -44,47 +45,47 @@ export class FeedbackService {
 
   private async initDatabase() {
     const db = await getDatabase();
+    const sql = getSQLSyntax();
 
     try {
       // Create feedback tables separately for PostgreSQL compatibility
       await db.execute(`
         CREATE TABLE IF NOT EXISTS chat_feedback (
-          id SERIAL PRIMARY KEY,
-          message_id TEXT NOT NULL,
-          conversation_id TEXT NOT NULL,
-          rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
-          feedback TEXT,
-          improvements TEXT,
-          tags TEXT,
-          context TEXT,
-          created_at TIMESTAMPTZ DEFAULT NOW(),
+          id ${sql.serialPrimaryKey},
+          message_id ${sql.text} NOT NULL,
+          conversation_id ${sql.text} NOT NULL,
+          rating ${sql.integer} NOT NULL,
+          feedback ${sql.text},
+          improvements ${sql.text},
+          tags ${sql.text},
+          context ${sql.text},
+          created_at ${sql.timestampDefault},
           UNIQUE(message_id, conversation_id)
         )
       `);
 
       await db.execute(`
         CREATE TABLE IF NOT EXISTS feedback_patterns (
-          id SERIAL PRIMARY KEY,
-          pattern TEXT NOT NULL,
-          category TEXT NOT NULL,
-          frequency INTEGER DEFAULT 1,
+          id ${sql.serialPrimaryKey},
+          pattern ${sql.text} NOT NULL,
+          category ${sql.text} NOT NULL,
+          frequency ${sql.integer} DEFAULT 1,
           avg_rating REAL,
-          suggested_improvement TEXT,
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          updated_at TIMESTAMPTZ DEFAULT NOW()
+          suggested_improvement ${sql.text},
+          created_at ${sql.timestampDefault},
+          updated_at ${sql.timestampDefault}
         )
       `);
 
       await db.execute(`
         CREATE TABLE IF NOT EXISTS improvement_actions (
-          id SERIAL PRIMARY KEY,
-          feedback_id INTEGER,
-          action_type TEXT NOT NULL,
-          action_details TEXT,
-          status TEXT DEFAULT 'pending',
-          applied_at TIMESTAMPTZ,
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          FOREIGN KEY (feedback_id) REFERENCES chat_feedback(id)
+          id ${sql.serialPrimaryKey},
+          feedback_id ${sql.integer},
+          action_type ${sql.text} NOT NULL,
+          action_details ${sql.text},
+          status ${sql.text} DEFAULT 'pending',
+          applied_at ${sql.timestamp},
+          created_at ${sql.timestampDefault}
         )
       `);
 
