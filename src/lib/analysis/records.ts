@@ -3,7 +3,7 @@
  * Provides getAnalysis and updateAnalysis functions for managing analysis records
  */
 
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { AILogger } from '@/lib/ai/logger';
 
 export interface AnalysisRecord {
@@ -23,14 +23,14 @@ export interface AnalysisRecord {
 /**
  * Get analysis record by ID
  */
-export function getAnalysis(analysisId: string): AnalysisRecord | null {
+export async function getAnalysis(analysisId: string): Promise<AnalysisRecord | null> {
   try {
-    const db = getDB();
-    
-    const stmt = db.prepare(`
-      SELECT 
-        id, 
-        status, 
+    const db = await getDatabase();
+
+    const row = await db.queryOne(`
+      SELECT
+        id,
+        status,
         storage_path,
         input_files,
         data_pool,
@@ -38,30 +38,28 @@ export function getAnalysis(analysisId: string): AnalysisRecord | null {
         updated_at,
         duration_ms
       FROM analysis_history
-      WHERE id = ?
-    `);
-    
-    const row = stmt.get(analysisId) as any;
-    
+      WHERE id = $1
+    `, [analysisId]) as any;
+
     if (!row) {
       AILogger.warn('Analysis not found', { analysisId });
       return null;
     }
-    
+
     // Parse JSON fields
     let inputFiles: any = null;
     let dataPool: any = null;
-    
+
     try {
       if (row.input_files) {
-        inputFiles = typeof row.input_files === 'string' 
-          ? JSON.parse(row.input_files) 
+        inputFiles = typeof row.input_files === 'string'
+          ? JSON.parse(row.input_files)
           : row.input_files;
       }
     } catch (error) {
       AILogger.warn('Failed to parse input_files', { analysisId });
     }
-    
+
     try {
       if (row.data_pool) {
         dataPool = typeof row.data_pool === 'string'
@@ -71,11 +69,11 @@ export function getAnalysis(analysisId: string): AnalysisRecord | null {
     } catch (error) {
       AILogger.warn('Failed to parse data_pool', { analysisId });
     }
-    
+
     // Extract filename from input_files if available
     let filename: string | undefined;
     let fileSize: number | undefined;
-    
+
     if (inputFiles && Array.isArray(inputFiles) && inputFiles.length > 0) {
       filename = inputFiles[0]?.name;
       fileSize = inputFiles[0]?.size;
@@ -83,7 +81,7 @@ export function getAnalysis(analysisId: string): AnalysisRecord | null {
       filename = dataPool.documents[0]?.name;
       fileSize = dataPool.documents[0]?.size;
     }
-    
+
     return {
       id: row.id,
       status: row.status as AnalysisRecord['status'],
@@ -109,78 +107,83 @@ export function getAnalysis(analysisId: string): AnalysisRecord | null {
 /**
  * Update analysis record
  */
-export function updateAnalysis(
+export async function updateAnalysis(
   analysisId: string,
   updates: Partial<Omit<AnalysisRecord, 'id'>>
-): boolean {
+): Promise<boolean> {
   try {
-    const db = getDB();
-    
+    const db = await getDatabase();
+
     // Build update query dynamically
     const fields: string[] = [];
     const values: any[] = [];
-    
+    let paramIndex = 1;
+
     if (updates.status !== undefined) {
-      fields.push('status = ?');
+      fields.push(`status = $${paramIndex}`);
       values.push(updates.status);
+      paramIndex++;
     }
-    
+
     if (updates.storagePath !== undefined) {
-      fields.push('storage_path = ?');
+      fields.push(`storage_path = $${paramIndex}`);
       values.push(updates.storagePath);
+      paramIndex++;
     }
-    
+
     if (updates.progress !== undefined) {
-      fields.push('progress = ?');
+      fields.push(`progress = $${paramIndex}`);
       values.push(updates.progress);
+      paramIndex++;
     }
-    
+
     if (updates.input_files !== undefined) {
-      fields.push('input_files = ?');
+      fields.push(`input_files = $${paramIndex}`);
       values.push(
         typeof updates.input_files === 'string'
           ? updates.input_files
           : JSON.stringify(updates.input_files)
       );
+      paramIndex++;
     }
-    
+
     if (updates.data_pool !== undefined) {
-      fields.push('data_pool = ?');
+      fields.push(`data_pool = $${paramIndex}`);
       values.push(
         typeof updates.data_pool === 'string'
           ? updates.data_pool
           : JSON.stringify(updates.data_pool)
       );
+      paramIndex++;
     }
-    
+
     if (updates.duration_ms !== undefined) {
-      fields.push('duration_ms = ?');
+      fields.push(`duration_ms = $${paramIndex}`);
       values.push(updates.duration_ms);
+      paramIndex++;
     }
-    
+
     // Always update updated_at
-    fields.push('updated_at = datetime(\'now\')');
-    
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+
     if (fields.length === 0) {
       AILogger.warn('No fields to update', { analysisId });
       return false;
     }
-    
+
     values.push(analysisId);
-    
-    const stmt = db.prepare(`
+
+    await db.execute(`
       UPDATE analysis_history
       SET ${fields.join(', ')}
-      WHERE id = ?
-    `);
-    
-    stmt.run(...values);
-    
+      WHERE id = $${paramIndex}
+    `, values);
+
     AILogger.info('Analysis updated', {
       analysisId,
       updates: Object.keys(updates)
     });
-    
+
     return true;
   } catch (error) {
     AILogger.error('Failed to update analysis', {
@@ -191,4 +194,3 @@ export function updateAnalysis(
     return false;
   }
 }
-
