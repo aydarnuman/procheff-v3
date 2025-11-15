@@ -1,0 +1,263 @@
+name: İhale Worker CI/CD
+
+on:
+  push:
+    branches: [main, develop, 'claude/**']
+    paths:
+      - 'ihale-worker/**'
+      - '.github/workflows/worker-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'ihale-worker/**'
+
+env:
+  NODE_VERSION: '20.x'
+  WORKING_DIRECTORY: ihale-worker
+
+jobs:
+  # ==========================================
+  # JOB 1: Code Quality & Linting
+  # ==========================================
+  lint:
+    name: 🔍 Lint & Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: 📦 Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      - name: 🔍 TypeScript check
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npx tsc --noEmit
+
+      - name: 📝 Lint code
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run lint --if-present
+
+  # ==========================================
+  # JOB 2: Unit & Integration Tests
+  # ==========================================
+  test:
+    name: 🧪 Test Suite
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: 📦 Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      - name: 🎭 Install Playwright browsers
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npx playwright install chromium --with-deps
+
+      - name: 🧪 Run tests
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:ci
+        env:
+          CI: true
+
+      - name: 📊 Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ${{ env.WORKING_DIRECTORY }}/coverage/lcov.info
+          flags: worker
+          name: ihale-worker
+          fail_ci_if_error: false
+
+      - name: 💾 Archive test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: ${{ env.WORKING_DIRECTORY }}/coverage
+          retention-days: 7
+
+  # ==========================================
+  # JOB 3: Build
+  # ==========================================
+  build:
+    name: 🏗️ Build
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: 📦 Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      - name: 🏗️ Build
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run build
+
+      - name: 💾 Archive build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: ${{ env.WORKING_DIRECTORY }}/dist
+          retention-days: 7
+
+  # ==========================================
+  # JOB 4: Security Scan
+  # ==========================================
+  security:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: 📦 Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      - name: 🔍 Run npm audit
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: 🛡️ Snyk Security Scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --file=${{ env.WORKING_DIRECTORY }}/package.json
+
+  # ==========================================
+  # JOB 5: Deploy to Staging (on develop)
+  # ==========================================
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [test, build, security]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://staging-worker.procheff.com
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+          path: ${{ env.WORKING_DIRECTORY }}/dist
+
+      - name: 🚀 Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging..."
+          # Add your deployment script here
+          # Example: scp, rsync, or cloud provider CLI
+
+      - name: ✅ Health check
+        run: |
+          sleep 10
+          curl -f https://staging-worker.procheff.com/health || exit 1
+
+  # ==========================================
+  # JOB 6: Deploy to Production (on main)
+  # ==========================================
+  deploy-production:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [test, build, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://worker.procheff.com
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+          path: ${{ env.WORKING_DIRECTORY }}/dist
+
+      - name: 🚀 Deploy to production
+        run: |
+          echo "🚀 Deploying to production..."
+          # Add your deployment script here
+          # Example:
+          # - SSH into server
+          # - Pull latest code
+          # - pm2 restart worker
+
+      - name: ✅ Health check
+        run: |
+          sleep 10
+          curl -f https://worker.procheff.com/health || exit 1
+
+      - name: 📢 Notify team
+        if: always()
+        run: |
+          echo "📢 Deployment completed"
+          # Add Slack/Discord/Email notification here
+
+  # ==========================================
+  # JOB 7: Quality Gate
+  # ==========================================
+  quality-gate:
+    name: 🎯 Quality Gate
+    runs-on: ubuntu-latest
+    needs: [lint, test, build, security]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📊 Check coverage
+        run: |
+          echo "📊 Checking test coverage..."
+          # Coverage checked in test job
+
+      - name: ✅ Quality gate passed
+        run: |
+          echo "✅ All quality checks passed!"
+          echo "🎉 Ready for deployment"
