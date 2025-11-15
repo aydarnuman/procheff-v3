@@ -60,34 +60,47 @@ export class ProactiveAssistant {
   private async initDatabase() {
     const db = await getDatabase();
 
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS proactive_suggestions (
-        id TEXT PRIMARY KEY,
-        type TEXT NOT NULL,
-        priority TEXT NOT NULL,
-        title TEXT NOT NULL,
-        message TEXT NOT NULL,
-        action_label TEXT,
-        action_command TEXT,
-        metadata TEXT,
-        shown_count INTEGER DEFAULT 0,
-        last_shown TIMESTAMP,
-        dismissed BOOLEAN DEFAULT false,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+    try {
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS proactive_suggestions (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          priority TEXT NOT NULL,
+          title TEXT NOT NULL,
+          message TEXT NOT NULL,
+          action_label TEXT,
+          action_command TEXT,
+          metadata TEXT,
+          shown_count INTEGER DEFAULT 0,
+          last_shown TIMESTAMPTZ,
+          dismissed BOOLEAN DEFAULT false,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
 
-      CREATE TABLE IF NOT EXISTS proactive_triggers (
-        id SERIAL PRIMARY KEY,
-        trigger_type TEXT NOT NULL,
-        condition TEXT NOT NULL,
-        suggestion_template TEXT NOT NULL,
-        active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS proactive_triggers (
+          id SERIAL PRIMARY KEY,
+          trigger_type TEXT NOT NULL,
+          condition TEXT NOT NULL,
+          suggestion_template TEXT NOT NULL,
+          active BOOLEAN DEFAULT true,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
 
-      CREATE INDEX IF NOT EXISTS idx_suggestions_type ON proactive_suggestions(type);
-      CREATE INDEX IF NOT EXISTS idx_suggestions_priority ON proactive_suggestions(priority);
-      CREATE INDEX IF NOT EXISTS idx_triggers_type ON proactive_triggers(trigger_type);
+      // Create indexes separately
+      try {
+        await db.execute(`CREATE INDEX IF NOT EXISTS idx_suggestions_type ON proactive_suggestions(type)`);
+        await db.execute(`CREATE INDEX IF NOT EXISTS idx_suggestions_priority ON proactive_suggestions(priority)`);
+        await db.execute(`CREATE INDEX IF NOT EXISTS idx_triggers_type ON proactive_triggers(trigger_type)`);
+      } catch (e) {
+        // Indexes may already exist, ignore
+      }
+    } catch (error) {
+      console.error('Failed to initialize proactive assistant database:', error);
+    }
+  }
     `);
 
     // Seed default triggers

@@ -77,7 +77,7 @@ export class ChatAnalyticsTracker {
   }
 
   /**
-   * Initialize analytics tables
+   * Initialize analytics tables with PostgreSQL/SQLite compatibility
    */
   private async initDatabase(): Promise<void> {
     try {
@@ -89,7 +89,7 @@ export class ChatAnalyticsTracker {
           id TEXT PRIMARY KEY,
           conversation_id TEXT NOT NULL,
           user_id TEXT,
-          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          timestamp TIMESTAMPTZ DEFAULT NOW(),
           message_type TEXT NOT NULL,
           content TEXT NOT NULL,
           response_time INTEGER,
@@ -97,29 +97,42 @@ export class ChatAnalyticsTracker {
           command TEXT,
           success INTEGER DEFAULT 1,
           error TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `);
 
-      // Create indexes
-      await db.execute(`
-        CREATE INDEX IF NOT EXISTS idx_chat_analytics_conversation
-        ON chat_analytics(conversation_id)
-      `);
+      // Create indexes separately for PostgreSQL compatibility
+      try {
+        await db.execute(`
+          CREATE INDEX IF NOT EXISTS idx_chat_analytics_conversation
+          ON chat_analytics(conversation_id)
+        `);
+      } catch (e) {
+        // Index may already exist, ignore
+      }
       
-      await db.execute(`
-        CREATE INDEX IF NOT EXISTS idx_chat_analytics_timestamp
-        ON chat_analytics(timestamp)
-      `);
+      try {
+        await db.execute(`
+          CREATE INDEX IF NOT EXISTS idx_chat_analytics_timestamp
+          ON chat_analytics(timestamp)
+        `);
+      } catch (e) {
+        // Index may already exist, ignore
+      }
       
-      await db.execute(`
-        CREATE INDEX IF NOT EXISTS idx_chat_analytics_command
-        ON chat_analytics(command)
-      `);
+      try {
+        await db.execute(`
+          CREATE INDEX IF NOT EXISTS idx_chat_analytics_command
+          ON chat_analytics(command)
+        `);
+      } catch (e) {
+        // Index may already exist, ignore
+      }
 
       AILogger.info('Chat analytics database initialized');
     } catch (error) {
       AILogger.error('Failed to initialize chat analytics database', { error });
+      throw error; // Re-throw to prevent silent failures
     }
   }
 

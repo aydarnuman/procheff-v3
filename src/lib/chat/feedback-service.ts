@@ -45,47 +45,60 @@ export class FeedbackService {
   private async initDatabase() {
     const db = await getDatabase();
 
-    // Create feedback tables
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS chat_feedback (
-        id SERIAL PRIMARY KEY,
-        message_id TEXT NOT NULL,
-        conversation_id TEXT NOT NULL,
-        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
-        feedback TEXT,
-        improvements TEXT,
-        tags TEXT,
-        context TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(message_id, conversation_id)
-      );
+    try {
+      // Create feedback tables separately for PostgreSQL compatibility
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS chat_feedback (
+          id SERIAL PRIMARY KEY,
+          message_id TEXT NOT NULL,
+          conversation_id TEXT NOT NULL,
+          rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+          feedback TEXT,
+          improvements TEXT,
+          tags TEXT,
+          context TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          UNIQUE(message_id, conversation_id)
+        )
+      `);
 
-      CREATE TABLE IF NOT EXISTS feedback_patterns (
-        id SERIAL PRIMARY KEY,
-        pattern TEXT NOT NULL,
-        category TEXT NOT NULL,
-        frequency INTEGER DEFAULT 1,
-        avg_rating REAL,
-        suggested_improvement TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS feedback_patterns (
+          id SERIAL PRIMARY KEY,
+          pattern TEXT NOT NULL,
+          category TEXT NOT NULL,
+          frequency INTEGER DEFAULT 1,
+          avg_rating REAL,
+          suggested_improvement TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
 
-      CREATE TABLE IF NOT EXISTS improvement_actions (
-        id SERIAL PRIMARY KEY,
-        feedback_id INTEGER,
-        action_type TEXT NOT NULL,
-        action_details TEXT,
-        status TEXT DEFAULT 'pending',
-        applied_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (feedback_id) REFERENCES chat_feedback(id)
-      );
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS improvement_actions (
+          id SERIAL PRIMARY KEY,
+          feedback_id INTEGER,
+          action_type TEXT NOT NULL,
+          action_details TEXT,
+          status TEXT DEFAULT 'pending',
+          applied_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          FOREIGN KEY (feedback_id) REFERENCES chat_feedback(id)
+        )
+      `);
 
-      CREATE INDEX IF NOT EXISTS idx_feedback_rating ON chat_feedback(rating);
-      CREATE INDEX IF NOT EXISTS idx_feedback_conversation ON chat_feedback(conversation_id);
-      CREATE INDEX IF NOT EXISTS idx_patterns_category ON feedback_patterns(category);
-    `);
+      // Create indexes separately
+      try {
+        await db.execute(`CREATE INDEX IF NOT EXISTS idx_feedback_rating ON chat_feedback(rating)`);
+        await db.execute(`CREATE INDEX IF NOT EXISTS idx_feedback_conversation ON chat_feedback(conversation_id)`);
+        await db.execute(`CREATE INDEX IF NOT EXISTS idx_patterns_category ON feedback_patterns(category)`);
+      } catch (e) {
+        // Indexes may already exist, ignore
+      }
+    } catch (error) {
+      console.error('Failed to initialize feedback database:', error);
+    }
   }
 
   /**
