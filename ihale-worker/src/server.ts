@@ -1,10 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
+import swaggerUi from 'swagger-ui-express';
 import { mountIhalebul, cleanupBrowsers } from './ihalebul';
 import { browserPool } from './browser-pool';
 import { rateLimiter, getRateLimiterStats } from './middleware/rate-limiter';
 import { config } from './config';
+import { swaggerSpec } from './swagger';
 
 // Türkçe logger
 const Log = {
@@ -31,12 +33,19 @@ app.use(express.json());
 // Rate limiting (apply to all routes)
 app.use(rateLimiter);
 
+// Swagger API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'İhale Worker API Docs',
+}));
+
 // Root endpoint
 app.get('/', (_req, res) => {
   res.json({
     service: 'ihale-worker',
     status: 'running',
     version: '2.0.0',
+    documentation: `http://localhost:${config.PORT}/api-docs`,
     endpoints: [
       '/health',
       '/auth/login',
@@ -97,6 +106,7 @@ async function startServer() {
         ]
       });
       Log.bilgi(`Sağlık kontrolü: http://localhost:${config.PORT}/health`);
+      Log.bilgi(`API Dokümantasyonu: http://localhost:${config.PORT}/api-docs`);
     });
 
     return server;

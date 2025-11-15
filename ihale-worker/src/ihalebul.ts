@@ -448,7 +448,40 @@ function extractDocuments(html: string) {
 
 export function mountIhalebul(app: express.Express) {
 
-  // 1) LOGIN
+  /**
+   * @swagger
+   * /auth/login:
+   *   post:
+   *     tags:
+   *       - Authentication
+   *     summary: Login to ihalebul.com
+   *     description: Authenticate with ihalebul.com and get a session ID for subsequent requests
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/LoginRequest'
+   *     responses:
+   *       200:
+   *         description: Login successful
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/LoginResponse'
+   *       400:
+   *         description: Missing username or password
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       500:
+   *         description: Login failed
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   app.post('/auth/login', async (req, res) => {
     try {
       const { username, password } = req.body;
@@ -479,7 +512,51 @@ export function mountIhalebul(app: express.Express) {
     }
   });
 
-  // 2) LIST (with pagination support)
+  /**
+   * @swagger
+   * /list:
+   *   get:
+   *     tags:
+   *       - Tenders
+   *     summary: Get list of tenders
+   *     description: Fetch all tenders from ihalebul.com with pagination (category=15 for food services)
+   *     security:
+   *       - sessionId: []
+   *     parameters:
+   *       - in: query
+   *         name: sessionId
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Session ID from login
+   *     responses:
+   *       200:
+   *         description: List of tenders
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 items:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/Tender'
+   *                 count:
+   *                   type: number
+   *                   example: 150
+   *       401:
+   *         description: Invalid session
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       500:
+   *         description: Server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   app.get('/list', async (req, res) => {
     try {
       const sessionId = String(req.query.sessionId || '');
