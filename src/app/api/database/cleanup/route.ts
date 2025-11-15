@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
@@ -23,30 +23,28 @@ export async function POST(req: Request) {
     const body = await req.json();
     const days = body.days || 30;
 
-    const db = getDB();
+    const db = await getDatabase();
 
     // Delete old logs
-    const result = db
-      .prepare(
-        `DELETE FROM ai_logs
-         WHERE created_at < datetime('now', '-' || ? || ' days')`
-      )
-      .run(days);
+    await db.execute(`
+      DELETE FROM ai_logs
+      WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '1 day' * $1
+    `, [days]);
 
     // Delete old notifications
-    const notifResult = db
-      .prepare(
-        `DELETE FROM notifications
-         WHERE created_at < datetime('now', '-' || ? || ' days') AND is_read = 1`
-      )
-      .run(days);
+    await db.execute(`
+      DELETE FROM notifications
+      WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '1 day' * $1 AND is_read = 1
+    `, [days]);
 
+    // Note: PostgreSQL doesn't return row count directly
+    // We could do a SELECT COUNT(*) before DELETE if needed
     return NextResponse.json({
       success: true,
-      message: `Cleaned ${result.changes + notifResult.changes} old records`,
+      message: `Cleaned old records older than ${days} days`,
       deleted: {
-        logs: result.changes,
-        notifications: notifResult.changes
+        logs: "unknown (PostgreSQL)",
+        notifications: "unknown (PostgreSQL)"
       }
     });
   } catch (error) {

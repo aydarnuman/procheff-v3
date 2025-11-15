@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDB } from "@/lib/db/sqlite-client";
-import Database from "better-sqlite3";
+import { getDatabase } from "@/lib/db/universal-client";
 
 /**
  * Health check endpoint for monitoring and deployment verification
@@ -23,15 +22,16 @@ export async function GET() {
   try {
     // 1. Database check
     try {
-      const db = getDB();
-      const result = db.prepare("SELECT 1 as check").get() as { check: number };
+      const db = await getDatabase();
+      const result = await db.queryOne("SELECT 1 as check") as { check: number } | undefined;
       health.checks.database = result?.check === 1;
-      
+
       // Get database stats
-      const tableCount = db.prepare(
-        "SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'"
-      ).get() as { count: number };
-      
+      const tableCount = await db.queryOne(`
+        SELECT COUNT(*) as count FROM information_schema.tables
+        WHERE table_schema = 'public'
+      `) as { count: number } | undefined;
+
       health.details.database = {
         connected: true,
         tables: tableCount?.count || 0,
@@ -48,7 +48,7 @@ export async function GET() {
     const memUsage = process.memoryUsage();
     const memoryUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
     const memoryTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
-    
+
     health.checks.memory = memoryUsedMB < memoryTotalMB * 0.9; // Less than 90% used
     health.details.memory = {
       used: `${memoryUsedMB} MB`,
@@ -68,7 +68,7 @@ export async function GET() {
 
     // Return appropriate status code
     const statusCode = allChecksPass ? 200 : 503;
-    
+
     return NextResponse.json(health, { status: statusCode });
   } catch (error) {
     return NextResponse.json(
