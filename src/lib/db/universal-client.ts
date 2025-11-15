@@ -24,9 +24,8 @@
  */
 
 // Core database adapter
-export { getDBAdapter as getDatabase } from './db-adapter';
+export { getDBMode, getDBAdapter as getDatabase, getSQLSyntax, isAsyncMode } from './db-adapter';
 export type { UniversalDB } from './db-adapter';
-export { getDBMode, isAsyncMode } from './db-adapter';
 
 // PostgreSQL-specific utilities (will use DB_MODE from environment)
 export { transaction, validateJSON } from './postgres-client';

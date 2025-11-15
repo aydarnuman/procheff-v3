@@ -1,6 +1,6 @@
-import { getDatabase } from "@/lib/db/universal-client";
-import bcrypt from "bcryptjs";
 import type { Role } from "@/lib/db/init-auth";
+import { getDatabase, getSQLSyntax } from "@/lib/db/universal-client";
+import bcrypt from "bcryptjs";
 
 export interface RoleDistributionEntry {
   role: string;
@@ -46,9 +46,10 @@ export async function getAdminStats(): Promise<AdminStats> {
 
   const totalOrgs = await db.queryOne("SELECT COUNT(*) as count FROM organizations") as { count: number };
 
+  const syntax = getSQLSyntax();
   const recentLogins = await db.queryOne(`
     SELECT COUNT(*) as count FROM activity_logs
-    WHERE action = 'LOGIN' AND created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+    WHERE action = 'LOGIN' AND created_at >= ${syntax.datetime.subtract24Hours}
   `) as { count: number };
 
   const roleDistribution = await db.query(`

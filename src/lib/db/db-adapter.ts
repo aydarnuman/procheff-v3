@@ -68,6 +68,12 @@ export function getSQLSyntax() {
     timestamp: isPostgres ? 'TIMESTAMPTZ' : 'TEXT',
     timestampDefault: isPostgres ? 'TIMESTAMPTZ DEFAULT NOW()' : 'TEXT DEFAULT (datetime(\'now\'))',
     
+    // Date/time operations
+    datetime: {
+      now: isPostgres ? 'CURRENT_TIMESTAMP' : "datetime('now')",
+      subtract24Hours: isPostgres ? "CURRENT_TIMESTAMP - INTERVAL '24 hours'" : "datetime('now', '-24 hours')"
+    },
+    
     // Boolean syntax
     boolean: isPostgres ? 'BOOLEAN' : 'INTEGER',
     booleanDefault: (value: boolean) => isPostgres ? `BOOLEAN DEFAULT ${value}` : `INTEGER DEFAULT ${value ? 1 : 0}`,

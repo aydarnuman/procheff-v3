@@ -4,8 +4,8 @@
  */
 
 import { AILogger } from '@/lib/ai/logger';
-import { getDatabase } from '@/lib/db/universal-client';
 import { getSQLSyntax } from '@/lib/db/db-adapter';
+import { getDatabase } from '@/lib/db/universal-client';
 
 import * as CostExpertModule from './expertise/cost-expert';
 import * as TenderExpertModule from './expertise/tender-expert';
