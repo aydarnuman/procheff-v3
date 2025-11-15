@@ -24,35 +24,32 @@ class UniversalAILogger {
   private serverLogger: ServerLogger | null = null;
   private initialized = false;
 
-  private async initializeServerLogger(): Promise<void> {
-    if (!this.isServer || this.initialized) return;
-    
-    try {
-      // Check if we should use PostgreSQL
-      const usePostgres = 
-        process.env.USE_POSTGRES_FOR_AI === "true" ||
-        process.env.DB_MODE === "postgres" ||
-        process.env.DB_MODE === "dual" ||
-        Boolean(process.env.DATABASE_URL?.includes("postgres"));
-
-      if (usePostgres) {
-        // Completely dynamic import to prevent webpack bundling
-        const loggerPath = './logger-postgres';
-        const loggerModule = await import(loggerPath);
-        this.serverLogger = loggerModule.AILogger;
-      } else {
-        const loggerPath = './logger-sqlite';
-        const loggerModule = await import(loggerPath);
-        this.serverLogger = loggerModule.AILogger;
-      }
+    private async initializeServerLogger(): Promise<void> {
+      if (!this.isServer || this.initialized) return;
       
-      this.initialized = true;
-    } catch (error) {
-      console.warn('Failed to load server logger, using console fallback:', error);
-      this.serverLogger = this.getConsoleLogger();
-      this.initialized = true;
+      try {
+        // Check if we should use PostgreSQL
+        const usePostgres = 
+          process.env.USE_POSTGRES_FOR_AI === "true" ||
+          process.env.DB_MODE === "postgres" ||
+          process.env.DB_MODE === "dual" ||
+          Boolean(process.env.DATABASE_URL?.includes("postgres"));
+
+        if (usePostgres) {
+          const loggerModule = await import('./logger-postgres');
+          this.serverLogger = loggerModule.AILogger;
+        } else {
+          const loggerModule = await import('./logger-sqlite');
+          this.serverLogger = loggerModule.AILogger;
+        }
+        
+        this.initialized = true;
+      } catch (error) {
+        console.warn('Failed to load server logger, using console fallback:', error);
+        this.serverLogger = this.getConsoleLogger();
+        this.initialized = true;
+      }
     }
-  }
 
   private getConsoleLogger(): ServerLogger {
     return {
