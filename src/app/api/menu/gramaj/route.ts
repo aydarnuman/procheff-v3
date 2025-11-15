@@ -3,7 +3,7 @@
  * Calculates portion sizes and totals based on institution type
  */
 
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { validateRequest } from '@/lib/utils/validate';
 import { MenuGramajRequestSchema } from '@/lib/validation/menu-gramaj';
 import { NextRequest, NextResponse } from 'next/server';
@@ -16,10 +16,10 @@ export async function POST(request: NextRequest) {
       MenuGramajRequestSchema
     );
 
-    const db = getDB();
+    const db = await getDatabase();
 
     // Fetch menu items
-    const placeholders = items.map(() => '?').join(',');
+    const placeholders = items.map((_, idx) => `$${idx + 1}`).join(',');
     const itemsQuery = `
       SELECT
         id,
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       WHERE id IN (${placeholders})
     `;
 
-    const menuItems = db.prepare(itemsQuery).all(...items);
+    const menuItems = await db.query(itemsQuery, items);
 
     if (menuItems.length === 0) {
       return NextResponse.json(

@@ -3,14 +3,14 @@
  * Returns available menu items from database
  */
 
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { MenuHavuzQuerySchema } from '@/lib/validation/menu-havuz';
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 
 export async function GET(request: NextRequest) {
   try {
-    const db = getDB();
+    const db = await getDatabase();
     const { searchParams } = new URL(request.url);
 
     const { category, meal_type, institution_type } = MenuHavuzQuerySchema.parse({
@@ -39,26 +39,29 @@ export async function GET(request: NextRequest) {
     `;
 
     const params: any[] = [];
+    let paramIndex = 1;
 
     if (category) {
-      query += ` AND category_id = ?`;
+      query += ` AND category_id = $${paramIndex}`;
       params.push(category);
+      paramIndex++;
     }
 
     if (meal_type) {
-      query += ` AND meal_type = ?`;
+      query += ` AND meal_type = $${paramIndex}`;
       params.push(meal_type);
+      paramIndex++;
     }
 
     if (institution_type) {
-      query += ` AND (institution_types LIKE ? OR institution_types LIKE ?)`;
+      query += ` AND (institution_types ILIKE $${paramIndex} OR institution_types ILIKE $${paramIndex + 1})`;
       params.push(`%"${institution_type}"%`, '%"all"%');
+      paramIndex += 2;
     }
 
     query += ` ORDER BY name ASC`;
 
-    const stmt = db.prepare(query);
-    const items = stmt.all(...params);
+    const items = await db.query(query, params);
 
     return NextResponse.json({
       success: true,
