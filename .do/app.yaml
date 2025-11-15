@@ -61,10 +61,13 @@ services:
       # AI Configuration
       - key: ANTHROPIC_API_KEY
         value: "***ANTHROPIC_API_KEY***"
+        scope: RUN_AND_BUILD_TIME
       - key: ANTHROPIC_MODEL
         value: "claude-sonnet-4-20250514"
+        scope: RUN_AND_BUILD_TIME
       - key: GOOGLE_API_KEY
         value: "***GOOGLE_API_KEY***"
+        scope: RUN_AND_BUILD_TIME
 
       # App URL (will be set after deployment)
       - key: NEXT_PUBLIC_APP_URL
