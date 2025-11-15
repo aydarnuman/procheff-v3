@@ -41,16 +41,16 @@ export async function initAuthSchema() {
     );
   `);
 
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS memberships (
-      id TEXT PRIMARY KEY,
-      org_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      role TEXT NOT NULL,
-      UNIQUE(org_id, user_id),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS memberships (
+        id TEXT PRIMARY KEY,
+        org_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(org_id, user_id)
+      );
+    `);
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS notifications (

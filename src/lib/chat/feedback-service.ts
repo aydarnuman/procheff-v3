@@ -58,8 +58,10 @@ export class FeedbackService {
         context TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(message_id, conversation_id)
-      );
+      )
+    `);
 
+    await db.execute(`
       CREATE TABLE IF NOT EXISTS feedback_patterns (
         id SERIAL PRIMARY KEY,
         pattern TEXT NOT NULL,
@@ -69,8 +71,10 @@ export class FeedbackService {
         suggested_improvement TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
+    `);
 
+    await db.execute(`
       CREATE TABLE IF NOT EXISTS improvement_actions (
         id SERIAL PRIMARY KEY,
         feedback_id INTEGER,
@@ -80,11 +84,22 @@ export class FeedbackService {
         applied_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (feedback_id) REFERENCES chat_feedback(id)
-      );
+      )
+    `);
 
-      CREATE INDEX IF NOT EXISTS idx_feedback_rating ON chat_feedback(rating);
-      CREATE INDEX IF NOT EXISTS idx_feedback_conversation ON chat_feedback(conversation_id);
-      CREATE INDEX IF NOT EXISTS idx_patterns_category ON feedback_patterns(category);
+    await db.execute(`
+      CREATE INDEX IF NOT EXISTS idx_feedback_rating 
+      ON chat_feedback(rating)
+    `);
+
+    await db.execute(`
+      CREATE INDEX IF NOT EXISTS idx_feedback_conversation 
+      ON chat_feedback(conversation_id)
+    `);
+
+    await db.execute(`
+      CREATE INDEX IF NOT EXISTS idx_patterns_category 
+      ON feedback_patterns(category)
     `);
   }
 
