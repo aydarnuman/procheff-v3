@@ -118,8 +118,8 @@ function getSQLiteAdapter(): UniversalDB {
           changes: info.changes,
           lastID: typeof info.lastInsertRowid === 'number' ? info.lastInsertRowid : undefined
         };
-      } catch (error) {
-        console.error('[SQLite] Execute error:', error);
+        } catch (error) {
+          console.error('[SQLite] Execute error:', error, '\nSQL:', sql);
         throw error;
       }
     },

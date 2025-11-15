@@ -35,16 +35,13 @@ class UniversalAILogger {
         process.env.DB_MODE === "dual" ||
         Boolean(process.env.DATABASE_URL?.includes("postgres"));
 
-      if (usePostgres) {
-        // Completely dynamic import to prevent webpack bundling
-        const loggerPath = './logger-postgres';
-        const loggerModule = await import(loggerPath);
-        this.serverLogger = loggerModule.AILogger;
-      } else {
-        const loggerPath = './logger-sqlite';
-        const loggerModule = await import(loggerPath);
-        this.serverLogger = loggerModule.AILogger;
-      }
+        if (usePostgres) {
+          const { AILogger: PostgresLogger } = await import('./logger-postgres');
+          this.serverLogger = PostgresLogger as unknown as ServerLogger;
+        } else {
+          const { AILogger: SqliteLogger } = await import('./logger-sqlite');
+          this.serverLogger = SqliteLogger as unknown as ServerLogger;
+        }
       
       this.initialized = true;
     } catch (error) {
