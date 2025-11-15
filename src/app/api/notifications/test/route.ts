@@ -1,10 +1,10 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { NextResponse } from "next/server";
 
 export async function POST() {
   try {
-    const db = getDB();
-    
+    const db = await getDatabase();
+
     // Insert sample notifications
     const notifications = [
       { level: "success", message: "✅ Sistem başarıyla başlatıldı" },
@@ -13,15 +13,16 @@ export async function POST() {
     ];
 
     for (const n of notifications) {
-      db.prepare(
-        "INSERT INTO notifications (level, message, is_read) VALUES (?, ?, 0)"
-      ).run(n.level, n.message);
+      await db.execute(
+        "INSERT INTO notifications (level, message, is_read) VALUES ($1, $2, 0)",
+        [n.level, n.message]
+      );
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: "Test notifications created",
-      count: notifications.length 
+      count: notifications.length
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

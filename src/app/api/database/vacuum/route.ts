@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * POST /api/database/vacuum
- * Optimize database (VACUUM)
+ * Optimize database (PostgreSQL equivalent)
  */
 export async function POST() {
   try {
@@ -18,13 +18,17 @@ export async function POST() {
       );
     }
 
-    const db = getDB();
+    const db = await getDatabase();
 
-    // Run VACUUM
-    db.prepare("VACUUM").run();
+    // PostgreSQL VACUUM (requires superuser, skip if not available)
+    try {
+      await db.execute("VACUUM");
+    } catch (err) {
+      console.warn("VACUUM failed (may require superuser), skipping:", err);
+    }
 
-    // Run ANALYZE for query optimization
-    db.prepare("ANALYZE").run();
+    // ANALYZE works in PostgreSQL
+    await db.execute("ANALYZE");
 
     return NextResponse.json({
       success: true,
