@@ -1,7 +1,9 @@
 import express from 'express';
-import { chromium, BrowserContext, Browser } from 'playwright';
+import { BrowserContext } from 'playwright';
 import * as cheerio from 'cheerio';
 import { toCSV, toJSON, toTXT } from './utils/exporters';
+import { createContext, browserPool } from './browser-pool';
+import { config } from './config';
 
 // Türkçe logger
 const Log = {
@@ -31,64 +33,33 @@ const Log = {
   }
 };
 
-const BASE = 'https://www.ihalebul.com';
+const BASE = config.IHALEBUL_BASE_URL;
 
 type Session = { storageState: any; createdAt: number };
 const SESSIONS = new Map<string, Session>();
 
-// Track active browsers for cleanup
-const ACTIVE_BROWSERS: Set<Browser> = new Set();
-
 // Cleanup function for graceful shutdown
 export async function cleanupBrowsers() {
-  Log.basla(`Tarayıcılar temizleniyor`, { aktifTarayıcı: ACTIVE_BROWSERS.size });
-  
-  const closePromises = Array.from(ACTIVE_BROWSERS).map(async (browser) => {
-    try {
-      await browser.close();
-    } catch (error) {
-      Log.hata('Tarayıcı kapatılamadı', error);
-    }
-  });
-  
-  await Promise.all(closePromises);
-  ACTIVE_BROWSERS.clear();
-  Log.basarili('Tüm tarayıcılar kapatıldı');
+  Log.basla('Browser pool kapatılıyor');
+  await browserPool.destroy();
+  Log.basarili('Browser pool kapatıldı');
 }
 
-// Session cleanup - 8 saat sonra sil (1 iş günü için yeterli)
+// Session cleanup - config'den alınan süre sonra sil
 setInterval(() => {
   const now = Date.now();
   for (const [sid, session] of SESSIONS.entries()) {
-    if (now - session.createdAt > 28800000) { // 8 saat = 8 * 60 * 60 * 1000
+    if (now - session.createdAt > config.SESSION_TTL_MS) {
       SESSIONS.delete(sid);
-      Log.uyari(`Oturum süresidoldu`, { sessionId: sid });
+      Log.uyari(`Oturum süresi doldu`, { sessionId: sid });
     }
   }
-}, 600000); // Her 10 dakikada kontrol (session artık uzun ömürlü olduğu için daha seyrek kontrol)
+}, config.SESSION_CLEANUP_INTERVAL_MS);
 
 async function makeContext(sessionId: string) {
   const session = SESSIONS.get(sessionId);
-  const browser = await chromium.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-  });
-  
-  // Track browser for cleanup
-  ACTIVE_BROWSERS.add(browser);
-  
-  const context = await browser.newContext({
-    storageState: session?.storageState ?? undefined,
-    viewport: { width: 1920, height: 1080 },
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-  });
-  
-  // Remove from tracking when closed
-  browser.on('disconnected', () => {
-    ACTIVE_BROWSERS.delete(browser);
-  });
-  
-  return { browser, context };
+  const { context, release } = await createContext(session?.storageState);
+  return { context, release };
 }
 
 async function doLogin(context: BrowserContext, username: string, password: string) {
@@ -488,9 +459,9 @@ export function mountIhalebul(app: express.Express) {
 
       Log.basla(`Kullanıcı girişi`, { kullanıcı: username });
 
-      const { browser, context } = await makeContext('tmp');
+      const { context, release } = await makeContext('tmp');
       const storageState = await doLogin(context, username, password);
-      await browser.close();
+      await release();
 
       // Session ID oluştur
       const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -519,7 +490,7 @@ export function mountIhalebul(app: express.Express) {
 
       Log.basla(`Tüm ihale sayfaları getiriliyor`, { sessionId });
 
-      const { browser, context } = await makeContext(sessionId);
+      const { context, release } = await makeContext(sessionId);
       const page = await context.newPage();
 
       // İlk sayfaya git ve toplam sayfa sayısını tespit et
@@ -566,7 +537,7 @@ export function mountIhalebul(app: express.Express) {
         }
       }
 
-      await browser.close();
+      await release();
 
       console.log(`✅ Total items fetched: ${allItems.length}`);
       res.json({ items: allItems, count: allItems.length });
@@ -589,7 +560,7 @@ export function mountIhalebul(app: express.Express) {
 
       console.log(`📄 Fetching tender detail: ${id}`);
 
-      const { browser, context } = await makeContext(sessionId);
+      const { context, release } = await makeContext(sessionId);
       const page = await context.newPage();
 
       // 🔍 Network monitoring - XHR/fetch isteklerini ve response'larını yakala
@@ -807,33 +778,23 @@ export function mountIhalebul(app: express.Express) {
 
       // 📸 Take screenshot (full page) for AI analysis
       let screenshot: string | undefined;
-      try {
-        // Take screenshot as buffer and convert to base64
-        const screenshotBuffer = await page.screenshot({
-          fullPage: true
-        });
-        screenshot = screenshotBuffer.toString('base64');
-        
-        // CRITICAL: Ensure screenshot is a string (base64)
-        if (typeof screenshot !== 'string') {
-          console.warn('⚠️ Screenshot is not a string, converting...', {
-            type: typeof screenshot
+      if (config.SCREENSHOT_ENABLED) {
+        try {
+          // Take screenshot as buffer and convert to base64
+          const screenshotBuffer = await page.screenshot({
+            fullPage: config.SCREENSHOT_FULL_PAGE
           });
-          screenshot = undefined;
-        }
-        
-        if (screenshot && typeof screenshot === 'string') {
+
+          // Type-safe conversion to base64 string
+          screenshot = screenshotBuffer.toString('base64') as string;
           console.log('📸 Screenshot captured (base64 string), length:', screenshot.length);
-        } else {
-          console.warn('⚠️ Screenshot conversion failed, setting to undefined');
+        } catch (e: any) {
+          console.warn('⚠️ Could not capture screenshot:', e?.message || String(e));
           screenshot = undefined;
         }
-      } catch (e: any) {
-        console.warn('⚠️ Could not capture screenshot:', e?.message || String(e));
-        screenshot = undefined;
       }
 
-      await browser.close();
+      await release();
 
       console.log(`📊 API requests detected: ${apiRequests.length}`);
       if (apiRequests.length > 0) {
@@ -849,19 +810,12 @@ export function mountIhalebul(app: express.Express) {
         apiData[key] = value;
       });
 
-      // CRITICAL: Ensure screenshot is a string before JSON serialization
-      // Screenshot should already be a string (base64)
-      let screenshotString: string | undefined = undefined;
-      if (screenshot && typeof screenshot === 'string') {
-        screenshotString = screenshot;
-      }
-
       res.json({
         id,
         title,
         html,
         documents,
-        screenshot: screenshotString, // Base64-encoded string for AI vision analysis
+        screenshot, // Base64-encoded string (type-safe from source)
         apiData, // API'den gelen raw data
         debug: {
           apiRequests,
@@ -891,7 +845,7 @@ export function mountIhalebul(app: express.Express) {
 
       console.log(`📥 Proxying download: ${targetUrl}`);
 
-      const { browser, context } = await makeContext(sessionId);
+      const { context, release } = await makeContext(sessionId);
       const page = await context.newPage();
 
       // 90 saniye timeout (32MB+ dosyalar için)
@@ -930,7 +884,7 @@ export function mountIhalebul(app: express.Express) {
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
       res.send(Buffer.from(buffer));
-      await browser.close();
+      await release();
 
     } catch (error: any) {
       console.error('❌ Proxy failed:', error.message);
@@ -939,6 +893,8 @@ export function mountIhalebul(app: express.Express) {
   });
 
   // 5) EXPORT - Export tender list in CSV/JSON/TXT format
+  // NOTE: This endpoint should ideally fetch from database for better performance
+  // For now, we keep the scraping approach for data freshness guarantee
   app.get('/export', async (req, res) => {
     try {
       const sessionId = String(req.query.sessionId || '');
@@ -954,17 +910,17 @@ export function mountIhalebul(app: express.Express) {
 
       console.log(`📦 Exporting tender list as ${format.toUpperCase()}...`);
 
-      const { browser, context } = await makeContext(sessionId);
+      const { context, release } = await makeContext(sessionId);
       const page = await context.newPage();
 
       // Fetch first page to detect total pages
       await page.goto(`${BASE}/tenders/search?workcategory_in=15`, {
         waitUntil: 'domcontentloaded',
-        timeout: 60000 // 60 saniye (ihalebul.com yavaş olabiliyor)
+        timeout: config.BROWSER_TIMEOUT_MS
       });
 
       const lastPageHref = await page.$eval('a:has-text("Son sayfa")', el => el.getAttribute('href')).catch(() => null);
-      let totalPages = 9; // Default
+      let totalPages = config.DEFAULT_MAX_PAGES;
 
       if (lastPageHref) {
         const pageMatch = lastPageHref.match(/page=(\d+)/);
@@ -985,7 +941,7 @@ export function mountIhalebul(app: express.Express) {
 
         await page.goto(url, {
           waitUntil: 'domcontentloaded',
-          timeout: 60000 // 60 saniye (ihalebul.com yavaş olabiliyor)
+          timeout: config.BROWSER_TIMEOUT_MS
         });
 
         const html = await page.content();
@@ -993,11 +949,11 @@ export function mountIhalebul(app: express.Express) {
         allItems.push(...items);
 
         if (pageNum < totalPages) {
-          await page.waitForTimeout(1000);
+          await page.waitForTimeout(config.PAGE_RATE_LIMIT_MS);
         }
       }
 
-      await browser.close();
+      await release();
 
       console.log(`✅ Export completed: ${allItems.length} tenders in ${format.toUpperCase()} format`);
 
@@ -1036,14 +992,14 @@ export function mountIhalebul(app: express.Express) {
         return res.status(401).json({ error: 'invalid_session' });
       }
 
-      const { browser, context } = await makeContext(sessionId);
+      const { context, release } = await makeContext(sessionId);
       const page = await context.newPage();
       await page.goto(`${BASE}/tenders/search?workcategory_in=15`, {
         waitUntil: 'domcontentloaded',
-        timeout: 60000 // 60 saniye (ihalebul.com yavaş olabiliyor)
+        timeout: config.BROWSER_TIMEOUT_MS
       });
       const html = await page.content();
-      await browser.close();
+      await release();
 
       res.setHeader('Content-Type', 'text/html');
       res.send(html);

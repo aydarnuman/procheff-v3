@@ -41,80 +41,23 @@ export async function GET(
     // Get detail from worker (HTML + documents)
     const detail = await ihbDetail(sessionId!, id);
 
-    // DEBUG: Check if screenshot came from worker
-    let screenshot = (detail as Record<string, unknown>).screenshot;
-    const hasScreenshotFromWorker = !!screenshot;
-    const screenshotType = screenshot ? typeof screenshot : 'none';
-    
-    // CRITICAL: Ensure screenshot is a string (base64)
-    // Worker sends base64 string, but Express JSON serialization might convert it
-    if (hasScreenshotFromWorker && typeof screenshot !== 'string') {
-      console.warn('⚠️ [CRITICAL] Screenshot is not a string, attempting conversion...', {
-        type: typeof screenshot,
-        isArray: Array.isArray(screenshot),
-        isBuffer: Buffer.isBuffer(screenshot),
-        constructor: screenshot?.constructor?.name,
-        keys: typeof screenshot === 'object' && screenshot !== null ? Object.keys(screenshot) : []
-      });
-      
-      // Try to convert to string
-      if (Buffer.isBuffer(screenshot)) {
-        screenshot = screenshot.toString('base64');
-        console.log('✅ Screenshot converted from Buffer to base64 string');
-      } else if (screenshot && typeof screenshot === 'object' && screenshot !== null) {
-        // If it's an object, it might be a serialization issue
-        // Try to extract if it has a 'data' property or similar
-        if ('data' in screenshot && typeof (screenshot as any).data === 'string') {
-          screenshot = (screenshot as any).data;
-          console.log('✅ Screenshot extracted from object.data property');
-        } else if ('toString' in screenshot && typeof screenshot.toString === 'function') {
-          // Try toString method
-          const str = screenshot.toString();
-          if (str && str !== '[object Object]') {
-            screenshot = str;
-            console.log('✅ Screenshot converted using toString()');
-          } else {
-            console.warn('⚠️ Screenshot object cannot be converted, setting to undefined.');
-            screenshot = undefined;
-            (detail as any).screenshot = undefined;
-          }
-        } else {
-          console.warn('⚠️ Screenshot is an object without convertible properties, setting to undefined.');
-          screenshot = undefined;
-          (detail as any).screenshot = undefined;
-        }
-      } else {
-        screenshot = String(screenshot);
-        console.log('✅ Screenshot converted to string');
-      }
-    }
-    
-    // Update detail with normalized screenshot
-    if (screenshot && typeof screenshot === 'string') {
-      (detail as any).screenshot = screenshot;
-    } else if (hasScreenshotFromWorker) {
-      // If we had a screenshot but couldn't convert it, remove it
-      (detail as any).screenshot = undefined;
-    }
-    
-    const screenshotLength = screenshot && typeof screenshot === 'string' ? screenshot.length : 0;
-    
+    // Screenshot is already type-safe from worker (base64 string)
+    const screenshot = (detail as Record<string, unknown>).screenshot as string | undefined;
+
     AILogger.info('Received detail from worker', {
       tenderId: id,
       hasScreenshot: !!screenshot,
-      screenshotType: screenshot ? typeof screenshot : 'none',
-      screenshotLength,
+      screenshotLength: screenshot?.length || 0,
       hasHtml: !!detail.html,
       htmlLength: detail.html?.length || 0,
       documentsCount: detail.documents?.length || 0,
       detailKeys: Object.keys(detail)
     });
 
-    // CRITICAL: Normalize documents before processing HTML
-    const originalDocuments = detail.documents || [];
-    const normalizedDocuments = normalizeDocuments(originalDocuments);
+    // CRITICAL: Normalize documents once at the beginning
+    const normalizedDocuments = normalizeDocuments(detail.documents || []);
     detail.documents = normalizedDocuments;
-    
+
     // Process HTML in different formats
     if (detail.html) {
       // 1. Raw HTML (original)
@@ -271,11 +214,6 @@ export async function GET(
       // Keep original for backward compatibility
       detail.html = detail.html_formatted || detail.html;
     }
-    
-    // CRITICAL: Restore normalized documents after HTML processing (they might have been lost)
-    if (!detail.documents || detail.documents.length === 0) {
-      detail.documents = normalizedDocuments;
-    }
 
     // Try to get additional info from database
     try {
@@ -305,22 +243,12 @@ export async function GET(
         (detail as any).tenderDate = dbInfo.tenderDate;
         (detail as any).daysRemaining = dbInfo.daysRemaining;
         (detail as any).partialBidAllowed = Boolean(dbInfo.partialBidAllowed);
-        
-        // Ensure normalized documents are still present after merge
-        if (!detail.documents || detail.documents.length === 0) {
-          detail.documents = normalizedDocuments;
-        }
       }
     } catch (dbError) {
       // Database not available, continue with worker data only
       console.warn('Could not fetch from database:', dbError);
     }
-    
-    // Final safety check: ensure normalized documents are always present
-    if (!detail.documents || detail.documents.length === 0) {
-      detail.documents = normalizedDocuments;
-    }
-    
+
     // Log response data before sending
     const hasAiParsed = !!(detail as any).ai_parsed;
     AILogger.info('Sending response', {
