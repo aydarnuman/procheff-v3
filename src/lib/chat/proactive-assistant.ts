@@ -4,7 +4,7 @@
  */
 
 import { AILogger } from '@/lib/ai/logger';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 
 import * as TenderExpertModule from './expertise/tender-expert';
 import * as CostExpertModule from './expertise/cost-expert';
@@ -57,10 +57,10 @@ export class ProactiveAssistant {
     this.startMonitoring();
   }
 
-  private initDatabase() {
-    const db = getDB();
+  private async initDatabase() {
+    const db = await getDatabase();
 
-    db.exec(`
+    await db.execute(`
       CREATE TABLE IF NOT EXISTS proactive_suggestions (
         id TEXT PRIMARY KEY,
         type TEXT NOT NULL,
@@ -72,30 +72,40 @@ export class ProactiveAssistant {
         metadata TEXT,
         shown_count INTEGER DEFAULT 0,
         last_shown DATETIME,
-        dismissed BOOLEAN DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        dismissed INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
 
+    await db.execute(`
       CREATE TABLE IF NOT EXISTS proactive_triggers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         trigger_type TEXT NOT NULL,
         condition TEXT NOT NULL,
         suggestion_template TEXT NOT NULL,
-        active BOOLEAN DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        active INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
 
+    await db.execute(`
       CREATE INDEX IF NOT EXISTS idx_suggestions_type ON proactive_suggestions(type);
+    `);
+
+    await db.execute(`
       CREATE INDEX IF NOT EXISTS idx_suggestions_priority ON proactive_suggestions(priority);
+    `);
+
+    await db.execute(`
       CREATE INDEX IF NOT EXISTS idx_triggers_type ON proactive_triggers(trigger_type);
     `);
 
     // Seed default triggers
-    this.seedDefaultTriggers();
+    await this.seedDefaultTriggers();
   }
 
-  private seedDefaultTriggers() {
-    const db = getDB();
+  private async seedDefaultTriggers() {
+    const db = await getDatabase();
 
     const triggers = [
       {
@@ -126,10 +136,11 @@ export class ProactiveAssistant {
     ];
 
     for (const trigger of triggers) {
-      db.prepare(`
-        INSERT OR IGNORE INTO proactive_triggers (trigger_type, condition, suggestion_template)
-        VALUES (?, ?, ?)
-      `).run(trigger.type, trigger.condition, trigger.template);
+      await db.execute(`
+        INSERT INTO proactive_triggers (trigger_type, condition, suggestion_template)
+        VALUES ($1, $2, $3)
+        ON CONFLICT DO NOTHING
+      `, [trigger.type, trigger.condition, trigger.template]);
     }
   }
 
@@ -483,12 +494,12 @@ export class ProactiveAssistant {
    */
   private async checkForSuggestions() {
     try {
-      const db = getDB();
+      const db = await getDatabase();
 
       // Get active triggers
-      const triggers = db.prepare(`
+      const triggers = await db.query(`
         SELECT * FROM proactive_triggers WHERE active = 1
-      `).all() as any[];
+      `) as any[];
 
       // Evaluate each trigger
       for (const trigger of triggers) {
@@ -519,13 +530,13 @@ export class ProactiveAssistant {
    * Dismiss a suggestion
    */
   async dismissSuggestion(suggestionId: string): Promise<void> {
-    const db = getDB();
+    const db = await getDatabase();
 
-    db.prepare(`
+    await db.execute(`
       UPDATE proactive_suggestions
       SET dismissed = 1
-      WHERE id = ?
-    `).run(suggestionId);
+      WHERE id = $1
+    `, [suggestionId]);
 
     this.suggestions.delete(suggestionId);
     this.shownSuggestions.add(suggestionId);

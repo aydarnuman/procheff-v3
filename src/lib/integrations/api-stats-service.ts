@@ -3,7 +3,7 @@
  * Tracks API usage, generates statistics, and manages rate limiting
  */
 
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 
 export interface ApiUsageLog {
   id?: number;
@@ -158,24 +158,25 @@ export class ApiStatsService {
    * Log API usage
    */
   async logApiUsage(log: ApiUsageLog): Promise<void> {
-    const db = getDB();
+    const db = await getDatabase();
 
-    db.prepare(
+    await db.execute(
       `INSERT INTO api_usage_logs
        (endpoint, method, status_code, response_time_ms, user_id, ip_address,
         user_agent, request_body_size, response_body_size, error_message)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      log.endpoint,
-      log.method,
-      log.status_code || null,
-      log.response_time_ms || null,
-      log.user_id || null,
-      log.ip_address || null,
-      log.user_agent || null,
-      log.request_body_size || null,
-      log.response_body_size || null,
-      log.error_message || null
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        log.endpoint,
+        log.method,
+        log.status_code || null,
+        log.response_time_ms || null,
+        log.user_id || null,
+        log.ip_address || null,
+        log.user_agent || null,
+        log.request_body_size || null,
+        log.response_body_size || null,
+        log.error_message || null
+      ]
     );
   }
 
@@ -190,7 +191,7 @@ export class ApiStatsService {
    * Get API statistics
    */
   async getApiStats(timeRange?: "hour" | "day" | "week" | "month"): Promise<ApiStats[]> {
-    const db = getDB();
+    const db = await getDatabase();
 
     // Calculate time boundaries
     const now = new Date();
@@ -208,12 +209,12 @@ export class ApiStatsService {
         SUM(CASE WHEN status_code BETWEEN 200 AND 299 THEN 1 ELSE 0 END) as success_count,
         SUM(CASE WHEN status_code >= 400 THEN 1 ELSE 0 END) as error_count,
         AVG(response_time_ms) as avg_response_time,
-        SUM(CASE WHEN created_at > ? THEN 1 ELSE 0 END) as last_hour,
-        SUM(CASE WHEN created_at > ? THEN 1 ELSE 0 END) as last_24_hours,
-        SUM(CASE WHEN created_at > ? THEN 1 ELSE 0 END) as last_7_days,
-        SUM(CASE WHEN created_at > ? THEN 1 ELSE 0 END) as last_30_days
+        SUM(CASE WHEN created_at > $1 THEN 1 ELSE 0 END) as last_hour,
+        SUM(CASE WHEN created_at > $2 THEN 1 ELSE 0 END) as last_24_hours,
+        SUM(CASE WHEN created_at > $3 THEN 1 ELSE 0 END) as last_7_days,
+        SUM(CASE WHEN created_at > $4 THEN 1 ELSE 0 END) as last_30_days
       FROM api_usage_logs
-      WHERE created_at > ?
+      WHERE created_at > $5
       GROUP BY endpoint, method
       ORDER BY total_requests DESC
     `;
@@ -223,13 +224,13 @@ export class ApiStatsService {
     else if (timeRange === "day") cutoffTime = dayAgo;
     else if (timeRange === "week") cutoffTime = weekAgo;
 
-    const stats = db.prepare(statsQuery).all(
+    const stats = await db.query(statsQuery, [
       hourAgo.toISOString(),
       dayAgo.toISOString(),
       weekAgo.toISOString(),
       monthAgo.toISOString(),
       cutoffTime.toISOString()
-    ) as any[];
+    ]) as any[];
 
     return stats.map((stat) => ({
       endpoint: stat.endpoint,
@@ -256,29 +257,31 @@ export class ApiStatsService {
     endpoint?: string,
     hours = 24
   ): Promise<{ time: string; requests: number; errors: number }[]> {
-    const db = getDB();
+    const db = await getDatabase();
 
     const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
 
     let query = `
       SELECT
-        strftime('%Y-%m-%d %H:00:00', created_at) as hour,
+        TO_CHAR(created_at, 'YYYY-MM-DD HH24:00:00') as hour,
         COUNT(*) as requests,
         SUM(CASE WHEN status_code >= 400 THEN 1 ELSE 0 END) as errors
       FROM api_usage_logs
-      WHERE created_at > ?
+      WHERE created_at > $1
     `;
 
     const params: any[] = [cutoff.toISOString()];
+    let paramIndex = 2;
 
     if (endpoint) {
-      query += " AND endpoint = ?";
+      query += ` AND endpoint = $${paramIndex}`;
       params.push(endpoint);
+      paramIndex++;
     }
 
     query += " GROUP BY hour ORDER BY hour ASC";
 
-    const timeline = db.prepare(query).all(...params) as any[];
+    const timeline = await db.query(query, params) as any[];
 
     return timeline.map((t) => ({
       time: t.hour,
@@ -297,9 +300,9 @@ export class ApiStatsService {
     count: number;
     last_occurred: string;
   }[]> {
-    const db = getDB();
+    const db = await getDatabase();
 
-    const errors = db.prepare(
+    const errors = await db.query(
       `SELECT
         endpoint,
         method,
@@ -310,8 +313,9 @@ export class ApiStatsService {
       WHERE status_code >= 400 AND error_message IS NOT NULL
       GROUP BY endpoint, method, error_message
       ORDER BY count DESC
-      LIMIT ?`
-    ).all(limit) as any[];
+      LIMIT $1`,
+      [limit]
+    ) as any[];
 
     return errors;
   }
@@ -324,21 +328,22 @@ export class ApiStatsService {
     endpoint: string,
     limit: number
   ): Promise<{ allowed: boolean; remaining: number; resetAt: Date }> {
-    const db = getDB();
+    const db = await getDatabase();
 
     const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-    const count = db.prepare(
+    const count = await db.queryOne(
       `SELECT COUNT(*) as count
        FROM api_usage_logs
-       WHERE user_id = ? AND endpoint = ? AND created_at > ?`
-    ).get(userId, endpoint, hourAgo.toISOString()) as { count: number };
+       WHERE user_id = $1 AND endpoint = $2 AND created_at > $3`,
+      [userId, endpoint, hourAgo.toISOString()]
+    ) as { count: number } | undefined;
 
-    const remaining = Math.max(0, limit - count.count);
+    const remaining = Math.max(0, limit - (count?.count || 0));
     const resetAt = new Date(hourAgo.getTime() + 60 * 60 * 1000);
 
     return {
-      allowed: count.count < limit,
+      allowed: (count?.count || 0) < limit,
       remaining,
       resetAt,
     };
@@ -355,36 +360,39 @@ export class ApiStatsService {
     endpoints: { endpoint: string; count: number }[];
     dailyUsage: { date: string; requests: number }[];
   }> {
-    const db = getDB();
+    const db = await getDatabase();
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     // Total requests
-    const total = db.prepare(
-      "SELECT COUNT(*) as count FROM api_usage_logs WHERE user_id = ? AND created_at > ?"
-    ).get(userId, cutoff.toISOString()) as { count: number };
+    const total = await db.queryOne(
+      "SELECT COUNT(*) as count FROM api_usage_logs WHERE user_id = $1 AND created_at > $2",
+      [userId, cutoff.toISOString()]
+    ) as { count: number } | undefined;
 
     // Endpoint breakdown
-    const endpoints = db.prepare(
+    const endpoints = await db.query(
       `SELECT endpoint, COUNT(*) as count
        FROM api_usage_logs
-       WHERE user_id = ? AND created_at > ?
+       WHERE user_id = $1 AND created_at > $2
        GROUP BY endpoint
-       ORDER BY count DESC`
-    ).all(userId, cutoff.toISOString()) as any[];
+       ORDER BY count DESC`,
+      [userId, cutoff.toISOString()]
+    ) as any[];
 
     // Daily usage
-    const dailyUsage = db.prepare(
+    const dailyUsage = await db.query(
       `SELECT
-        DATE(created_at) as date,
+        TO_CHAR(created_at, 'YYYY-MM-DD') as date,
         COUNT(*) as requests
        FROM api_usage_logs
-       WHERE user_id = ? AND created_at > ?
-       GROUP BY DATE(created_at)
-       ORDER BY date ASC`
-    ).all(userId, cutoff.toISOString()) as any[];
+       WHERE user_id = $1 AND created_at > $2
+       GROUP BY date
+       ORDER BY date ASC`,
+      [userId, cutoff.toISOString()]
+    ) as any[];
 
     return {
-      totalRequests: total.count,
+      totalRequests: total?.count || 0,
       endpoints,
       dailyUsage,
     };

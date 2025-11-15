@@ -3,7 +3,7 @@
  * Handles report generation directly from chat
  */
 
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { AILogger } from '@/lib/ai/logger';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
@@ -40,8 +40,6 @@ export interface ExportResult {
 }
 
 export class ExportHandler {
-  private db = getDB();
-
   /**
    * Main export function
    */
@@ -246,16 +244,16 @@ export class ExportHandler {
    * Fetch data from database
    */
   private async fetchData(options: ExportOptions): Promise<any[]> {
+    const db = await getDatabase();
     const results: any[] = [];
 
     // Fetch single analysis
     if (options.analysisId) {
-      const stmt = this.db.prepare(`
+      const analysis = await db.queryOne(`
         SELECT * FROM analysis_results
-        WHERE id = ?
+        WHERE id = $1
         ORDER BY created_at DESC
-      `);
-      const analysis = stmt.get(options.analysisId) as AnalysisRow | undefined;
+      `, [options.analysisId]) as AnalysisRow | undefined;
       if (analysis) {
         // Parse JSON fields
         if (analysis.data_pool) (analysis as any).data_pool = JSON.parse(analysis.data_pool);
@@ -267,13 +265,12 @@ export class ExportHandler {
 
     // Fetch multiple for comparison
     if (options.compareIds && options.compareIds.length > 0) {
-      const placeholders = options.compareIds.map(() => '?').join(',');
-      const stmt = this.db.prepare(`
+      const placeholders = options.compareIds.map((_, idx) => `$${idx + 1}`).join(',');
+      const analyses = await db.query(`
         SELECT * FROM analysis_results
         WHERE id IN (${placeholders})
         ORDER BY created_at DESC
-      `);
-      const analyses = stmt.all(...options.compareIds) as AnalysisRow[];
+      `, options.compareIds) as AnalysisRow[];
 
       analyses.forEach((analysis: AnalysisRow) => {
         if (analysis.data_pool) (analysis as any).data_pool = JSON.parse(analysis.data_pool);
@@ -285,12 +282,11 @@ export class ExportHandler {
 
     // Fetch by date range
     if (options.dateRange) {
-      const stmt = this.db.prepare(`
+      const analyses = await db.query(`
         SELECT * FROM analysis_results
-        WHERE created_at BETWEEN ? AND ?
+        WHERE created_at BETWEEN $1 AND $2
         ORDER BY created_at DESC
-      `);
-      const analyses = stmt.all(options.dateRange.start, options.dateRange.end) as AnalysisRow[];
+      `, [options.dateRange.start, options.dateRange.end]) as AnalysisRow[];
 
       analyses.forEach((analysis: AnalysisRow) => {
         if (analysis.data_pool) (analysis as any).data_pool = JSON.parse(analysis.data_pool);
@@ -302,12 +298,11 @@ export class ExportHandler {
 
     // If no specific criteria, get recent analyses
     if (results.length === 0) {
-      const stmt = this.db.prepare(`
+      const analyses = await db.query(`
         SELECT * FROM analysis_results
         ORDER BY created_at DESC
         LIMIT 10
-      `);
-      const analyses = stmt.all() as AnalysisRow[];
+      `) as AnalysisRow[];
 
       analyses.forEach((analysis: AnalysisRow) => {
         if (analysis.data_pool) (analysis as any).data_pool = JSON.parse(analysis.data_pool);
