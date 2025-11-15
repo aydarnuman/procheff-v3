@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { AIProviderFactory } from '@/lib/ai/provider-factory';
 import { cleanClaudeJSON } from '@/lib/ai/utils';
 import { AILogger } from '@/lib/ai/logger';
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = getDB();
+    const db = await getDatabase();
 
     // Get available menu items
     let query = `
@@ -70,26 +70,29 @@ export async function POST(request: NextRequest) {
         tags,
         institution_types
       FROM menu_items
-      WHERE is_active = 1
+      WHERE is_active = true
     `;
 
     const params: any[] = [];
+    let paramIndex = 1;
 
     // Filter by institution type
     if (institutionType) {
-      query += ` AND (institution_types LIKE ? OR institution_types LIKE ?)`;
+      query += ` AND (institution_types LIKE $${paramIndex} OR institution_types LIKE $${paramIndex + 1})`;
       params.push(`%"${institutionType}"%`, '%"all"%');
+      paramIndex += 2;
     }
 
     // Filter by season
     if (season && season !== 'all') {
-      query += ` AND (season = ? OR season = 'all')`;
+      query += ` AND (season = $${paramIndex} OR season = 'all')`;
       params.push(season);
+      paramIndex++;
     }
 
     query += ` ORDER BY name ASC`;
 
-    const availableItems = db.prepare(query).all(...params);
+    const availableItems = await db.query(query, params);
 
     if (availableItems.length === 0) {
       return NextResponse.json(

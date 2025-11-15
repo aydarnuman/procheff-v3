@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -21,10 +21,8 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const db = getDB();
-    const settings = db
-      .prepare("SELECT name, value, type FROM performance_settings")
-      .all() as Array<{ name: string; value: string; type: string }>;
+    const db = await getDatabase();
+    const settings = await db.query("SELECT name, value, type FROM performance_settings") as Array<{ name: string; value: string; type: string }>;
 
     // Convert to object format
     const settingsObj = settings.reduce((acc, setting) => {
@@ -66,48 +64,45 @@ export async function POST(req: Request) {
     const body = await req.json();
     const validated = PerformanceSettingsSchema.parse(body);
 
-    const db = getDB();
-    const updateStmt = db.prepare(`
-      UPDATE performance_settings
-      SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE name = ?
-    `);
-
+    const db = await getDatabase();
     const requiresRestart: string[] = [];
 
-    // Update each setting in a transaction
-    db.transaction(() => {
-      for (const [name, value] of Object.entries(validated)) {
-        // Convert value to string for storage
-        const stringValue = String(value);
+    // Update each setting (PostgreSQL doesn't have db.transaction() like SQLite)
+    for (const [name, value] of Object.entries(validated)) {
+      // Convert value to string for storage
+      const stringValue = String(value);
 
-        // Check if restart required
-        const setting = db
-          .prepare("SELECT requires_restart FROM performance_settings WHERE name = ?")
-          .get(name) as { requires_restart: number } | undefined;
+      // Check if restart required
+      const setting = await db.queryOne(
+        "SELECT requires_restart FROM performance_settings WHERE name = $1",
+        [name]
+      ) as { requires_restart: boolean } | undefined;
 
-        if (setting?.requires_restart === 1) {
-          requiresRestart.push(name);
-        }
-
-        // Update the value
-        updateStmt.run(stringValue, session.user.email, name);
+      if (setting?.requires_restart === true) {
+        requiresRestart.push(name);
       }
 
-      // Log the change in audit log
-      try {
-        db.prepare(`
-          INSERT INTO security_audit_logs (user_id, action, metadata)
-          VALUES (?, 'performance_settings_updated', ?)
-        `).run(
-          session.user.email,
-          JSON.stringify({ settings: Object.keys(validated) })
-        );
-      } catch (auditError) {
-        // Audit log failure should not break the main operation
-        console.warn("Failed to log audit:", auditError);
-      }
-    })();
+      // Update the value
+      await db.execute(`
+        UPDATE performance_settings
+        SET value = $1, updated_by = $2, updated_at = CURRENT_TIMESTAMP
+        WHERE name = $3
+      `, [stringValue, session.user.email, name]);
+    }
+
+    // Log the change in audit log
+    try {
+      await db.execute(`
+        INSERT INTO security_audit_logs (user_id, action, metadata)
+        VALUES ($1, 'performance_settings_updated', $2)
+      `, [
+        session.user.email,
+        JSON.stringify({ settings: Object.keys(validated) })
+      ]);
+    } catch (auditError) {
+      // Audit log failure should not break the main operation
+      console.warn("Failed to log audit:", auditError);
+    }
 
     return NextResponse.json({
       success: true,
@@ -133,9 +128,7 @@ export async function POST(req: Request) {
 
 // Helper function for internal use (not exported as route handler)
 async function getProfilesInternal() {
-  const db = getDB();
-  const profiles = db
-    .prepare("SELECT * FROM performance_profiles ORDER BY is_active DESC, name ASC")
-    .all();
+  const db = await getDatabase();
+  const profiles = await db.query("SELECT * FROM performance_profiles ORDER BY is_active DESC, name ASC");
   return profiles;
 }

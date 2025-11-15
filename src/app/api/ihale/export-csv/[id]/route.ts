@@ -1,6 +1,6 @@
 import { NextRequest} from 'next/server';
 import { ihbDetail, ihbLogin } from '@/lib/ihale/client';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { generateFilename } from '@/lib/utils/export-csv';
 import { tablesToCSV } from '@/lib/utils/format-extractors';
 import {
@@ -32,9 +32,8 @@ export async function GET(
     let tenderNumber = id;
 
     try {
-      const db = getDB();
-      const stmt = db.prepare('SELECT title, tender_number FROM tenders WHERE id = ?');
-      const dbInfo = stmt.get(id) as any;
+      const db = await getDatabase();
+      const dbInfo = await db.queryOne('SELECT title, tender_number FROM tenders WHERE id = $1', [id]) as any;
       if (dbInfo) {
         tenderTitle = dbInfo.title;
         tenderNumber = dbInfo.tender_number || id;

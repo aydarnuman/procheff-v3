@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 
 /**
  * GET /api/orchestrate/active-count
@@ -8,14 +8,12 @@ import { getDB } from "@/lib/db/sqlite-client";
  */
 export async function GET() {
   try {
-    const db = getDB();
+    const db = await getDatabase();
 
     // Check if orchestrations table exists first (defensive programming)
-    const tableExists = db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='orchestrations'"
-      )
-      .get();
+    const tableExists = await db.queryOne(
+      "SELECT tablename as name FROM pg_tables WHERE schemaname = 'public' AND tablename = 'orchestrations'"
+    );
 
     if (!tableExists) {
       // Table doesn't exist yet, return 0 instead of error
@@ -27,11 +25,9 @@ export async function GET() {
       });
     }
 
-    const result = db
-      .prepare(
-        "SELECT COUNT(*) as count FROM orchestrations WHERE status IN ('pending', 'running')"
-      )
-      .get() as { count: number };
+    const result = await db.queryOne(
+      "SELECT COUNT(*) as count FROM orchestrations WHERE status IN ('pending', 'running')"
+    ) as { count: number };
 
     return NextResponse.json({
       success: true,

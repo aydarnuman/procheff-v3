@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { db } from "@/lib/db/universal-adapter";
 import bcrypt from "bcryptjs";
 
 export type Role = "OWNER" | "ADMIN" | "ANALYST" | "VIEWER";
@@ -11,51 +11,49 @@ export interface User {
   created_at: string;
 }
 
-export function initAuthSchema() {
-  const db = getDB();
-
-  db.prepare(`
+export async function initAuthSchema() {
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
       name TEXT,
       password_hash TEXT NOT NULL,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-  `).run();
+  `);
 
-  db.prepare(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS organizations (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       owner_user_id TEXT NOT NULL,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-  `).run();
+  `);
 
-  db.prepare(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS memberships (
       id TEXT PRIMARY KEY,
       org_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
       role TEXT NOT NULL,
       UNIQUE(org_id, user_id),
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-  `).run();
+  `);
 
-  db.prepare(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS notifications (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       level TEXT NOT NULL,
       message TEXT NOT NULL,
       is_read INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-  `).run();
+  `);
 
   // Orchestration pipeline state tracking
-  db.prepare(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS orchestrations (
       id TEXT PRIMARY KEY,
       file_name TEXT,
@@ -70,61 +68,57 @@ export function initAuthSchema() {
       warnings TEXT,
       duration_ms INTEGER,
       user_id TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      started_at TEXT,
-      completed_at TEXT
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      started_at TIMESTAMP,
+      completed_at TIMESTAMP
     );
-  `).run();
+  `);
 
   // Indexes for performance
-  db.prepare(`
-    CREATE INDEX IF NOT EXISTS idx_orchestrations_created_at 
+  await db.execute(`
+    CREATE INDEX IF NOT EXISTS idx_orchestrations_created_at
     ON orchestrations(created_at DESC);
-  `).run();
+  `);
 
-  db.prepare(`
-    CREATE INDEX IF NOT EXISTS idx_orchestrations_status 
+  await db.execute(`
+    CREATE INDEX IF NOT EXISTS idx_orchestrations_status
     ON orchestrations(status, created_at DESC);
-  `).run();
+  `);
 
-  db.prepare(`
-    CREATE INDEX IF NOT EXISTS idx_orchestrations_user 
+  await db.execute(`
+    CREATE INDEX IF NOT EXISTS idx_orchestrations_user
     ON orchestrations(user_id, created_at DESC);
-  `).run();
+  `);
 }
 
-export function findUserByEmail(email: string): User | undefined {
-  const db = getDB();
-  return db.prepare("SELECT * FROM users WHERE email = ?").get(email) as User | undefined;
+export async function findUserByEmail(email: string): Promise<User | undefined> {
+  return await db.queryOne<User>("SELECT * FROM users WHERE email = $1", [email]);
 }
 
-export function createUser({ id, email, name, password }: { id: string; email: string; name?: string; password: string; }) {
-  const db = getDB();
+export async function createUser({ id, email, name, password }: { id: string; email: string; name?: string; password: string; }) {
   const hash = bcrypt.hashSync(password, 10);
-  db.prepare("INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)").run(id, email, name || null, hash);
-  return findUserByEmail(email);
+  await db.execute("INSERT INTO users (id, email, name, password_hash) VALUES ($1, $2, $3, $4)", [id, email, name || null, hash]);
+  return await findUserByEmail(email);
 }
 
 export function verifyPassword(hash: string, password: string) {
   return bcrypt.compareSync(password, hash);
 }
 
-export function createDefaultOrgForUser({ orgId, userId, orgName }: { orgId: string; userId: string; orgName: string }) {
-  const db = getDB();
-  db.prepare("INSERT INTO organizations (id, name, owner_user_id) VALUES (?, ?, ?)").run(orgId, orgName, userId);
-  db.prepare("INSERT INTO memberships (id, org_id, user_id, role) VALUES (?, ?, ?, 'OWNER')").run(`${orgId}:${userId}`, orgId, userId);
+export async function createDefaultOrgForUser({ orgId, userId, orgName }: { orgId: string; userId: string; orgName: string }) {
+  await db.execute("INSERT INTO organizations (id, name, owner_user_id) VALUES ($1, $2, $3)", [orgId, orgName, userId]);
+  await db.execute("INSERT INTO memberships (id, org_id, user_id, role) VALUES ($1, $2, $3, 'OWNER')", [`${orgId}:${userId}`, orgId, userId]);
 }
 
-export function getUserOrgs(userId: string) {
-  const db = getDB();
-  return db.prepare(`
+export async function getUserOrgs(userId: string) {
+  return await db.queryAll<{ id: string; name: string; role: Role }>(`
     SELECT o.id, o.name, m.role
     FROM organizations o
     JOIN memberships m ON m.org_id = o.id
-    WHERE m.user_id = ?
+    WHERE m.user_id = $1
     ORDER BY o.created_at DESC
-  `).all(userId) as Array<{ id: string; name: string; role: Role }>;
+  `, [userId]);
 }
 
 /**
@@ -150,7 +144,7 @@ export interface OrchestrationRecord {
   completed_at: string | null;
 }
 
-export function createOrchestration(
+export async function createOrchestration(
   id: string,
   data?: {
     fileName?: string;
@@ -159,20 +153,19 @@ export function createOrchestration(
     userId?: string;
   }
 ) {
-  const db = getDB();
-  db.prepare(`
+  await db.execute(`
     INSERT INTO orchestrations (id, file_name, file_size, mime_type, user_id, progress, status)
-    VALUES (?, ?, ?, ?, ?, 0, 'pending')
-  `).run(
+    VALUES ($1, $2, $3, $4, $5, 0, 'pending')
+  `, [
     id,
     data?.fileName || null,
     data?.fileSize || null,
     data?.mimeType || null,
     data?.userId || null
-  );
+  ]);
 }
 
-export function updateOrchestration(
+export async function updateOrchestration(
   id: string,
   updates: {
     progress?: number;
@@ -187,125 +180,111 @@ export function updateOrchestration(
     duration_ms?: number;
   }
 ) {
-  const db = getDB();
   const fields: string[] = [];
   const values: unknown[] = [];
+  let paramIndex = 1;
 
   if (updates.progress !== undefined) {
-    fields.push("progress = ?");
+    fields.push(`progress = $${paramIndex++}`);
     values.push(updates.progress);
   }
   if (updates.status) {
-    fields.push("status = ?");
+    fields.push(`status = $${paramIndex++}`);
     values.push(updates.status);
   }
   if (updates.current_step) {
-    fields.push("current_step = ?");
+    fields.push(`current_step = $${paramIndex++}`);
     values.push(updates.current_step);
   }
   if (updates.steps_json) {
-    fields.push("steps_json = ?");
+    fields.push(`steps_json = $${paramIndex++}`);
     values.push(updates.steps_json);
   }
   if (updates.result !== undefined) {
-    fields.push("result = ?");
+    fields.push(`result = $${paramIndex++}`);
     values.push(JSON.stringify(updates.result));
   }
   if (updates.error) {
-    fields.push("error = ?");
+    fields.push(`error = $${paramIndex++}`);
     values.push(updates.error);
   }
   if (updates.warnings !== undefined) {
-    fields.push("warnings = ?");
+    fields.push(`warnings = $${paramIndex++}`);
     values.push(updates.warnings);
   }
   if (updates.started_at) {
-    fields.push("started_at = ?");
+    fields.push(`started_at = $${paramIndex++}`);
     values.push(updates.started_at);
   }
   if (updates.completed_at) {
-    fields.push("completed_at = ?");
+    fields.push(`completed_at = $${paramIndex++}`);
     values.push(updates.completed_at);
   }
   if (updates.duration_ms !== undefined) {
-    fields.push("duration_ms = ?");
+    fields.push(`duration_ms = $${paramIndex++}`);
     values.push(updates.duration_ms);
   }
 
   if (fields.length === 0) return;
 
-  fields.push("updated_at = CURRENT_TIMESTAMP");
+  fields.push(`updated_at = CURRENT_TIMESTAMP`);
   values.push(id);
 
-  db.prepare(`
-    UPDATE orchestrations 
+  await db.execute(`
+    UPDATE orchestrations
     SET ${fields.join(", ")}
-    WHERE id = ?
-  `).run(...values);
+    WHERE id = $${paramIndex}
+  `, values);
 }
 
-export function getOrchestration(id: string): OrchestrationRecord | undefined {
-  const db = getDB();
-  return db
-    .prepare("SELECT * FROM orchestrations WHERE id = ?")
-    .get(id) as OrchestrationRecord | undefined;
+export async function getOrchestration(id: string): Promise<OrchestrationRecord | undefined> {
+  return await db.queryOne<OrchestrationRecord>("SELECT * FROM orchestrations WHERE id = $1", [id]);
 }
 
-export function getRecentOrchestrations(limit = 50): OrchestrationRecord[] {
-  const db = getDB();
-  return db
-    .prepare(`
-      SELECT * FROM orchestrations
-      ORDER BY created_at DESC
-      LIMIT ?
-    `)
-    .all(limit) as OrchestrationRecord[];
+export async function getRecentOrchestrations(limit = 50): Promise<OrchestrationRecord[]> {
+  return await db.queryAll<OrchestrationRecord>(`
+    SELECT * FROM orchestrations
+    ORDER BY created_at DESC
+    LIMIT $1
+  `, [limit]);
 }
 
-export function getOrchestrationsByStatus(
+export async function getOrchestrationsByStatus(
   status: string,
   limit = 50
-): OrchestrationRecord[] {
-  const db = getDB();
-  return db
-    .prepare(`
-      SELECT * FROM orchestrations
-      WHERE status = ?
-      ORDER BY created_at DESC
-      LIMIT ?
-    `)
-    .all(status, limit) as OrchestrationRecord[];
+): Promise<OrchestrationRecord[]> {
+  return await db.queryAll<OrchestrationRecord>(`
+    SELECT * FROM orchestrations
+    WHERE status = $1
+    ORDER BY created_at DESC
+    LIMIT $2
+  `, [status, limit]);
 }
 
-export function searchOrchestrations(
+export async function searchOrchestrations(
   query: string,
   limit = 50
-): OrchestrationRecord[] {
-  const db = getDB();
-  return db
-    .prepare(`
-      SELECT * FROM orchestrations
-      WHERE file_name LIKE ? OR id LIKE ?
-      ORDER BY created_at DESC
-      LIMIT ?
-    `)
-    .all(`%${query}%`, `%${query}%`, limit) as OrchestrationRecord[];
+): Promise<OrchestrationRecord[]> {
+  return await db.queryAll<OrchestrationRecord>(`
+    SELECT * FROM orchestrations
+    WHERE file_name LIKE $1 OR id LIKE $2
+    ORDER BY created_at DESC
+    LIMIT $3
+  `, [`%${query}%`, `%${query}%`, limit]);
 }
 
-export function deleteOrchestration(id: string): void {
-  const db = getDB();
-  db.prepare("DELETE FROM orchestrations WHERE id = ?").run(id);
+export async function deleteOrchestration(id: string): Promise<void> {
+  await db.execute("DELETE FROM orchestrations WHERE id = $1", [id]);
 }
 
-export function cancelOrchestration(id: string): void {
-  const db = getDB();
-  db.prepare(`
-    UPDATE orchestrations 
-    SET status = 'cancelled', 
+export async function cancelOrchestration(id: string): Promise<void> {
+  await db.execute(`
+    UPDATE orchestrations
+    SET status = 'cancelled',
         completed_at = CURRENT_TIMESTAMP,
         updated_at = CURRENT_TIMESTAMP
-    WHERE id = ? AND status = 'running'
-  `).run(id);
+    WHERE id = $1 AND status = 'running'
+  `, [id]);
 }
 
 /**
@@ -319,21 +298,17 @@ export interface NotificationRecord {
   created_at: string;
 }
 
-export function createNotification(data: {
+export async function createNotification(data: {
   level: string;
   message: string;
-}): void {
-  const db = getDB();
-  db.prepare(`
+}): Promise<void> {
+  await db.execute(`
     INSERT INTO notifications (level, message)
-    VALUES (?, ?)
-  `).run(data.level, data.message);
+    VALUES ($1, $2)
+  `, [data.level, data.message]);
 }
 
-export function getUnreadNotificationCount(): number {
-  const db = getDB();
-  const result = db
-    .prepare("SELECT COUNT(*) as count FROM notifications WHERE is_read = 0")
-    .get() as { count: number };
-  return result.count;
+export async function getUnreadNotificationCount(): Promise<number> {
+  const result = await db.queryOne<{ count: number }>("SELECT COUNT(*) as count FROM notifications WHERE is_read = 0");
+  return result?.count || 0;
 }

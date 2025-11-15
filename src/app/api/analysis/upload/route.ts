@@ -3,7 +3,7 @@
  */
 
 import { AILogger } from '@/lib/ai/logger';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { buildDataPool } from '@/lib/document-processor/data-pool';
 import type { DataPool, ExtractedTable, TextBlock } from '@/lib/document-processor/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -361,7 +361,7 @@ export async function POST(request: NextRequest) {
 
     // Store initial analysis in database
     try {
-      const db = getDB();
+      const db = await getDatabase();
 
       // Determine representative filename
       const primaryFileName =
@@ -370,7 +370,7 @@ export async function POST(request: NextRequest) {
         'Auto-generated';
 
       // Create analysis record
-      const stmt = db.prepare(`
+      await db.execute(`
         INSERT INTO analysis_history (
           id,
           file_name,
@@ -379,10 +379,8 @@ export async function POST(request: NextRequest) {
           data_pool,
           created_at,
           duration_ms
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
-      
-      stmt.run(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [
         analysisId,
         primaryFileName,
         'extracting',
@@ -390,7 +388,7 @@ export async function POST(request: NextRequest) {
         JSON.stringify(dataPool),
         new Date().toISOString(),
         extractionDuration
-      );
+      ]);
 
       AILogger.success('Data extraction completed', {
         analysisId,

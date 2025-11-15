@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { errorHandler } from '@/lib/middleware/error-handler';
 import { createErrorResponse } from '@/lib/utils/error-codes';
 
@@ -22,18 +22,16 @@ async function handleGetResults(
     );
   }
 
-    const db = getDB();
+    const db = await getDatabase();
 
     // Fetch specific analysis result
-    const stmt = db.prepare(`
+    const row = await db.queryOne(`
       SELECT result_data, created_at
       FROM analysis_results
-      WHERE analysis_id = ? AND stage = ?
+      WHERE analysis_id = $1 AND stage = $2
       ORDER BY created_at DESC
       LIMIT 1
-    `);
-
-    const row = stmt.get(id, stage) as any;
+    `, [id, stage]) as any;
 
     if (!row) {
       return NextResponse.json({ analysis: null });

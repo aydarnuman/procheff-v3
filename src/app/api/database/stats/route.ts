@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   try {
-    const db = getDB();
+    const db = await getDatabase();
 
     // Get database file size
     const dbPath = path.join(process.cwd(), "procheff.db");
@@ -24,22 +24,16 @@ export async function GET() {
     }
 
     // Get log count
-    const logCount = db
-      .prepare("SELECT COUNT(*) as count FROM ai_logs")
-      .get() as { count: number } | undefined;
+    const logCount = await db.queryOne("SELECT COUNT(*) as count FROM ai_logs") as { count: number } | undefined;
 
-    // Get total records across all tables
-    const tables = db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-      )
-      .all() as { name: string }[];
+    // Get total records across all tables (PostgreSQL-specific query)
+    const tables = await db.query(
+      "SELECT tablename as name FROM pg_tables WHERE schemaname = 'public'"
+    ) as { name: string }[];
 
     const tableCounts: Record<string, number> = {};
     for (const table of tables) {
-      const result = db
-        .prepare(`SELECT COUNT(*) as count FROM ${table.name}`)
-        .get() as { count: number };
+      const result = await db.queryOne(`SELECT COUNT(*) as count FROM ${table.name}`) as { count: number };
       tableCounts[table.name] = result.count;
     }
 

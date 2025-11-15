@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
@@ -18,15 +18,13 @@ export async function GET() {
       );
     }
 
-    const db = getDB();
-    const user = db
-      .prepare("SELECT id, email, name, created_at FROM users WHERE email = ?")
-      .get(session.user.email) as {
-        id: string;
-        email: string;
-        name: string | null;
-        created_at: string;
-      } | undefined;
+    const db = await getDatabase();
+    const user = await db.queryOne("SELECT id, email, name, created_at FROM users WHERE email = $1", [session.user.email]) as {
+      id: string;
+      email: string;
+      name: string | null;
+      created_at: string;
+    } | undefined;
 
     if (!user) {
       return NextResponse.json(
@@ -83,13 +81,11 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const db = getDB();
+    const db = await getDatabase();
 
     // If email is being changed, check if new email exists
     if (email && email !== session.user.email) {
-      const existingUser = db
-        .prepare("SELECT id FROM users WHERE email = ?")
-        .get(email);
+      const existingUser = await db.queryOne("SELECT id FROM users WHERE email = $1", [email]);
 
       if (existingUser) {
         return NextResponse.json(
@@ -102,24 +98,27 @@ export async function PATCH(req: Request) {
     // Update user
     const updates: string[] = [];
     const values: any[] = [];
+    let paramIndex = 1;
 
     if (name !== undefined) {
-      updates.push("name = ?");
+      updates.push(`name = $${paramIndex}`);
       values.push(name);
+      paramIndex++;
     }
 
     if (email && email !== session.user.email) {
-      updates.push("email = ?");
+      updates.push(`email = $${paramIndex}`);
       values.push(email);
+      paramIndex++;
     }
 
     if (updates.length > 0) {
       values.push(session.user.email);
-      db.prepare(`
+      await db.execute(`
         UPDATE users
         SET ${updates.join(", ")}
-        WHERE email = ?
-      `).run(...values);
+        WHERE email = $${paramIndex}
+      `, values);
     }
 
     return NextResponse.json({

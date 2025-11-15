@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
@@ -18,13 +18,13 @@ export async function POST() {
       );
     }
 
-    const db = getDB();
+    const db = await getDatabase();
 
-    // Run VACUUM
-    db.prepare("VACUUM").run();
+    // Run VACUUM (PostgreSQL)
+    await db.execute("VACUUM");
 
     // Run ANALYZE for query optimization
-    db.prepare("ANALYZE").run();
+    await db.execute("ANALYZE");
 
     return NextResponse.json({
       success: true,

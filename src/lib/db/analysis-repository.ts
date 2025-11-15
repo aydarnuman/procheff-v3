@@ -1,11 +1,11 @@
 /**
  * Analysis Repository
  * Database operations for analysis results
- * 
+ *
  * Provides normalized, queryable access to analysis data
  */
 
-import { getDB, transaction, validateJSON } from './sqlite-client';
+import { getDatabase, transaction, validateJSON } from './universal-client';
 import type { TenderAnalysisResult } from '@/lib/tender-analysis/types';
 import type { DataPool } from '@/lib/document-processor/types';
 
@@ -70,8 +70,8 @@ export class AnalysisRepository {
    * - Validates JSON before storage
    * - Updates FTS index automatically
    */
-  static save(result: TenderAnalysisResult): void {
-    const db = getDB();
+  static async save(result: TenderAnalysisResult): Promise<void> {
+    const db = await getDatabase();
 
     try {
       // Validate JSON fields before storing
@@ -81,9 +81,9 @@ export class AnalysisRepository {
       const validationJson = validateJSON(result.validation || {});
 
       // Use transaction for atomic operation
-      const saveTransaction = transaction(() => {
-        // Prepare statement (cached automatically by better-sqlite3)
-        const insertStmt = db.prepare(`
+      await transaction(async () => {
+        // Insert or update analysis result
+        await db.execute(`
           INSERT INTO analysis_results_v2 (
             id, tender_id, status, institution, budget_amount,
             person_count, duration_days, tender_type,
@@ -91,22 +91,20 @@ export class AnalysisRepository {
             extracted_fields_json, contextual_analysis_json,
             market_analysis_json, validation_json,
             processing_time_ms, tokens_used, cost_usd
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
           ON CONFLICT(id) DO UPDATE SET
-            status = excluded.status,
+            status = EXCLUDED.status,
             updated_at = CURRENT_TIMESTAMP,
-            contextual_score = excluded.contextual_score,
-            market_risk_level = excluded.market_risk_level,
-            data_quality_score = excluded.data_quality_score,
-            contextual_analysis_json = excluded.contextual_analysis_json,
-            market_analysis_json = excluded.market_analysis_json,
-            validation_json = excluded.validation_json,
-            processing_time_ms = excluded.processing_time_ms,
-            tokens_used = excluded.tokens_used,
-            cost_usd = excluded.cost_usd
-        `);
-
-        insertStmt.run(
+            contextual_score = EXCLUDED.contextual_score,
+            market_risk_level = EXCLUDED.market_risk_level,
+            data_quality_score = EXCLUDED.data_quality_score,
+            contextual_analysis_json = EXCLUDED.contextual_analysis_json,
+            market_analysis_json = EXCLUDED.market_analysis_json,
+            validation_json = EXCLUDED.validation_json,
+            processing_time_ms = EXCLUDED.processing_time_ms,
+            tokens_used = EXCLUDED.tokens_used,
+            cost_usd = EXCLUDED.cost_usd
+        `, [
           result.analysis_id,
           result.extracted_fields?.ihale_no || null,
           result.status,
@@ -125,7 +123,7 @@ export class AnalysisRepository {
           result.processing_time_ms || null,
           result.tokens_used || null,
           result.cost_usd || null
-        );
+        ]);
 
         // Update FTS index
         if (result.data_pool) {
@@ -133,18 +131,13 @@ export class AnalysisRepository {
             ?.map((block) => block.text)
             .join(' ') || '';
 
-          const ftsStmt = db.prepare(`
+          await db.execute(`
             INSERT INTO analysis_fts (analysis_id, content)
-            VALUES (?, ?)
-            ON CONFLICT(analysis_id) DO UPDATE SET content = excluded.content
-          `);
-
-          ftsStmt.run(result.analysis_id, textContent);
+            VALUES ($1, $2)
+            ON CONFLICT(analysis_id) DO UPDATE SET content = EXCLUDED.content
+          `, [result.analysis_id, textContent]);
         }
       });
-
-      // Execute transaction
-      saveTransaction();
     } catch (error) {
       console.error('[AnalysisRepository] Failed to save analysis:', error);
       throw error;
@@ -154,12 +147,12 @@ export class AnalysisRepository {
   /**
    * Find analysis by ID
    */
-  static findById(id: string): AnalysisResultRow | null {
-    const db = getDB();
+  static async findById(id: string): Promise<AnalysisResultRow | null> {
+    const db = await getDatabase();
     try {
-      return db.prepare(`
-        SELECT * FROM analysis_results_v2 WHERE id = ?
-      `).get(id) as AnalysisResultRow | null;
+      return await db.queryOne<AnalysisResultRow>(`
+        SELECT * FROM analysis_results_v2 WHERE id = $1
+      `, [id]);
     } catch (error) {
       console.error('[AnalysisRepository] Failed to find analysis:', error);
       return null;
@@ -169,16 +162,16 @@ export class AnalysisRepository {
   /**
    * Full-text search
    */
-  static search(query: string, limit = 20): AnalysisResultRow[] {
-    const db = getDB();
+  static async search(query: string, limit = 20): Promise<AnalysisResultRow[]> {
+    const db = await getDatabase();
     try {
-      return db.prepare(`
+      return await db.query<AnalysisResultRow>(`
         SELECT a.* FROM analysis_results_v2 a
         INNER JOIN analysis_fts f ON a.id = f.analysis_id
-        WHERE analysis_fts MATCH ?
+        WHERE analysis_fts MATCH $1
         ORDER BY rank
-        LIMIT ?
-      `).all(query, limit) as AnalysisResultRow[];
+        LIMIT $2
+      `, [query, limit]);
     } catch (error) {
       console.error('[AnalysisRepository] Search failed:', error);
       return [];
@@ -188,18 +181,18 @@ export class AnalysisRepository {
   /**
    * Find by status
    */
-  static findByStatus(
+  static async findByStatus(
     status: 'pending' | 'processing' | 'completed' | 'failed',
     limit = 50
-  ): AnalysisResultRow[] {
-    const db = getDB();
+  ): Promise<AnalysisResultRow[]> {
+    const db = await getDatabase();
     try {
-      return db.prepare(`
+      return await db.query<AnalysisResultRow>(`
         SELECT * FROM analysis_results_v2
-        WHERE status = ?
+        WHERE status = $1
         ORDER BY created_at DESC
-        LIMIT ?
-      `).all(status, limit) as AnalysisResultRow[];
+        LIMIT $2
+      `, [status, limit]);
     } catch (error) {
       console.error('[AnalysisRepository] Failed to find by status:', error);
       return [];
@@ -209,15 +202,15 @@ export class AnalysisRepository {
   /**
    * Find by institution
    */
-  static findByInstitution(institution: string, limit = 50): AnalysisResultRow[] {
-    const db = getDB();
+  static async findByInstitution(institution: string, limit = 50): Promise<AnalysisResultRow[]> {
+    const db = await getDatabase();
     try {
-      return db.prepare(`
+      return await db.query<AnalysisResultRow>(`
         SELECT * FROM analysis_results_v2
-        WHERE institution LIKE ?
+        WHERE institution LIKE $1
         ORDER BY created_at DESC
-        LIMIT ?
-      `).all(`%${institution}%`, limit) as AnalysisResultRow[];
+        LIMIT $2
+      `, [`%${institution}%`, limit]);
     } catch (error) {
       console.error('[AnalysisRepository] Failed to find by institution:', error);
       return [];
@@ -229,12 +222,12 @@ export class AnalysisRepository {
    * - Validates JSON before storage
    * - Atomic operation
    */
-  static saveDataPool(
+  static async saveDataPool(
     analysisId: string,
     dataPool: DataPool,
     ttlHours = 24
-  ): void {
-    const db = getDB();
+  ): Promise<void> {
+    const db = await getDatabase();
     try {
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + ttlHours);
@@ -247,25 +240,22 @@ export class AnalysisRepository {
       const dataPoolJson = validateJSON(dataPool);
       const totalSize = new Blob([dataPoolJson]).size;
 
-      // Prepared statement (cached automatically)
-      const stmt = db.prepare(`
+      await db.execute(`
         INSERT INTO data_pools (
           analysis_id, data_pool_json, text_content,
           document_count, table_count, date_count, entity_count,
           total_size_bytes, expires_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT(analysis_id) DO UPDATE SET
-          data_pool_json = excluded.data_pool_json,
-          text_content = excluded.text_content,
-          document_count = excluded.document_count,
-          table_count = excluded.table_count,
-          date_count = excluded.date_count,
-          entity_count = excluded.entity_count,
-          total_size_bytes = excluded.total_size_bytes,
-          expires_at = excluded.expires_at
-      `);
-
-      stmt.run(
+          data_pool_json = EXCLUDED.data_pool_json,
+          text_content = EXCLUDED.text_content,
+          document_count = EXCLUDED.document_count,
+          table_count = EXCLUDED.table_count,
+          date_count = EXCLUDED.date_count,
+          entity_count = EXCLUDED.entity_count,
+          total_size_bytes = EXCLUDED.total_size_bytes,
+          expires_at = EXCLUDED.expires_at
+      `, [
         analysisId,
         dataPoolJson,
         textContent,
@@ -275,7 +265,7 @@ export class AnalysisRepository {
         dataPool.entities?.length || 0,
         totalSize,
         expiresAt.toISOString()
-      );
+      ]);
     } catch (error) {
       console.error('[AnalysisRepository] Failed to save DataPool:', error);
       throw error;
@@ -285,13 +275,13 @@ export class AnalysisRepository {
   /**
    * Get DataPool by analysis ID
    */
-  static getDataPool(analysisId: string): DataPool | null {
-    const db = getDB();
+  static async getDataPool(analysisId: string): Promise<DataPool | null> {
+    const db = await getDatabase();
     try {
-      const row = db.prepare(`
+      const row = await db.queryOne<{ data_pool_json: string; expires_at: string }>(`
         SELECT data_pool_json, expires_at FROM data_pools
-        WHERE analysis_id = ? AND expires_at > datetime('now')
-      `).get(analysisId) as { data_pool_json: string; expires_at: string } | null;
+        WHERE analysis_id = $1 AND expires_at > CURRENT_TIMESTAMP
+      `, [analysisId]);
 
       if (!row) return null;
 
@@ -306,22 +296,22 @@ export class AnalysisRepository {
    * Get analysis result by analysis ID
    * Returns contextual, market, and deep analysis results
    */
-  static getByAnalysisId(analysisId: string): {
+  static async getByAnalysisId(analysisId: string): Promise<{
     contextual: unknown | null;
     market: unknown | null;
     deep: unknown | null;
-  } | null {
-    const db = getDB();
+  } | null> {
+    const db = await getDatabase();
     try {
       // Fetch all stages for this analysis
-      const rows = db.prepare(`
-        SELECT stage, result_data
-        FROM analysis_results
-        WHERE analysis_id = ?
-      `).all(analysisId) as Array<{
+      const rows = await db.query<{
         stage: string;
         result_data: string;
-      }>;
+      }>(`
+        SELECT stage, result_data
+        FROM analysis_results
+        WHERE analysis_id = $1
+      `, [analysisId]);
 
       if (!rows || rows.length === 0) return null;
 
@@ -339,7 +329,7 @@ export class AnalysisRepository {
       for (const row of rows) {
         try {
           const data = JSON.parse(row.result_data);
-          
+
           if (row.stage === 'contextual') {
             result.contextual = data;
           } else if (row.stage === 'market') {
@@ -362,7 +352,7 @@ export class AnalysisRepository {
   /**
    * Save API metric
    */
-  static saveAPIMetric(metric: {
+  static async saveAPIMetric(metric: {
     endpoint: string;
     model?: string;
     input_tokens?: number;
@@ -372,15 +362,15 @@ export class AnalysisRepository {
     duration_ms?: number;
     success?: boolean;
     error_message?: string;
-  }): void {
-    const db = getDB();
+  }): Promise<void> {
+    const db = await getDatabase();
     try {
-      db.prepare(`
+      await db.execute(`
         INSERT INTO api_metrics (
           endpoint, model, input_tokens, output_tokens, total_tokens,
           cost_usd, duration_ms, success, error_message
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [
         metric.endpoint,
         metric.model || null,
         metric.input_tokens || null,
@@ -390,7 +380,7 @@ export class AnalysisRepository {
         metric.duration_ms || null,
         metric.success !== false ? 1 : 0,
         metric.error_message || null
-      );
+      ]);
     } catch (error) {
       console.error('[AnalysisRepository] Failed to save API metric:', error);
       // Don't throw - metrics are non-critical
@@ -400,23 +390,23 @@ export class AnalysisRepository {
   /**
    * Get cost statistics
    */
-  static getCostStats(days = 30): {
+  static async getCostStats(days = 30): Promise<{
     total_cost: number;
     total_requests: number;
     avg_cost_per_request: number;
     by_endpoint: Record<string, { cost: number; requests: number }>;
     by_model: Record<string, { cost: number; requests: number }>;
-  } {
-    const db = getDB();
+  }> {
+    const db = await getDatabase();
     try {
       const since = new Date();
       since.setDate(since.getDate() - days);
 
-      const allMetrics = db.prepare(`
+      const allMetrics = await db.query<APIMetricRow>(`
         SELECT endpoint, model, cost_usd, success
         FROM api_metrics
-        WHERE created_at > ? AND success = 1
-      `).all(since.toISOString()) as APIMetricRow[];
+        WHERE created_at > $1 AND success = 1
+      `, [since.toISOString()]);
 
       const total_cost = allMetrics.reduce((sum, m) => sum + (m.cost_usd || 0), 0);
       const total_requests = allMetrics.length;
@@ -465,17 +455,16 @@ export class AnalysisRepository {
   /**
    * Cleanup expired DataPools
    */
-  static cleanupExpiredDataPools(): number {
-    const db = getDB();
+  static async cleanupExpiredDataPools(): Promise<number> {
+    const db = await getDatabase();
     try {
-      const result = db.prepare(`
-        DELETE FROM data_pools WHERE expires_at < datetime('now')
-      `).run();
-      return result.changes || 0;
+      const result = await db.execute(`
+        DELETE FROM data_pools WHERE expires_at < CURRENT_TIMESTAMP
+      `);
+      return result.rowCount || 0;
     } catch (error) {
       console.error('[AnalysisRepository] Failed to cleanup expired DataPools:', error);
       return 0;
     }
   }
 }
-

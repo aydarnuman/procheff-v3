@@ -4,14 +4,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const db = getDB();
+    const db = await getDatabase();
     const params = await context.params;
     const itemId = parseInt(params.id);
 
@@ -23,7 +23,7 @@ export async function GET(
     }
 
     // Get menu item
-    const itemQuery = `
+    const item = await db.queryOne(`
       SELECT
         mi.id,
         mi.name,
@@ -41,10 +41,8 @@ export async function GET(
         mc.name_tr as category_name
       FROM menu_items mi
       LEFT JOIN menu_categories mc ON mi.category_id = mc.id
-      WHERE mi.id = ?
-    `;
-
-    const item = db.prepare(itemQuery).get(itemId);
+      WHERE mi.id = $1
+    `, [itemId]);
 
     if (!item) {
       return NextResponse.json(
@@ -54,7 +52,7 @@ export async function GET(
     }
 
     // Get recipe if exists
-    const recipeQuery = `
+    const recipe = await db.queryOne(`
       SELECT
         id,
         instructions,
@@ -63,26 +61,22 @@ export async function GET(
         difficulty,
         serving_size
       FROM recipes
-      WHERE menu_item_id = ?
-    `;
-
-    const recipe = db.prepare(recipeQuery).get(itemId);
+      WHERE menu_item_id = $1
+    `, [itemId]);
 
     // Get ingredients if recipe exists
     let ingredients: any[] = [];
     if (recipe) {
-      const ingredientsQuery = `
+      ingredients = await db.query(`
         SELECT
           ingredient_name,
           quantity,
           unit,
           cost_per_unit
         FROM recipe_ingredients
-        WHERE recipe_id = ?
+        WHERE recipe_id = $1
         ORDER BY ingredient_name
-      `;
-
-      ingredients = db.prepare(ingredientsQuery).all((recipe as any).id);
+      `, [(recipe as any).id]);
     }
 
     // Calculate costs for different portion sizes

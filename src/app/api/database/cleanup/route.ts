@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
@@ -23,23 +23,19 @@ export async function POST(req: Request) {
     const body = await req.json();
     const days = body.days || 30;
 
-    const db = getDB();
+    const db = await getDatabase();
 
     // Delete old logs
-    const result = db
-      .prepare(
-        `DELETE FROM ai_logs
-         WHERE created_at < datetime('now', '-' || ? || ' days')`
-      )
-      .run(days);
+    const result = await db.execute(
+      `DELETE FROM ai_logs
+       WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '${days} days'`
+    );
 
     // Delete old notifications
-    const notifResult = db
-      .prepare(
-        `DELETE FROM notifications
-         WHERE created_at < datetime('now', '-' || ? || ' days') AND is_read = 1`
-      )
-      .run(days);
+    const notifResult = await db.execute(
+      `DELETE FROM notifications
+       WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '${days} days' AND is_read = true`
+    );
 
     return NextResponse.json({
       success: true,

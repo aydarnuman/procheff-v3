@@ -1,5 +1,11 @@
-import { Pool, QueryResult, QueryResultRow, PoolClient } from 'pg';
+// Type-only imports to prevent client-side bundling
 import type { QueryParams, DatabaseRow } from '@/types/database';
+
+// Use 'any' for pg types to prevent client-side issues
+type Pool = any;
+type QueryResult<T = any> = any;
+type QueryResultRow = any;
+type PoolClient = any;
 
 // PostgreSQL connection pool
 let pool: Pool | null = null;
@@ -44,14 +50,17 @@ async function initializeDatabase(): Promise<void> {
   isInitializing = true;
 
   try {
+    // Dynamically import pg only on server-side
+    const { Pool } = await import('pg');
+
     // Create connection pool
     pool = new Pool(poolConfig);
-    
+
     // Test connection
     const client = await pool.connect();
     await client.query('SELECT NOW()');
     client.release();
-    
+
     console.log("✅ PostgreSQL connection established");
 
     // Initialize auth schema - only if not exists

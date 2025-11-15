@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { AILogger } from '@/lib/ai/logger';
 
 import { createErrorResponse } from '@/lib/utils/error-codes';
@@ -30,27 +30,25 @@ async function handleGetAnalysis(
 
   AILogger.info('📊 Fetching analysis from TWO sources (diyagrama uygun)', { analysisId: id });
 
-  const db = getDB();
+  const db = await getDatabase();
 
   // ======================================
   // 1️⃣ KAYNAK 1: analysis_history (metadata, status)
   // ======================================
-  const historyStmt = db.prepare(`
-    SELECT 
-      id, 
-      status, 
-      input_files, 
+  const historyRow = await db.queryOne(`
+    SELECT
+      id,
+      status,
+      input_files,
       data_pool as legacy_datapool,
-      created_at, 
-      updated_at, 
+      created_at,
+      updated_at,
       duration_ms
     FROM analysis_history
-    WHERE id = ?
+    WHERE id = $1
     ORDER BY created_at DESC
     LIMIT 1
-  `);
-
-  const historyRow = historyStmt.get(id) as any;
+  `, [id]) as any;
 
   if (!historyRow) {
     AILogger.warn('Analysis not found in history', { analysisId: id });

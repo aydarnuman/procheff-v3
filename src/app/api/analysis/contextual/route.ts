@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { extractBasicFields, performContextualAnalysis } from '@/lib/tender-analysis/contextual';
 import type { DataPool } from '@/lib/document-processor/types';
 import { AILogger } from '@/lib/ai/logger';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { errorHandler } from '@/lib/middleware/error-handler';
 import { createErrorResponse } from '@/lib/utils/error-codes';
 
@@ -39,14 +39,17 @@ async function handleContextualAnalysis(request: NextRequest) {
 
     // Save to database
     try {
-      const db = getDB();
-      const stmt = db.prepare(`
-        INSERT OR REPLACE INTO analysis_results (
+      const db = await getDatabase();
+      await db.execute(`
+        INSERT INTO analysis_results (
           id, analysis_id, stage, result_data, created_at
-        ) VALUES (?, ?, ?, ?, datetime('now'))
-      `);
-
-      stmt.run(
+        ) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+        ON CONFLICT (id) DO UPDATE SET
+          analysis_id = EXCLUDED.analysis_id,
+          stage = EXCLUDED.stage,
+          result_data = EXCLUDED.result_data,
+          created_at = EXCLUDED.created_at
+      `, [
         `${analysisId}_contextual`,
         analysisId,
         'contextual',
@@ -54,7 +57,7 @@ async function handleContextualAnalysis(request: NextRequest) {
           extracted_fields: extractedFields,
           analysis: contextualAnalysis
         })
-      );
+      ]);
     } catch (dbError) {
       AILogger.error('Failed to save contextual analysis to DB', { dbError });
     }

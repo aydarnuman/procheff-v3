@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GET, DELETE } from '../cache/stats/route';
 import { setCachedResponse} from '@/lib/ai/semantic-cache';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 
 describe('Cache Stats API', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clean up cache before each test
-    const db = getDB();
+    const db = await getDatabase();
     try {
-      db.prepare('DELETE FROM semantic_cache').run();
+      await db.execute('DELETE FROM semantic_cache');
     } catch (error) {
       // Ignore if table doesn't exist
     }
@@ -54,16 +54,16 @@ describe('Cache Stats API', () => {
 
   describe('DELETE /api/cache/cleanup', () => {
     it('should cleanup expired cache entries', async () => {
-      const db = getDB();
-      
+      const db = await getDatabase();
+
       // Add an expired entry
       setCachedResponse('expired prompt', 'claude-sonnet-4-20250514', 0.4, { data: 'test' }, 100);
-      
+
       // Manually set expiration to past
-      db.prepare(`
-        UPDATE semantic_cache 
-        SET expires_at = datetime('now', '-1 day')
-      `).run();
+      await db.execute(`
+        UPDATE semantic_cache
+        SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 day'
+      `);
 
       const response = await DELETE();
       const data = await response.json();

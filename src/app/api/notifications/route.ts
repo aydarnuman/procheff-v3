@@ -23,8 +23,11 @@ export async function GET(req: Request) {
 
     // Ensure database is accessible and table exists
     try {
-      const notifications = getNotifications({ limit, unreadOnly });
-      const unreadCount = getUnreadCount();
+      // Execute queries in parallel for better performance
+      const [notifications, unreadCount] = await Promise.all([
+        getNotifications({ limit, unreadOnly }),
+        getUnreadCount(),
+      ]);
 
       return NextResponse.json({
         success: true,
@@ -70,14 +73,14 @@ export async function PATCH(req: Request) {
     const body = await req.json();
 
     if (body.id) {
-      markAsRead(body.id);
+      await markAsRead(body.id);
       return NextResponse.json({
         success: true,
         message: "Notification marked as read",
         id: body.id
       });
     } else {
-      markAllAsRead();
+      await markAllAsRead();
       return NextResponse.json({
         success: true,
         message: "All notifications marked as read"

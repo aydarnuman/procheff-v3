@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MarketFusionEngine } from '@/lib/market/fusion-engine';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import type { MarketQuote } from '@/lib/market/schema';
 
 /**
@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch quotes from database
-    const db = getDB();
-    const quotes = db.prepare(`
+    const db = await getDatabase();
+    const quotes = await db.query(`
       SELECT
         mp.product_key,
         mp.unit_price,
@@ -37,10 +37,10 @@ export async function GET(req: NextRequest) {
         ms.reliability_score as source_trust
       FROM market_prices mp
       LEFT JOIN market_sources ms ON mp.market_key = ms.source_key
-      WHERE mp.product_key = ?
-        AND mp.created_at > datetime('now', '-' || ? || ' days')
+      WHERE mp.product_key = $1
+        AND mp.created_at > CURRENT_TIMESTAMP - INTERVAL '${maxAge} days'
       ORDER BY mp.created_at DESC
-    `).all(product, maxAge) as any[];
+    `, [product]) as any[];
 
     if (quotes.length === 0) {
       return NextResponse.json(
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = getDB();
+    const db = await getDatabase();
     const engine = new MarketFusionEngine({
       minSourceCount: minSources,
       maxPriceAge: maxAge,
@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
 
     for (const product of products) {
       try {
-        const quotes = db.prepare(`
+        const quotes = await db.query(`
           SELECT
             mp.product_key,
             mp.unit_price,
@@ -171,10 +171,10 @@ export async function POST(req: NextRequest) {
             ms.reliability_score as source_trust
           FROM market_prices mp
           LEFT JOIN market_sources ms ON mp.market_key = ms.source_key
-          WHERE mp.product_key = ?
-            AND mp.created_at > datetime('now', '-' || ? || ' days')
+          WHERE mp.product_key = $1
+            AND mp.created_at > CURRENT_TIMESTAMP - INTERVAL '${maxAge} days'
           ORDER BY mp.created_at DESC
-        `).all(product, maxAge) as any[];
+        `, [product]) as any[];
 
         if (quotes.length < minSources) {
           results.push({

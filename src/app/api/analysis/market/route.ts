@@ -7,7 +7,7 @@ import { extractBasicFields } from '@/lib/tender-analysis/contextual';
 import { performMarketAnalysis, extractMenuItems } from '@/lib/tender-analysis/market-intel';
 import type { DataPool } from '@/lib/document-processor/types';
 import { AILogger } from '@/lib/ai/logger';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { errorHandler } from '@/lib/middleware/error-handler';
 import { createErrorResponse } from '@/lib/utils/error-codes';
 
@@ -49,14 +49,17 @@ async function handleMarketAnalysis(request: NextRequest) {
 
     // Save to database
     try {
-      const db = getDB();
-      const stmt = db.prepare(`
-        INSERT OR REPLACE INTO analysis_results (
+      const db = await getDatabase();
+      await db.execute(`
+        INSERT INTO analysis_results (
           id, analysis_id, stage, result_data, created_at
-        ) VALUES (?, ?, ?, ?, datetime('now'))
-      `);
-
-      stmt.run(
+        ) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+        ON CONFLICT (id) DO UPDATE SET
+          analysis_id = EXCLUDED.analysis_id,
+          stage = EXCLUDED.stage,
+          result_data = EXCLUDED.result_data,
+          created_at = EXCLUDED.created_at
+      `, [
         `${analysisId}_market`,
         analysisId,
         'market',
@@ -64,21 +67,23 @@ async function handleMarketAnalysis(request: NextRequest) {
           menu_items: items,
           analysis: marketAnalysis
         })
-      );
+      ]);
 
       // Cache price data for future use
-      const priceStmt = db.prepare(`
-        INSERT OR REPLACE INTO market_prices (
-          product_key, prices, last_updated, confidence
-        ) VALUES (?, ?, datetime('now'), ?)
-      `);
-
       for (const item of marketAnalysis.cost_items) {
-        priceStmt.run(
+        await db.execute(`
+          INSERT INTO market_prices (
+            product_key, prices, last_updated, confidence
+          ) VALUES ($1, $2, CURRENT_TIMESTAMP, $3)
+          ON CONFLICT (product_key) DO UPDATE SET
+            prices = EXCLUDED.prices,
+            last_updated = EXCLUDED.last_updated,
+            confidence = EXCLUDED.confidence
+        `, [
           item.product_key,
           JSON.stringify(item.prices),
           item.confidence
-        );
+        ]);
       }
 
     } catch (dbError) {

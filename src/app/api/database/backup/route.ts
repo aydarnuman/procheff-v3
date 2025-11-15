@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import fs from "fs";
@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/database/backup
  * Download database backup
+ * NOTE: This endpoint is SQLite-specific and may need alternative implementation for PostgreSQL
  */
 export async function GET() {
   try {
@@ -20,10 +21,10 @@ export async function GET() {
       );
     }
 
-    const db = getDB();
+    const db = await getDatabase();
 
-    // Create backup with checkpoint
-    db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").run();
+    // PostgreSQL doesn't use WAL checkpoint like SQLite
+    // This functionality needs to be implemented differently for PostgreSQL backup
 
     const dbPath = path.join(process.cwd(), "procheff.db");
     const dbBuffer = fs.readFileSync(dbPath);
@@ -32,10 +33,10 @@ export async function GET() {
     const fileName = `procheff-backup-${timestamp}.db`;
 
     // Log backup in database
-    db.prepare(`
+    await db.execute(`
       INSERT INTO backup_history (file_name, file_size, backup_type, created_by)
-      VALUES (?, ?, 'manual', ?)
-    `).run(fileName, dbBuffer.length, session.user.email);
+      VALUES ($1, $2, 'manual', $3)
+    `, [fileName, dbBuffer.length, session.user.email]);
 
     return new NextResponse(dbBuffer, {
       status: 200,

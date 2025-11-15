@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { webQuoteRealData } from '@/lib/market/provider/web-real';
 import type {} from '@/lib/market/schema';
 import { ZodError } from 'zod';
@@ -20,8 +20,8 @@ export async function GET(req: NextRequest) {
     });
 
     // Önce veritabanından son fiyatları çek
-    const db = getDB();
-    const dbPrices = db.prepare(`
+    const db = await getDatabase();
+    const dbPrices = await db.query(`
       SELECT DISTINCT
         mp.market_key as market,
         mp.unit_price as price,
@@ -32,10 +32,10 @@ export async function GET(req: NextRequest) {
         ms.base_url
       FROM market_prices mp
       LEFT JOIN market_sources ms ON mp.market_key = ms.source_key
-      WHERE mp.product_key = ?
-        AND mp.created_at > datetime('now', '-24 hours')
+      WHERE mp.product_key = $1
+        AND mp.created_at > CURRENT_TIMESTAMP - INTERVAL '24 hours'
       ORDER BY mp.created_at DESC
-    `).all(product) as any[];
+    `, [product]) as any[];
 
     // Veritabanında veri yoksa web scraping dene
     let marketPrices = [];

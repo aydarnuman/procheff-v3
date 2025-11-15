@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDB } from "@/lib/db/sqlite-client";
-import Database from "better-sqlite3";
+import { getDatabase } from "@/lib/db/universal-client";
 
 /**
  * Health check endpoint for monitoring and deployment verification
@@ -23,14 +22,14 @@ export async function GET() {
   try {
     // 1. Database check
     try {
-      const db = getDB();
-      const result = db.prepare("SELECT 1 as check").get() as { check: number };
+      const db = await getDatabase();
+      const result = await db.queryOne("SELECT 1 as check") as { check: number };
       health.checks.database = result?.check === 1;
-      
-      // Get database stats
-      const tableCount = db.prepare(
-        "SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'"
-      ).get() as { count: number };
+
+      // Get database stats (PostgreSQL-specific)
+      const tableCount = await db.queryOne(
+        "SELECT COUNT(*) as count FROM pg_tables WHERE schemaname = 'public'"
+      ) as { count: number };
       
       health.details.database = {
         connected: true,

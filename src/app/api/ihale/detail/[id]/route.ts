@@ -1,6 +1,6 @@
 import { AILogger } from '@/lib/ai/logger';
 import { parseTenderHTMLWithAI, type TenderSection, type TenderTable } from '@/lib/ai/parse-tender-html';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { ihbDetail, ihbLogin } from '@/lib/ihale/client';
 import { sanitizeForSnapshot } from '@/lib/ihale/html-sanitize';
 import { normalizeDocuments } from '@/lib/ihale/normalize-documents';
@@ -279,8 +279,8 @@ export async function GET(
 
     // Try to get additional info from database
     try {
-      const db = getDB();
-      const stmt = db.prepare(`
+      const db = await getDatabase();
+      const dbInfo = await db.queryOne(`
         SELECT
           tender_number as tenderNumber,
           organization,
@@ -291,9 +291,8 @@ export async function GET(
           days_remaining as daysRemaining,
           partial_bid_allowed as partialBidAllowed
         FROM tenders
-        WHERE id = ?
-      `);
-      const dbInfo = stmt.get(id) as any;
+        WHERE id = $1
+      `, [id]) as any;
 
       if (dbInfo) {
         // Merge database info with worker detail (preserve documents!)
