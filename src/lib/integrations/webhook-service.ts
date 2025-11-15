@@ -3,7 +3,7 @@
  * Manages webhook CRUD operations and event triggering
  */
 
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import crypto from "crypto";
 
 export interface Webhook {
@@ -49,8 +49,8 @@ export class WebhookService {
    * Get all webhooks
    */
   async getAllWebhooks(): Promise<Webhook[]> {
-    const db = getDB();
-    const webhooks = db.prepare("SELECT * FROM webhooks ORDER BY created_at DESC").all();
+    const db = await getDatabase();
+    const webhooks = await db.query("SELECT * FROM webhooks ORDER BY created_at DESC");
 
     return webhooks.map((w: any) => ({
       ...w,
@@ -64,8 +64,8 @@ export class WebhookService {
    * Get webhook by ID
    */
   async getWebhook(id: number): Promise<Webhook | null> {
-    const db = getDB();
-    const webhook = db.prepare("SELECT * FROM webhooks WHERE id = ?").get(id) as any;
+    const db = await getDatabase();
+    const webhook = await db.queryOne("SELECT * FROM webhooks WHERE id = $1", [id]) as any;
 
     if (!webhook) return null;
 
@@ -81,24 +81,26 @@ export class WebhookService {
    * Create new webhook
    */
   async createWebhook(webhook: Omit<Webhook, "id">): Promise<Webhook> {
-    const db = getDB();
+    const db = await getDatabase();
 
-    const result = db.prepare(
+    const result = await db.queryOne(
       `INSERT INTO webhooks (name, url, events, headers, secret, active, retry_count, timeout_ms)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      webhook.name,
-      webhook.url,
-      JSON.stringify(webhook.events),
-      webhook.headers ? JSON.stringify(webhook.headers) : null,
-      webhook.secret || null,
-      webhook.active ? 1 : 0,
-      webhook.retry_count || 3,
-      webhook.timeout_ms || 5000
-    );
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id`,
+      [
+        webhook.name,
+        webhook.url,
+        JSON.stringify(webhook.events),
+        webhook.headers ? JSON.stringify(webhook.headers) : null,
+        webhook.secret || null,
+        webhook.active ? 1 : 0,
+        webhook.retry_count || 3,
+        webhook.timeout_ms || 5000
+      ]
+    ) as any;
 
     return {
-      id: result.lastInsertRowid as number,
+      id: result?.id,
       ...webhook,
     };
   }
@@ -107,73 +109,84 @@ export class WebhookService {
    * Update webhook
    */
   async updateWebhook(id: number, updates: Partial<Webhook>): Promise<boolean> {
-    const db = getDB();
+    const db = await getDatabase();
 
     const setClause = [];
     const values = [];
+    let paramIndex = 1;
 
     if (updates.name !== undefined) {
-      setClause.push("name = ?");
+      setClause.push(`name = $${paramIndex}`);
       values.push(updates.name);
+      paramIndex++;
     }
     if (updates.url !== undefined) {
-      setClause.push("url = ?");
+      setClause.push(`url = $${paramIndex}`);
       values.push(updates.url);
+      paramIndex++;
     }
     if (updates.events !== undefined) {
-      setClause.push("events = ?");
+      setClause.push(`events = $${paramIndex}`);
       values.push(JSON.stringify(updates.events));
+      paramIndex++;
     }
     if (updates.headers !== undefined) {
-      setClause.push("headers = ?");
+      setClause.push(`headers = $${paramIndex}`);
       values.push(JSON.stringify(updates.headers));
+      paramIndex++;
     }
     if (updates.secret !== undefined) {
-      setClause.push("secret = ?");
+      setClause.push(`secret = $${paramIndex}`);
       values.push(updates.secret);
+      paramIndex++;
     }
     if (updates.active !== undefined) {
-      setClause.push("active = ?");
+      setClause.push(`active = $${paramIndex}`);
       values.push(updates.active ? 1 : 0);
+      paramIndex++;
     }
     if (updates.retry_count !== undefined) {
-      setClause.push("retry_count = ?");
+      setClause.push(`retry_count = $${paramIndex}`);
       values.push(updates.retry_count);
+      paramIndex++;
     }
     if (updates.timeout_ms !== undefined) {
-      setClause.push("timeout_ms = ?");
+      setClause.push(`timeout_ms = $${paramIndex}`);
       values.push(updates.timeout_ms);
+      paramIndex++;
     }
 
     setClause.push("updated_at = CURRENT_TIMESTAMP");
     values.push(id);
 
-    const result = db.prepare(
-      `UPDATE webhooks SET ${setClause.join(", ")} WHERE id = ?`
-    ).run(...values);
+    await db.execute(
+      `UPDATE webhooks SET ${setClause.join(", ")} WHERE id = $${paramIndex}`,
+      values
+    );
 
-    return result.changes > 0;
+    return true;
   }
 
   /**
    * Delete webhook
    */
   async deleteWebhook(id: number): Promise<boolean> {
-    const db = getDB();
-    const result = db.prepare("DELETE FROM webhooks WHERE id = ?").run(id);
-    return result.changes > 0;
+    const db = await getDatabase();
+    await db.execute("DELETE FROM webhooks WHERE id = $1", [id]);
+    return true;
   }
 
   /**
    * Trigger webhook for an event
    */
   async triggerWebhook(eventType: string, payload: any): Promise<void> {
-    const db = getDB();
+    const db = await getDatabase();
 
     // Get all active webhooks that listen to this event
-    const webhooks = db.prepare(
-      "SELECT * FROM webhooks WHERE active = 1 AND events LIKE ?"
-    ).all(`%"${eventType}"%`) as any[];
+    const webhooks = await db.query(
+      "SELECT * FROM webhooks WHERE active = 1 AND events LIKE $1",
+      [`%"${eventType}"%`]
+    ) as any[];
 
     for (const webhook of webhooks) {
       await this.sendWebhook(webhook, eventType, payload);
@@ -189,7 +202,7 @@ export class WebhookService {
     payload: any,
     retryCount = 0
   ): Promise<void> {
-    const db = getDB();
+    const db = await getDatabase();
 
     try {
       const headers: Record<string, string> = {
@@ -227,26 +240,28 @@ export class WebhookService {
       clearTimeout(timeout);
 
       // Update webhook status
-      db.prepare(
+      await db.execute(
         `UPDATE webhooks
          SET last_triggered = CURRENT_TIMESTAMP,
-             last_status = ?,
+             last_status = $1,
              failure_count = 0
-         WHERE id = ?`
-      ).run(response.status, webhook.id);
+         WHERE id = $2`,
+        [response.status, webhook.id]
+      );
 
       // Log the webhook call
-      db.prepare(
+      await db.execute(
         `INSERT INTO webhook_logs (webhook_id, event_type, payload, status_code, response, retry_count, success)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ).run(
-        webhook.id,
-        eventType,
-        JSON.stringify(payload),
-        response.status,
-        await response.text(),
-        retryCount,
-        response.ok ? 1 : 0
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          webhook.id,
+          eventType,
+          JSON.stringify(payload),
+          response.status,
+          await response.text(),
+          retryCount,
+          response.ok ? 1 : 0
+        ]
       );
 
       // Retry if failed and retries remaining
@@ -257,25 +272,27 @@ export class WebhookService {
       }
     } catch (error) {
       // Update failure count
-      db.prepare(
+      await db.execute(
         `UPDATE webhooks
          SET failure_count = failure_count + 1,
              last_triggered = CURRENT_TIMESTAMP,
              last_status = 0
-         WHERE id = ?`
-      ).run(webhook.id);
+         WHERE id = $1`,
+        [webhook.id]
+      );
 
       // Log the error
-      db.prepare(
+      await db.execute(
         `INSERT INTO webhook_logs (webhook_id, event_type, payload, status_code, response, retry_count, success)
-         VALUES (?, ?, ?, ?, ?, ?, 0)`
-      ).run(
-        webhook.id,
-        eventType,
-        JSON.stringify(payload),
-        0,
-        error instanceof Error ? error.message : "Unknown error",
-        retryCount
+         VALUES ($1, $2, $3, $4, $5, $6, 0)`,
+        [
+          webhook.id,
+          eventType,
+          JSON.stringify(payload),
+          0,
+          error instanceof Error ? error.message : "Unknown error",
+          retryCount
+        ]
       );
 
       // Retry if retries remaining
@@ -356,20 +373,22 @@ export class WebhookService {
    * Get webhook logs
    */
   async getWebhookLogs(webhookId?: number, limit = 50): Promise<WebhookLog[]> {
-    const db = getDB();
+    const db = await getDatabase();
 
     let query = "SELECT * FROM webhook_logs";
     const params = [];
+    let paramIndex = 1;
 
     if (webhookId) {
-      query += " WHERE webhook_id = ?";
+      query += ` WHERE webhook_id = $${paramIndex}`;
       params.push(webhookId);
+      paramIndex++;
     }
 
-    query += " ORDER BY created_at DESC LIMIT ?";
+    query += ` ORDER BY created_at DESC LIMIT $${paramIndex}`;
     params.push(limit);
 
-    const logs = db.prepare(query).all(...params);
+    const logs = await db.query(query, params);
 
     return logs.map((log: any) => ({
       ...log,

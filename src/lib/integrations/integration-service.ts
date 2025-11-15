@@ -3,7 +3,7 @@
  * Manages third-party integrations (Google Sheets, Slack, Discord, etc.)
  */
 
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 
 export type IntegrationType = "ihalebul" | "google_sheets" | "slack" | "discord" | "zapier";
 
@@ -65,8 +65,8 @@ export class IntegrationService {
    * Get all integrations
    */
   async getAllIntegrations(): Promise<IntegrationConfig[]> {
-    const db = getDB();
-    const integrations = db.prepare("SELECT * FROM integration_configs").all() as any[];
+    const db = await getDatabase();
+    const integrations = await db.query("SELECT * FROM integration_configs") as any[];
 
     return integrations.map((i) => ({
       ...i,
@@ -79,10 +79,11 @@ export class IntegrationService {
    * Get integration by service
    */
   async getIntegration(service: IntegrationType): Promise<IntegrationConfig | null> {
-    const db = getDB();
-    const integration = db
-      .prepare("SELECT * FROM integration_configs WHERE service = ?")
-      .get(service) as any;
+    const db = await getDatabase();
+    const integration = await db.queryOne(
+      "SELECT * FROM integration_configs WHERE service = $1",
+      [service]
+    ) as any;
 
     if (!integration) return null;
 
@@ -101,36 +102,40 @@ export class IntegrationService {
     config: any,
     enabled?: boolean
   ): Promise<boolean> {
-    const db = getDB();
+    const db = await getDatabase();
 
-    const setClause = ["config = ?", "updated_at = CURRENT_TIMESTAMP"];
+    const setClause = ["config = $1", "updated_at = CURRENT_TIMESTAMP"];
     const values: any[] = [JSON.stringify(config)];
+    let paramIndex = 2;
 
     if (enabled !== undefined) {
-      setClause.push("enabled = ?");
+      setClause.push(`enabled = $${paramIndex}`);
       values.push(enabled ? 1 : 0);
+      paramIndex++;
     }
 
     values.push(service);
 
-    const result = db
-      .prepare(`UPDATE integration_configs SET ${setClause.join(", ")} WHERE service = ?`)
-      .run(...values);
+    await db.execute(
+      `UPDATE integration_configs SET ${setClause.join(", ")} WHERE service = $${paramIndex}`,
+      values
+    );
 
-    return result.changes > 0;
+    return true;
   }
 
   /**
    * Enable/disable integration
    */
   async toggleIntegration(service: IntegrationType, enabled: boolean): Promise<boolean> {
-    const db = getDB();
+    const db = await getDatabase();
 
-    const result = db
-      .prepare("UPDATE integration_configs SET enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE service = ?")
-      .run(enabled ? 1 : 0, service);
+    await db.execute(
+      "UPDATE integration_configs SET enabled = $1, updated_at = CURRENT_TIMESTAMP WHERE service = $2",
+      [enabled ? 1 : 0, service]
+    );
 
-    return result.changes > 0;
+    return true;
   }
 
   /**
@@ -141,13 +146,14 @@ export class IntegrationService {
     status: "success" | "failed" | "pending",
     errorMessage?: string
   ): Promise<void> {
-    const db = getDB();
+    const db = await getDatabase();
 
-    db.prepare(
+    await db.execute(
       `UPDATE integration_configs
-       SET sync_status = ?, error_message = ?, last_sync = CURRENT_TIMESTAMP
-       WHERE service = ?`
-    ).run(status, errorMessage || null, service);
+       SET sync_status = $1, error_message = $2, last_sync = CURRENT_TIMESTAMP
+       WHERE service = $3`,
+      [status, errorMessage || null, service]
+    );
   }
 
   /**

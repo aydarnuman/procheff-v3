@@ -18,7 +18,7 @@ import type { DataPool } from '@/lib/document-processor/types';
 import { extractBasicFields, performContextualAnalysis } from './contextual';
 import { performMarketAnalysis, extractMenuItems } from './market-intel';
 import { validateAnalysisData } from './validators';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { AILogger } from '@/lib/ai/logger';
 import { useAnalysisStore } from '@/store/analysisStore';
 
@@ -187,24 +187,22 @@ export class TenderAnalysisEngine {
    */
   private async saveToDatabase(result: TenderAnalysisResult): Promise<void> {
     try {
-      const db = getDB();
+      const db = await getDatabase();
 
       // Update analysis history
-      const updateStmt = db.prepare(`
+      await db.execute(`
         UPDATE analysis_history
         SET
-          status = ?,
-          data_pool = ?,
-          extracted_fields = ?,
-          contextual_analysis = ?,
-          market_analysis = ?,
-          validation = ?,
-          processing_time_ms = ?,
+          status = $1,
+          data_pool = $2,
+          extracted_fields = $3,
+          contextual_analysis = $4,
+          market_analysis = $5,
+          validation = $6,
+          processing_time_ms = $7,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `);
-
-      updateStmt.run(
+        WHERE id = $8
+      `, [
         result.status,
         JSON.stringify(result.data_pool),
         JSON.stringify(result.extracted_fields),
@@ -213,35 +211,37 @@ export class TenderAnalysisEngine {
         JSON.stringify(result.validation || {}),
         result.processing_time_ms,
         this.analysisId
-      );
+      ]);
 
       // Insert detailed results
       if (result.contextual) {
-        const contextualStmt = db.prepare(`
+        await db.execute(`
           INSERT INTO analysis_results (id, analysis_id, stage, result_data)
-          VALUES (?, ?, ?, ?)
-        `);
-
-        contextualStmt.run(
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (id) DO UPDATE SET
+            result_data = EXCLUDED.result_data,
+            updated_at = CURRENT_TIMESTAMP
+        `, [
           `${this.analysisId}_contextual`,
           this.analysisId,
           'contextual',
           JSON.stringify(result.contextual)
-        );
+        ]);
       }
 
       if (result.market) {
-        const marketStmt = db.prepare(`
+        await db.execute(`
           INSERT INTO analysis_results (id, analysis_id, stage, result_data)
-          VALUES (?, ?, ?, ?)
-        `);
-
-        marketStmt.run(
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (id) DO UPDATE SET
+            result_data = EXCLUDED.result_data,
+            updated_at = CURRENT_TIMESTAMP
+        `, [
           `${this.analysisId}_market`,
           this.analysisId,
           'market',
           JSON.stringify(result.market)
-        );
+        ]);
       }
 
       AILogger.info('Results saved to database', {

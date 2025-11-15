@@ -1,5 +1,5 @@
 import { MarketQuote } from '../schema';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 
 /**
  * DB fiyat sağlayıcısı
@@ -11,7 +11,7 @@ import { getDB } from '@/lib/db/sqlite-client';
  */
 export async function dbQuote(product_key: string): Promise<MarketQuote | null> {
   try {
-    const db = getDB();
+    const db = await getDatabase();
 
     // TODO: Gerçek market_prices tablosunu oluştur
     // Şimdilik mock query (tablo henüz yok)
@@ -24,14 +24,14 @@ export async function dbQuote(product_key: string): Promise<MarketQuote | null> 
         MAX(created_at) as latest_date,
         COUNT(*) as data_points
       FROM market_prices
-      WHERE product_key = ?
-        AND created_at >= date('now', '-90 days')
+      WHERE product_key = $1
+        AND created_at >= CURRENT_DATE - INTERVAL '90 days'
         AND unit_price > 0
       GROUP BY product_key, unit
     `;
 
     try {
-      const row = db.prepare(query).get(product_key) as any;
+      const row = await db.queryOne(query, [product_key]) as any;
 
       if (!row || !row.avg_price) {
         return null;
@@ -67,22 +67,22 @@ export async function dbQuote(product_key: string): Promise<MarketQuote | null> 
  */
 export async function last12Months(product_key: string): Promise<number[]> {
   try {
-    const db = getDB();
+    const db = await getDatabase();
 
     const query = `
       SELECT
         AVG(unit_price) as avg_price,
-        strftime('%Y-%m', created_at) as month
+        TO_CHAR(created_at, 'YYYY-MM') as month
       FROM market_prices
-      WHERE product_key = ?
-        AND created_at >= date('now', '-12 months')
+      WHERE product_key = $1
+        AND created_at >= CURRENT_DATE - INTERVAL '12 months'
         AND unit_price > 0
       GROUP BY month
       ORDER BY month ASC
     `;
 
     try {
-      const rows = db.prepare(query).all(product_key) as any[];
+      const rows = await db.query(query, [product_key]) as any[];
 
       return rows.map(r => Number(r.avg_price.toFixed(2)));
     } catch (error) {
@@ -100,22 +100,22 @@ export async function last12Months(product_key: string): Promise<number[]> {
  */
 export async function seriesOf(product_key: string, months = 12): Promise<Array<{ date: string; price: number }>> {
   try {
-    const db = getDB();
+    const db = await getDatabase();
 
     const query = `
       SELECT
         AVG(unit_price) as avg_price,
         DATE(created_at) as date
       FROM market_prices
-      WHERE product_key = ?
-        AND created_at >= date('now', '-${months} months')
+      WHERE product_key = $1
+        AND created_at >= CURRENT_DATE - INTERVAL '${months} months'
         AND unit_price > 0
       GROUP BY date
       ORDER BY date ASC
     `;
 
     try {
-      const rows = db.prepare(query).all(product_key) as any[];
+      const rows = await db.query(query, [product_key]) as any[];
 
       return rows.map(r => ({
         date: r.date,
@@ -140,15 +140,15 @@ export async function savePriceRecord(
   source: string
 ): Promise<boolean> {
   try {
-    const db = getDB();
+    const db = await getDatabase();
 
     const query = `
       INSERT INTO market_prices (product_key, unit, unit_price, source, created_at)
-      VALUES (?, ?, ?, ?, datetime('now'))
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
     `;
 
     try {
-      db.prepare(query).run(product_key, unit, unit_price, source);
+      await db.execute(query, [product_key, unit, unit_price, source]);
       return true;
     } catch (error) {
       console.warn('[DB Provider] market_prices tablosuna yazılamadı');
@@ -163,18 +163,18 @@ export async function savePriceRecord(
 /**
  * market_prices tablosunu oluştur (migration)
  */
-export function initMarketPricesTable(): void {
+export async function initMarketPricesTable(): Promise<void> {
   try {
-    const db = getDB();
+    const db = await getDatabase();
 
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS market_prices (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        product_key TEXT NOT NULL,
-        unit TEXT NOT NULL,
+        id SERIAL PRIMARY KEY,
+        product_key VARCHAR(255) NOT NULL,
+        unit VARCHAR(50) NOT NULL,
         unit_price REAL NOT NULL,
-        source TEXT NOT NULL,
-        created_at TEXT NOT NULL,
+        source VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP NOT NULL,
         meta TEXT
       );
 
@@ -185,7 +185,7 @@ export function initMarketPricesTable(): void {
         ON market_prices(created_at);
     `;
 
-    db.exec(createTableQuery);
+    await db.execute(createTableQuery);
     console.log('[DB Provider] market_prices tablosu oluşturuldu');
   } catch (error) {
     console.error('[DB Provider] Tablo oluşturma hatası:', error);
