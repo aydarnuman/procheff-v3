@@ -1,6 +1,6 @@
 import { AILogger } from '@/lib/ai/logger';
 import { parseTenderHTMLWithAI, type TenderSection, type TenderTable } from '@/lib/ai/parse-tender-html';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { ihbDetail, ihbLogin } from '@/lib/ihale/client';
 import { sanitizeForSnapshot } from '@/lib/ihale/html-sanitize';
 import { normalizeDocuments } from '@/lib/ihale/normalize-documents';
@@ -279,7 +279,7 @@ export async function GET(
 
     // Try to get additional info from database
     try {
-      const db = getDB();
+      const db = await getDatabase();
       const stmt = db.prepare(`
         SELECT
           tender_number as tenderNumber,

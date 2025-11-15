@@ -1,6 +1,6 @@
 import { MarketQuote, Source } from '../schema';
 import { chromium } from 'playwright';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { MarketWebRealRequestSchema } from '@/lib/validation/market-web-real';
 
 /**
@@ -249,7 +249,7 @@ function extractUnit(unitText: string): string {
  */
 async function updateSourceReliability(marketKey: string, success: boolean) {
   try {
-    const db = getDB();
+    const db = await getDatabase();
     
     if (success) {
       db.prepare(`
@@ -307,7 +307,7 @@ export async function webQuoteRealData(productName: string): Promise<MarketQuote
  */
 async function saveToDatabase(quotes: MarketQuote[]) {
   try {
-    const db = getDB();
+    const db = await getDatabase();
     const insertStmt = db.prepare(`
       INSERT INTO market_prices (
         product_key, unit, unit_price, currency, source, market_key, 

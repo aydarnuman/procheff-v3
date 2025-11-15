@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { webQuoteRealData } from '@/lib/market/provider/web-real';
 import type {} from '@/lib/market/schema';
 import { ZodError } from 'zod';
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Önce veritabanından son fiyatları çek
-    const db = getDB();
+    const db = await getDatabase();
     const dbPrices = db.prepare(`
       SELECT DISTINCT
         mp.market_key as market,

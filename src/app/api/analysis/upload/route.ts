@@ -3,7 +3,7 @@
  */
 
 import { AILogger } from '@/lib/ai/logger';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { buildDataPool } from '@/lib/document-processor/data-pool';
 import type { DataPool, ExtractedTable, TextBlock } from '@/lib/document-processor/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -361,7 +361,7 @@ export async function POST(request: NextRequest) {
 
     // Store initial analysis in database
     try {
-      const db = getDB();
+      const db = await getDatabase();
 
       // Determine representative filename
       const primaryFileName =

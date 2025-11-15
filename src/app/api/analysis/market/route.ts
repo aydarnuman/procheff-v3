@@ -7,7 +7,7 @@ import { extractBasicFields } from '@/lib/tender-analysis/contextual';
 import { performMarketAnalysis, extractMenuItems } from '@/lib/tender-analysis/market-intel';
 import type { DataPool } from '@/lib/document-processor/types';
 import { AILogger } from '@/lib/ai/logger';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { errorHandler } from '@/lib/middleware/error-handler';
 import { createErrorResponse } from '@/lib/utils/error-codes';
 
@@ -49,7 +49,7 @@ async function handleMarketAnalysis(request: NextRequest) {
 
     // Save to database
     try {
-      const db = getDB();
+      const db = await getDatabase();
       const stmt = db.prepare(`
         INSERT OR REPLACE INTO analysis_results (
           id, analysis_id, stage, result_data, created_at

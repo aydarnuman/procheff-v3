@@ -4,7 +4,7 @@
  * SERVER-ONLY: Uses better-sqlite3, cannot be imported in client components
  */
 
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { AILogger } from '@/lib/ai/logger';
 import type { DataPool } from '@/lib/document-processor/types';
 import { DataPoolEventEmitter } from './data-pool-event-emitter';
@@ -55,7 +55,7 @@ export class DataPoolManager {
     
     // 3. Fallback to legacy analysis_history table
     try {
-      const db = getDB();
+      const db = await getDatabase();
       const row = db.prepare(`
         SELECT data_pool FROM analysis_history
         WHERE id = ?
@@ -100,7 +100,7 @@ export class DataPoolManager {
       
       // 2. Also save to legacy analysis_history table for backward compatibility (optional)
       try {
-        const db = getDB();
+        const db = await getDatabase();
         
         // Check if table exists first
         const tableExists = db.prepare(`
@@ -246,7 +246,7 @@ export class DataPoolManager {
     
     // Remove from DB (soft delete - just mark as deleted)
     try {
-      const db = getDB();
+      const db = await getDatabase();
       db.prepare(`
         UPDATE analysis_history
         SET status = 'deleted', updated_at = datetime('now')
@@ -273,7 +273,7 @@ export class DataPoolManager {
     
     // Check DB
     try {
-      const db = getDB();
+      const db = await getDatabase();
       const row = db.prepare(`
         SELECT id FROM analysis_history
         WHERE id = ? AND status != 'deleted'

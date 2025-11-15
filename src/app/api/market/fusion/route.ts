@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MarketFusionEngine } from '@/lib/market/fusion-engine';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import type { MarketQuote } from '@/lib/market/schema';
 
 /**
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch quotes from database
-    const db = getDB();
+    const db = await getDatabase();
     const quotes = db.prepare(`
       SELECT
         mp.product_key,
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = getDB();
+    const db = await getDatabase();
     const engine = new MarketFusionEngine({
       minSourceCount: minSources,
       maxPriceAge: maxAge,

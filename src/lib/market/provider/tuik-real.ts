@@ -5,7 +5,7 @@
 
 import { MarketQuote } from '../schema';
 import { AILogger } from '@/lib/ai/logger';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 
 /**
  * TÜİK API Configuration
@@ -139,7 +139,7 @@ export async function importTUIKCSV(csvPath: string): Promise<{
       trim: true
     });
 
-    const db = getDB();
+    const db = await getDatabase();
     
     for (const record of records) {
       try {

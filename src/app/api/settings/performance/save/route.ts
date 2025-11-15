@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -21,7 +21,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const db = getDB();
+    const db = await getDatabase();
     const settings = db
       .prepare("SELECT name, value, type FROM performance_settings")
       .all() as Array<{ name: string; value: string; type: string }>;
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const validated = PerformanceSettingsSchema.parse(body);
 
-    const db = getDB();
+    const db = await getDatabase();
     const updateStmt = db.prepare(`
       UPDATE performance_settings
       SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
@@ -133,7 +133,7 @@ export async function POST(req: Request) {
 
 // Helper function for internal use (not exported as route handler)
 async function getProfilesInternal() {
-  const db = getDB();
+  const db = await getDatabase();
   const profiles = db
     .prepare("SELECT * FROM performance_profiles ORDER BY is_active DESC, name ASC")
     .all();

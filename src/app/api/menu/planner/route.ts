@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { AIProviderFactory } from '@/lib/ai/provider-factory';
 import { cleanClaudeJSON } from '@/lib/ai/utils';
 import { AILogger } from '@/lib/ai/logger';
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = getDB();
+    const db = await getDatabase();
 
     // Get available menu items
     let query = `

@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { AILogger } from '@/lib/ai/logger';
 
 import { createErrorResponse } from '@/lib/utils/error-codes';
@@ -30,7 +30,7 @@ async function handleGetAnalysis(
 
   AILogger.info('📊 Fetching analysis from TWO sources (diyagrama uygun)', { analysisId: id });
 
-  const db = getDB();
+  const db = await getDatabase();
 
   // ======================================
   // 1️⃣ KAYNAK 1: analysis_history (metadata, status)

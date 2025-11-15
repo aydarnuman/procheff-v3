@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import fs from "fs";
 import path from "path";
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 
 /**
  * GET /api/settings/reports/download
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
     if (historyId) {
       // Get file path from history
-      const db = getDB();
+      const db = await getDatabase();
       const record = db
         .prepare(`
           SELECT h.*, t.name as template_name, t.format
