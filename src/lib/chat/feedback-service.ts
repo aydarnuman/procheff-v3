@@ -4,7 +4,7 @@
  */
 
 import { AILogger } from '@/lib/ai/logger';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { mcpIntegration } from './mcp-integration';
 
 export interface FeedbackData {
@@ -42,13 +42,13 @@ export class FeedbackService {
     this.initDatabase();
   }
 
-  private initDatabase() {
-    const db = getDB();
+  private async initDatabase() {
+    const db = await getDatabase();
 
     // Create feedback tables
-    db.exec(`
+    await db.execute(`
       CREATE TABLE IF NOT EXISTS chat_feedback (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         message_id TEXT NOT NULL,
         conversation_id TEXT NOT NULL,
         rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
@@ -56,29 +56,29 @@ export class FeedbackService {
         improvements TEXT,
         tags TEXT,
         context TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(message_id, conversation_id)
       );
 
       CREATE TABLE IF NOT EXISTS feedback_patterns (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         pattern TEXT NOT NULL,
         category TEXT NOT NULL,
         frequency INTEGER DEFAULT 1,
         avg_rating REAL,
         suggested_improvement TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS improvement_actions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         feedback_id INTEGER,
         action_type TEXT NOT NULL,
         action_details TEXT,
         status TEXT DEFAULT 'pending',
-        applied_at DATETIME,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        applied_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (feedback_id) REFERENCES chat_feedback(id)
       );
 
@@ -93,16 +93,21 @@ export class FeedbackService {
    */
   async submitFeedback(data: FeedbackData): Promise<boolean> {
     try {
-      const db = getDB();
+      const db = await getDatabase();
 
       // Store feedback
-      const stmt = db.prepare(`
-        INSERT OR REPLACE INTO chat_feedback
+      await db.execute(`
+        INSERT INTO chat_feedback
         (message_id, conversation_id, rating, feedback, improvements, tags, context)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      stmt.run(
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (message_id, conversation_id)
+        DO UPDATE SET
+          rating = EXCLUDED.rating,
+          feedback = EXCLUDED.feedback,
+          improvements = EXCLUDED.improvements,
+          tags = EXCLUDED.tags,
+          context = EXCLUDED.context
+      `, [
         data.messageId,
         data.conversationId,
         data.rating,
@@ -110,7 +115,7 @@ export class FeedbackService {
         data.improvements ? JSON.stringify(data.improvements) : null,
         data.tags ? JSON.stringify(data.tags) : null,
         data.context ? JSON.stringify(data.context) : null
-      );
+      ]);
 
       // Analyze and learn from feedback
       await this.analyzeFeedback(data);
@@ -143,39 +148,40 @@ export class FeedbackService {
   private async analyzeFeedback(data: FeedbackData): Promise<void> {
     if (!data.feedback) return;
 
-    const db = getDB();
+    const db = await getDatabase();
 
     // Extract patterns from feedback text
     const patterns = this.extractPatterns(data.feedback);
 
     for (const pattern of patterns) {
       // Check if pattern exists
-      const existing = db.prepare(
-        'SELECT * FROM feedback_patterns WHERE pattern = ? AND category = ?'
-      ).get(pattern.text, pattern.category) as any;
+      const existing = await db.queryOne(
+        'SELECT * FROM feedback_patterns WHERE pattern = $1 AND category = $2',
+        [pattern.text, pattern.category]
+      ) as any;
 
       if (existing) {
         // Update existing pattern
         const newAvgRating = (existing.avg_rating * existing.frequency + data.rating) / (existing.frequency + 1);
 
-        db.prepare(`
+        await db.execute(`
           UPDATE feedback_patterns
           SET frequency = frequency + 1,
-              avg_rating = ?,
+              avg_rating = $1,
               updated_at = CURRENT_TIMESTAMP
-          WHERE id = ?
-        `).run(newAvgRating, existing.id);
+          WHERE id = $2
+        `, [newAvgRating, existing.id]);
       } else {
         // Create new pattern
-        db.prepare(`
+        await db.execute(`
           INSERT INTO feedback_patterns (pattern, category, avg_rating, suggested_improvement)
-          VALUES (?, ?, ?, ?)
-        `).run(
+          VALUES ($1, $2, $3, $4)
+        `, [
           pattern.text,
           pattern.category,
           data.rating,
           pattern.suggestion || null
-        );
+        ]);
       }
     }
   }
@@ -275,12 +281,13 @@ export class FeedbackService {
    * Create improvement action for low-rated feedback
    */
   private async createImprovementAction(data: FeedbackData): Promise<void> {
-    const db = getDB();
+    const db = await getDatabase();
 
     // Get feedback ID
-    const feedback = db.prepare(
-      'SELECT id FROM chat_feedback WHERE message_id = ? AND conversation_id = ?'
-    ).get(data.messageId, data.conversationId) as any;
+    const feedback = await db.queryOne(
+      'SELECT id FROM chat_feedback WHERE message_id = $1 AND conversation_id = $2',
+      [data.messageId, data.conversationId]
+    ) as any;
 
     if (!feedback) return;
 
@@ -293,27 +300,27 @@ export class FeedbackService {
       suggestions: data.improvements || []
     };
 
-    db.prepare(`
+    await db.execute(`
       INSERT INTO improvement_actions (feedback_id, action_type, action_details)
-      VALUES (?, ?, ?)
-    `).run(feedback.id, actionType, JSON.stringify(actionDetails));
+      VALUES ($1, $2, $3)
+    `, [feedback.id, actionType, JSON.stringify(actionDetails)]);
   }
 
   /**
    * Get feedback metrics
    */
   async getMetrics(timeRange?: { start: string; end: string }): Promise<FeedbackMetrics> {
-    const db = getDB();
+    const db = await getDatabase();
 
     let query = 'SELECT * FROM chat_feedback WHERE 1=1';
     const params: any[] = [];
 
     if (timeRange) {
-      query += ' AND created_at BETWEEN ? AND ?';
+      query += ' AND created_at BETWEEN $1 AND $2';
       params.push(timeRange.start, timeRange.end);
     }
 
-    const feedbacks = db.prepare(query).all(...params) as any[];
+    const feedbacks = await db.query(query, params) as any[];
 
     // Calculate metrics
     const totalFeedbacks = feedbacks.length;
@@ -325,22 +332,22 @@ export class FeedbackService {
       : 0;
 
     // Get improvement areas
-    const improvementAreas = db.prepare(`
+    const improvementAreas = await db.query(`
       SELECT category as area, COUNT(*) as count, AVG(avg_rating) as avgRating
       FROM feedback_patterns
       GROUP BY category
       ORDER BY count DESC
       LIMIT 5
-    `).all() as any[];
+    `, []) as any[];
 
     // Get top issues
-    const topIssues = db.prepare(`
+    const topIssues = await db.query(`
       SELECT pattern as issue, frequency
       FROM feedback_patterns
       WHERE avg_rating < 3
       ORDER BY frequency DESC
       LIMIT 5
-    `).all() as any[];
+    `, []) as any[];
 
     return {
       averageRating: Math.round(averageRating * 10) / 10,
@@ -349,7 +356,7 @@ export class FeedbackService {
       improvementAreas: improvementAreas.map(a => ({
         area: a.area,
         count: a.count,
-        avgRating: Math.round(a.avgRating * 10) / 10
+        avgRating: Math.round(a.avgrating * 10) / 10
       })),
       topIssues: topIssues.map(i => ({
         issue: i.issue,
@@ -362,15 +369,15 @@ export class FeedbackService {
    * Get suggested improvements based on feedback patterns
    */
   async getSuggestedImprovements(): Promise<string[]> {
-    const db = getDB();
+    const db = await getDatabase();
 
-    const patterns = db.prepare(`
+    const patterns = await db.query(`
       SELECT DISTINCT suggested_improvement
       FROM feedback_patterns
       WHERE avg_rating < 3.5 AND suggested_improvement IS NOT NULL
       ORDER BY frequency DESC
       LIMIT 10
-    `).all() as any[];
+    `, []) as any[];
 
     return patterns.map(p => p.suggested_improvement);
   }
@@ -380,13 +387,13 @@ export class FeedbackService {
    */
   async applyImprovement(actionId: number): Promise<boolean> {
     try {
-      const db = getDB();
+      const db = await getDatabase();
 
-      db.prepare(`
+      await db.execute(`
         UPDATE improvement_actions
-        SET status = 'applied', applied_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(actionId);
+        SET status = $1, applied_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+      `, ['applied', actionId]);
 
       AILogger.info('Improvement action applied', { actionId });
       return true;

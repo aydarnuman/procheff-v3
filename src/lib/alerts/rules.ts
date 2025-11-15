@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from '@/lib/db/universal-client';
 
 export type AlertRule = {
   id: string;
@@ -147,19 +147,19 @@ export const ALERT_RULES: AlertRule[] = [
 /**
  * Get current system metrics for alert checking
  */
-export function getAlertMetrics(): AlertMetrics {
-  const db = getDB();
+export async function getAlertMetrics(): Promise<AlertMetrics> {
+  const db = await getDatabase();
 
   // Get metrics from last 24 hours
-  const metrics = db.prepare(`
+  const metrics = await db.queryOne(`
     SELECT
       COUNT(*) as totalCalls,
       SUM(CASE WHEN level = 'error' THEN 1 ELSE 0 END) as errorCount,
-      AVG(COALESCE(json_extract(data, '$.duration'), 0)) as avgDuration,
-      SUM(COALESCE(json_extract(data, '$.tokens'), 0)) as dailyTokens
+      AVG(COALESCE((data::json->>'duration')::numeric, 0)) as avgDuration,
+      SUM(COALESCE((data::json->>'tokens')::numeric, 0)) as dailyTokens
     FROM logs
-    WHERE created_at >= datetime('now', '-24 hours')
-  `).get() as {
+    WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+  `) as {
     totalCalls: number;
     errorCount: number;
     avgDuration: number;
@@ -167,21 +167,21 @@ export function getAlertMetrics(): AlertMetrics {
   };
 
   // Get recent errors (last hour)
-  const recentErrors = db.prepare(`
+  const recentErrors = await db.query(`
     SELECT message, data
     FROM logs
     WHERE level = 'error'
-      AND created_at >= datetime('now', '-1 hour')
+      AND created_at >= CURRENT_TIMESTAMP - INTERVAL '1 hour'
     ORDER BY created_at DESC
     LIMIT 10
-  `).all() as Array<{ message: string; data: string }>;
+  `) as Array<{ message: string; data: string }>;
 
   // Get calls in last 24 hours
-  const last24h = db.prepare(`
+  const last24h = await db.queryOne(`
     SELECT COUNT(*) as count
     FROM logs
-    WHERE created_at >= datetime('now', '-24 hours')
-  `).get() as { count: number };
+    WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+  `) as { count: number };
 
   return {
     totalCalls: metrics.totalCalls || 0,

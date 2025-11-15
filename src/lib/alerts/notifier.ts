@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from '@/lib/db/universal-client';
 
 export type NotificationInput = {
   level: "info" | "warn" | "error";
@@ -17,17 +17,15 @@ export type Notification = {
 /**
  * Create a new notification
  */
-export function createNotification(input: NotificationInput): number {
-  const db = getDB();
+export async function createNotification(input: NotificationInput): Promise<number> {
+  const db = await getDatabase();
 
-  const result = db
-    .prepare(
-      `
-    INSERT INTO notifications (level, message, is_read)
-    VALUES (?, ?, 0)
-  `
-    )
-    .run(input.level, input.message);
+  const result = await db.queryOne(
+    `INSERT INTO notifications (level, message, is_read)
+     VALUES ($1, $2, $3)
+     RETURNING id`,
+    [input.level, input.message, 0]
+  );
 
   // Optional: Send to external services if configured
   if (process.env.SLACK_WEBHOOK_URL) {
@@ -36,39 +34,41 @@ export function createNotification(input: NotificationInput): number {
     );
   }
 
-  return result.lastInsertRowid as number;
+  return result.id as number;
 }
 
 /**
  * Get all notifications
  */
-export function getNotifications(options?: {
+export async function getNotifications(options?: {
   limit?: number;
   unreadOnly?: boolean;
-}): Notification[] {
+}): Promise<Notification[]> {
   try {
-    const db = getDB();
+    const db = await getDatabase();
     const limit = options?.limit || 50;
     const unreadOnly = options?.unreadOnly || false;
 
     // Check if table exists
-    const tableExists = db.prepare(`
-      SELECT name FROM sqlite_master 
-      WHERE type='table' AND name='notifications'
-    `).get();
-    
+    const tableExists = await db.queryOne(`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'notifications'
+    `);
+
     if (!tableExists) {
       console.warn("Notifications table does not exist");
       return [];
     }
 
     let query = "SELECT * FROM notifications";
+    const params: any[] = [];
     if (unreadOnly) {
       query += " WHERE is_read = 0";
     }
-    query += " ORDER BY created_at DESC LIMIT ?";
+    query += " ORDER BY created_at DESC LIMIT $1";
+    params.push(limit);
 
-    return db.prepare(query).all(limit) as Notification[];
+    return await db.query(query, params) as Notification[];
   } catch (error) {
     console.error("Error getting notifications:", error);
     return [];
@@ -78,23 +78,23 @@ export function getNotifications(options?: {
 /**
  * Get unread count
  */
-export function getUnreadCount(): number {
+export async function getUnreadCount(): Promise<number> {
   try {
-    const db = getDB();
+    const db = await getDatabase();
 
     // Check if table exists
-    const tableExists = db.prepare(`
-      SELECT name FROM sqlite_master 
-      WHERE type='table' AND name='notifications'
-    `).get();
-    
+    const tableExists = await db.queryOne(`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'notifications'
+    `);
+
     if (!tableExists) {
       return 0;
     }
 
-    const result = db
-      .prepare("SELECT COUNT(*) as count FROM notifications WHERE is_read = 0")
-      .get() as { count: number };
+    const result = await db.queryOne(
+      "SELECT COUNT(*) as count FROM notifications WHERE is_read = 0"
+    ) as { count: number };
 
     return result?.count || 0;
   } catch (error) {
@@ -106,28 +106,28 @@ export function getUnreadCount(): number {
 /**
  * Mark notification as read
  */
-export function markAsRead(id: number): void {
-  const db = getDB();
-  db.prepare("UPDATE notifications SET is_read = 1 WHERE id = ?").run(id);
+export async function markAsRead(id: number): Promise<void> {
+  const db = await getDatabase();
+  await db.execute("UPDATE notifications SET is_read = 1 WHERE id = $1", [id]);
 }
 
 /**
  * Mark all notifications as read
  */
-export function markAllAsRead(): void {
-  const db = getDB();
-  db.prepare("UPDATE notifications SET is_read = 1").run();
+export async function markAllAsRead(): Promise<void> {
+  const db = await getDatabase();
+  await db.execute("UPDATE notifications SET is_read = 1");
 }
 
 /**
  * Delete old notifications (older than 30 days)
  */
-export function cleanupOldNotifications(): void {
-  const db = getDB();
-  db.prepare(`
+export async function cleanupOldNotifications(): Promise<void> {
+  const db = await getDatabase();
+  await db.execute(`
     DELETE FROM notifications
-    WHERE created_at < datetime('now', '-30 days')
-  `).run();
+    WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '30 days'
+  `);
 }
 
 /**

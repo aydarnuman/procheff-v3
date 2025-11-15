@@ -4,7 +4,7 @@
  */
 
 import type { Source } from './schema';
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { AILogger } from '@/lib/ai/logger';
 
 export interface SourceReliability {
@@ -73,30 +73,30 @@ export function calculateDynamicTrust(
   history: ValidationHistory[]
 ): number {
   const base = BASE_SOURCE_WEIGHTS[source];
-  
+
   if (history.length === 0) {
     // Hiç veri yoksa base değeri kullan
     return base;
   }
-  
+
   // Geçmiş doğruluk oranı
   const accurateCount = history.filter(h => h.wasAccurate).length;
   const accuracy = accurateCount / history.length;
-  
+
   // Son 30 günün performansı
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const recentHistory = history.filter(h => 
+  const recentHistory = history.filter(h =>
     new Date(h.timestamp) >= thirtyDaysAgo
   );
-  
+
   const recentAccuracy = recentHistory.length > 0
     ? recentHistory.filter(h => h.wasAccurate).length / recentHistory.length
     : accuracy;
-  
+
   // Ortalama sapma (düşük sapma = yüksek güven)
   const avgDeviation = history.reduce((s, h) => s + Math.abs(h.deviation), 0) / history.length;
   const deviationScore = 1 / (1 + avgDeviation); // Normalize
-  
+
   // Final trust formülü
   // base * (0.3) + accuracy * (0.4) + recentPerformance * (0.2) + deviationScore * (0.1)
   const dynamicTrust = (
@@ -105,7 +105,7 @@ export function calculateDynamicTrust(
     recentAccuracy * 0.2 +
     deviationScore * 0.1
   );
-  
+
   // 0-1 arasında sınırla
   return Number(Math.max(0.05, Math.min(1, dynamicTrust)).toFixed(2));
 }
@@ -115,24 +115,24 @@ export function calculateDynamicTrust(
  */
 export async function getSourceReliabilityReport(): Promise<Map<Source, SourceReliability>> {
   const report = new Map<Source, SourceReliability>();
-  
+
   for (const source of TRACKED_SOURCES) {
     try {
       const history = await getValidationHistory(source, 90); // Son 90 gün
       const finalTrust = calculateDynamicTrust(source, history);
-      
+
       const accuracy = history.length > 0
         ? history.filter(h => h.wasAccurate).length / history.length
         : 0;
-      
+
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const recentHistory = history.filter(h => 
+      const recentHistory = history.filter(h =>
         new Date(h.timestamp) >= thirtyDaysAgo
       );
       const recentPerf = recentHistory.length > 0
         ? recentHistory.filter(h => h.wasAccurate).length / recentHistory.length
         : 0;
-      
+
       report.set(source, {
         source,
         baseTrust: BASE_SOURCE_WEIGHTS[source],
@@ -147,7 +147,7 @@ export async function getSourceReliabilityReport(): Promise<Map<Source, SourceRe
         source,
         error: error instanceof Error ? error.message : 'Unknown'
       });
-      
+
       // Hata durumunda base değeri kullan
       report.set(source, {
         source,
@@ -160,7 +160,7 @@ export async function getSourceReliabilityReport(): Promise<Map<Source, SourceRe
       });
     }
   }
-  
+
   return report;
 }
 
@@ -172,10 +172,10 @@ async function getValidationHistory(
   days = 90
 ): Promise<ValidationHistory[]> {
   try {
-    const db = getDB();
-    
+    const db = await getDatabase();
+
     const query = `
-      SELECT 
+      SELECT
         source,
         product_key,
         quoted_price,
@@ -184,19 +184,19 @@ async function getValidationHistory(
         deviation,
         timestamp
       FROM price_validations
-      WHERE source = ?
-        AND timestamp >= date('now', '-${days} days')
+      WHERE source = $1
+        AND timestamp >= CURRENT_TIMESTAMP - INTERVAL '${days} days'
       ORDER BY timestamp DESC
     `;
-    
-    const rows = db.prepare(query).all(source) as any[];
-    
+
+    const rows = await db.query(query, [source]) as any[];
+
     return rows.map(row => ({
       source: row.source as Source,
       product_key: row.product_key,
       quoted_price: row.quoted_price,
       actual_price: row.actual_price,
-      wasAccurate: Boolean(row.wasAccurate),
+      wasAccurate: Boolean(row.wasaccurate),
       deviation: row.deviation,
       timestamp: row.timestamp
     }));
@@ -223,24 +223,24 @@ export async function recordValidation(
   try {
     const deviation = Math.abs(quoted_price - actual_price) / actual_price;
     const wasAccurate = deviation <= threshold;
-    
-    const db = getDB();
-    
+
+    const db = await getDatabase();
+
     const query = `
-      INSERT INTO price_validations 
+      INSERT INTO price_validations
         (source, product_key, quoted_price, actual_price, was_accurate, deviation, timestamp)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
     `;
-    
-    db.prepare(query).run(
+
+    await db.execute(query, [
       source,
       product_key,
       quoted_price,
       actual_price,
-      wasAccurate ? 1 : 0,
+      wasAccurate,
       deviation
-    );
-    
+    ]);
+
     AILogger.info('[TrustScore] Validation kaydedildi', {
       source,
       product_key,
@@ -261,14 +261,14 @@ export async function recordValidation(
  */
 export async function getDynamicWeights(): Promise<Record<Source, number>> {
   const report = await getSourceReliabilityReport();
-  
+
   const weights: Record<Source, number> = { ...BASE_SOURCE_WEIGHTS };
-  
+
   // Her kaynak için dinamik trust'ı kullan
   for (const [source, reliability] of report.entries()) {
     weights[source] = reliability.finalTrust;
   }
-  
+
   return weights;
 }
 
@@ -277,13 +277,13 @@ export async function getDynamicWeights(): Promise<Record<Source, number>> {
  */
 export async function getSourcePerformanceSummary(): Promise<string> {
   const report = await getSourceReliabilityReport();
-  
+
   const lines = ['Kaynak Güvenilirlik Raporu:', ''];
-  
+
   for (const [source, reliability] of report.entries()) {
-    const badge = reliability.finalTrust >= 0.7 ? '✅' : 
+    const badge = reliability.finalTrust >= 0.7 ? '✅' :
                   reliability.finalTrust >= 0.5 ? '⚠️' : '❌';
-    
+
     lines.push(
       `${badge} ${source}:`,
       `   Trust: ${(reliability.finalTrust * 100).toFixed(0)}% (base: ${(reliability.baseTrust * 100).toFixed(0)}%)`,
@@ -293,37 +293,37 @@ export async function getSourcePerformanceSummary(): Promise<string> {
       ''
     );
   }
-  
+
   return lines.join('\n');
 }
 
 /**
  * Trust score database tablosu oluştur
  */
-export function initTrustScoreTable(): void {
+export async function initTrustScoreTable(): Promise<void> {
   try {
-    const db = getDB();
-    
+    const db = await getDatabase();
+
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS price_validations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         source TEXT NOT NULL,
         product_key TEXT NOT NULL,
         quoted_price REAL NOT NULL,
         actual_price REAL,
-        was_accurate INTEGER NOT NULL,
+        was_accurate BOOLEAN NOT NULL,
         deviation REAL NOT NULL,
-        timestamp TEXT NOT NULL
+        timestamp TIMESTAMP NOT NULL
       );
-      
+
       CREATE INDEX IF NOT EXISTS idx_price_validations_source
         ON price_validations(source, timestamp);
-      
+
       CREATE INDEX IF NOT EXISTS idx_price_validations_product
         ON price_validations(product_key);
     `;
-    
-    db.exec(createTableQuery);
+
+    await db.execute(createTableQuery);
     AILogger.info('[TrustScore] price_validations tablosu oluşturuldu');
   } catch (error) {
     AILogger.error('[TrustScore] Tablo oluşturma hatası', {
@@ -341,7 +341,7 @@ export function formatTrustScore(trust: number): {
   color: string;
 } {
   const percentage = (trust * 100).toFixed(0) + '%';
-  
+
   if (trust >= 0.8) {
     return { percentage, badge: 'Çok Güvenilir', color: 'green' };
   }
@@ -353,4 +353,3 @@ export function formatTrustScore(trust: number): {
   }
   return { percentage, badge: 'Düşük', color: 'red' };
 }
-
