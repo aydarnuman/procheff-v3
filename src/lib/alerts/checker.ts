@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { ALERT_RULES, getAlertMetrics } from "./rules";
 import { createNotification } from "./notifier";
 
@@ -28,7 +28,7 @@ export async function checkAlerts(): Promise<{
         console.log(`✅ Rule triggered: ${rule.id}`);
 
         // Check if we already alerted for this rule in the last hour
-        const alreadyAlerted = checkRecentAlert(rule.id);
+        const alreadyAlerted = await checkRecentAlert(rule.id);
 
         if (!alreadyAlerted) {
           const notificationId = createNotification({
@@ -62,19 +62,15 @@ export async function checkAlerts(): Promise<{
 /**
  * Check if we already alerted for this rule in the last hour
  */
-function checkRecentAlert(ruleId: string): boolean {
-  const db = getDB();
+async function checkRecentAlert(ruleId: string): Promise<boolean> {
+  const db = await getDatabase();
 
-  const result = db
-    .prepare(
-      `
+  const result = await db.queryOne(`
     SELECT id FROM notifications
-    WHERE message LIKE ?
-      AND created_at >= datetime('now', '-1 hour')
+    WHERE message LIKE $1
+      AND created_at >= CURRENT_TIMESTAMP - INTERVAL '1 hour'
     LIMIT 1
-  `
-    )
-    .get(`%${ruleId}%`);
+  `, [`%${ruleId}%`]);
 
   return !!result;
 }
@@ -82,42 +78,32 @@ function checkRecentAlert(ruleId: string): boolean {
 /**
  * Get alert statistics
  */
-export function getAlertStats(): {
+export async function getAlertStats(): Promise<{
   totalNotifications: number;
   unreadNotifications: number;
   last24hNotifications: number;
   notificationsByLevel: { info: number; warn: number; error: number };
-} {
-  const db = getDB();
+}> {
+  const db = await getDatabase();
 
-  const total = db
-    .prepare("SELECT COUNT(*) as count FROM notifications")
-    .get() as { count: number };
+  const total = await db.queryOne("SELECT COUNT(*) as count FROM notifications") as { count: number };
 
-  const unread = db
-    .prepare("SELECT COUNT(*) as count FROM notifications WHERE is_read = 0")
-    .get() as { count: number };
+  const unread = await db.queryOne(
+    "SELECT COUNT(*) as count FROM notifications WHERE is_read = 0"
+  ) as { count: number };
 
-  const last24h = db
-    .prepare(
-      `
+  const last24h = await db.queryOne(`
     SELECT COUNT(*) as count FROM notifications
-    WHERE created_at >= datetime('now', '-24 hours')
-  `
-    )
-    .get() as { count: number };
+    WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+  `) as { count: number };
 
-  const byLevel = db
-    .prepare(
-      `
+  const byLevel = await db.query(`
     SELECT
       level,
       COUNT(*) as count
     FROM notifications
     GROUP BY level
-  `
-    )
-    .all() as Array<{ level: string; count: number }>;
+  `) as Array<{ level: string; count: number }>;
 
   const levelCounts = {
     info: 0,

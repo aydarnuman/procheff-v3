@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { generatePDFReport, generateExcelReport, generateCSVReport } from "./generator";
 import { defaultTemplates } from "./templates";
 
@@ -31,24 +31,19 @@ export interface ReportHistory {
 }
 
 export class ReportService {
-  private db: ReturnType<typeof getDB>;
-
-  constructor() {
-    this.db = getDB();
-  }
-
   /**
    * Get all report templates
    */
   async getTemplates(userId?: string): Promise<ReportTemplate[]> {
     try {
+      const db = await getDatabase();
       const query = userId
-        ? "SELECT * FROM report_templates WHERE created_by = ? ORDER BY created_at DESC"
+        ? "SELECT * FROM report_templates WHERE created_by = $1 ORDER BY created_at DESC"
         : "SELECT * FROM report_templates ORDER BY created_at DESC";
 
       const templates = userId
-        ? this.db.prepare(query).all(userId)
-        : this.db.prepare(query).all();
+        ? await db.query(query, [userId])
+        : await db.query(query);
 
       return templates.map((t: any) => ({
         ...t,
@@ -67,9 +62,11 @@ export class ReportService {
    */
   async getTemplate(id: number): Promise<ReportTemplate | null> {
     try {
-      const template = this.db
-        .prepare("SELECT * FROM report_templates WHERE id = ?")
-        .get(id) as any;
+      const db = await getDatabase();
+      const template = await db.queryOne(
+        "SELECT * FROM report_templates WHERE id = $1",
+        [id]
+      ) as any;
 
       if (!template) return null;
 
@@ -90,26 +87,26 @@ export class ReportService {
    */
   async createTemplate(template: ReportTemplate, userId: string): Promise<number> {
     try {
-      const result = this.db
-        .prepare(`
-          INSERT INTO report_templates (
-            name, description, type, sections, filters, format,
-            schedule, recipients, created_by
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `)
-        .run(
-          template.name,
-          template.description || "",
-          template.type,
-          JSON.stringify(template.sections),
-          JSON.stringify(template.filters || {}),
-          template.format,
-          template.schedule || null,
-          JSON.stringify(template.recipients || []),
-          userId
-        );
+      const db = await getDatabase();
+      const result = await db.queryOne(`
+        INSERT INTO report_templates (
+          name, description, type, sections, filters, format,
+          schedule, recipients, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id
+      `, [
+        template.name,
+        template.description || "",
+        template.type,
+        JSON.stringify(template.sections),
+        JSON.stringify(template.filters || {}),
+        template.format,
+        template.schedule || null,
+        JSON.stringify(template.recipients || []),
+        userId
+      ]) as any;
 
-      return result.lastInsertRowid as number;
+      return result?.id || 0;
     } catch (error) {
       console.error("Failed to create template:", error);
       throw error;
@@ -121,48 +118,59 @@ export class ReportService {
    */
   async updateTemplate(id: number, template: Partial<ReportTemplate>): Promise<void> {
     try {
+      const db = await getDatabase();
       const updates: string[] = [];
       const values: any[] = [];
+      let paramIndex = 1;
 
       if (template.name !== undefined) {
-        updates.push("name = ?");
+        updates.push(`name = $${paramIndex}`);
         values.push(template.name);
+        paramIndex++;
       }
       if (template.description !== undefined) {
-        updates.push("description = ?");
+        updates.push(`description = $${paramIndex}`);
         values.push(template.description);
+        paramIndex++;
       }
       if (template.type !== undefined) {
-        updates.push("type = ?");
+        updates.push(`type = $${paramIndex}`);
         values.push(template.type);
+        paramIndex++;
       }
       if (template.sections !== undefined) {
-        updates.push("sections = ?");
+        updates.push(`sections = $${paramIndex}`);
         values.push(JSON.stringify(template.sections));
+        paramIndex++;
       }
       if (template.filters !== undefined) {
-        updates.push("filters = ?");
+        updates.push(`filters = $${paramIndex}`);
         values.push(JSON.stringify(template.filters));
+        paramIndex++;
       }
       if (template.format !== undefined) {
-        updates.push("format = ?");
+        updates.push(`format = $${paramIndex}`);
         values.push(template.format);
+        paramIndex++;
       }
       if (template.schedule !== undefined) {
-        updates.push("schedule = ?");
+        updates.push(`schedule = $${paramIndex}`);
         values.push(template.schedule);
+        paramIndex++;
       }
       if (template.recipients !== undefined) {
-        updates.push("recipients = ?");
+        updates.push(`recipients = $${paramIndex}`);
         values.push(JSON.stringify(template.recipients));
+        paramIndex++;
       }
 
       updates.push("updated_at = CURRENT_TIMESTAMP");
       values.push(id);
 
-      this.db
-        .prepare(`UPDATE report_templates SET ${updates.join(", ")} WHERE id = ?`)
-        .run(...values);
+      await db.execute(
+        `UPDATE report_templates SET ${updates.join(", ")} WHERE id = $${paramIndex}`,
+        values
+      );
     } catch (error) {
       console.error("Failed to update template:", error);
       throw error;
@@ -174,7 +182,8 @@ export class ReportService {
    */
   async deleteTemplate(id: number): Promise<void> {
     try {
-      this.db.prepare("DELETE FROM report_templates WHERE id = ?").run(id);
+      const db = await getDatabase();
+      await db.execute("DELETE FROM report_templates WHERE id = $1", [id]);
     } catch (error) {
       console.error("Failed to delete template:", error);
       throw error;
@@ -229,9 +238,11 @@ export class ReportService {
       }
 
       // Update last generated timestamp
-      this.db
-        .prepare("UPDATE report_templates SET last_generated = CURRENT_TIMESTAMP WHERE id = ?")
-        .run(templateId);
+      const db = await getDatabase();
+      await db.execute(
+        "UPDATE report_templates SET last_generated = CURRENT_TIMESTAMP WHERE id = $1",
+        [templateId]
+      );
     } catch (error) {
       status = "failed";
       errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -240,23 +251,22 @@ export class ReportService {
     } finally {
       // Log to history
       const generationTime = Date.now() - startTime;
+      const db = await getDatabase();
 
-      this.db
-        .prepare(`
-          INSERT INTO report_history (
-            template_id, file_path, file_size, generation_time,
-            status, error_message, generated_by
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        `)
-        .run(
-          templateId,
-          filePath,
-          fileSize,
-          generationTime,
-          status,
-          errorMessage || null,
-          userId
-        );
+      await db.execute(`
+        INSERT INTO report_history (
+          template_id, file_path, file_size, generation_time,
+          status, error_message, generated_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [
+        templateId,
+        filePath,
+        fileSize,
+        generationTime,
+        status,
+        errorMessage || null,
+        userId
+      ]);
     }
 
     return { path: filePath, size: fileSize };
@@ -269,6 +279,7 @@ export class ReportService {
     filters?: { templateId?: number; userId?: string; limit?: number }
   ): Promise<ReportHistory[]> {
     try {
+      const db = await getDatabase();
       let query = `
         SELECT h.*, t.name as template_name
         FROM report_history h
@@ -276,24 +287,27 @@ export class ReportService {
         WHERE 1=1
       `;
       const params: any[] = [];
+      let paramIndex = 1;
 
       if (filters?.templateId) {
-        query += " AND h.template_id = ?";
+        query += ` AND h.template_id = $${paramIndex}`;
         params.push(filters.templateId);
+        paramIndex++;
       }
       if (filters?.userId) {
-        query += " AND h.generated_by = ?";
+        query += ` AND h.generated_by = $${paramIndex}`;
         params.push(filters.userId);
+        paramIndex++;
       }
 
       query += " ORDER BY h.generated_at DESC";
 
       if (filters?.limit) {
-        query += " LIMIT ?";
+        query += ` LIMIT $${paramIndex}`;
         params.push(filters.limit);
       }
 
-      return this.db.prepare(query).all(...params) as ReportHistory[];
+      return await db.query(query, params) as ReportHistory[];
     } catch (error) {
       console.error("Failed to get history:", error);
       throw error;

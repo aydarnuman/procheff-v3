@@ -3,7 +3,7 @@
  * Handles saving AI-analyzed tender data to database
  */
 
-import { getDB } from '@/lib/db/sqlite-client';
+import { getDatabase } from '@/lib/db/universal-client';
 import { AILogger } from '@/lib/ai/logger';
 
 export interface TenderAnalysisData {
@@ -46,32 +46,30 @@ export class TenderDatabase {
     }
   ): Promise<void> {
     try {
-      const db = getDB();
+      const db = await getDatabase();
 
       // Check if tenders table exists and has the required columns
       // If not, we'll create a separate table for AI analysis
-      const tableInfo = db.prepare(`
-        SELECT name FROM sqlite_master 
-        WHERE type='table' AND name='tenders'
-      `).get() as { name: string } | undefined;
+      const tableInfo = await db.queryOne(`
+        SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'tenders'
+      `) as { table_name: string } | undefined;
 
       if (tableInfo) {
         // Try to update tenders table if columns exist
         try {
-          const updateStmt = db.prepare(`
+          await db.execute(`
             UPDATE tenders
-            SET 
-              title = COALESCE(?, title),
-              organization = COALESCE(?, organization),
+            SET
+              title = COALESCE($1, title),
+              organization = COALESCE($2, organization),
               updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-          `);
-
-          updateStmt.run(
+            WHERE id = $3
+          `, [
             data.raw_json?.title || null,
             data.raw_json?.organization || null,
             tenderId
-          );
+          ]);
         } catch (error) {
           // Columns might not exist, continue to separate table
           AILogger.warn('Could not update tenders table', { error });
@@ -79,39 +77,36 @@ export class TenderDatabase {
       }
 
       // Create/update tender_analysis table
-      const createTableStmt = db.prepare(`
+      await db.execute(`
         CREATE TABLE IF NOT EXISTS tender_analysis (
-          tender_id TEXT PRIMARY KEY,
+          tender_id VARCHAR(255) PRIMARY KEY,
           raw_json TEXT,
           announcement_text TEXT,
           ai_analyzed INTEGER DEFAULT 0,
-          ai_analyzed_at TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          ai_analyzed_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      createTableStmt.run();
 
       // Insert or update analysis data
-      const upsertStmt = db.prepare(`
+      await db.execute(`
         INSERT INTO tender_analysis (
           tender_id, raw_json, announcement_text, ai_analyzed, ai_analyzed_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
         ON CONFLICT(tender_id) DO UPDATE SET
-          raw_json = excluded.raw_json,
-          announcement_text = excluded.announcement_text,
-          ai_analyzed = excluded.ai_analyzed,
-          ai_analyzed_at = excluded.ai_analyzed_at,
+          raw_json = EXCLUDED.raw_json,
+          announcement_text = EXCLUDED.announcement_text,
+          ai_analyzed = EXCLUDED.ai_analyzed,
+          ai_analyzed_at = EXCLUDED.ai_analyzed_at,
           updated_at = CURRENT_TIMESTAMP
-      `);
-
-      upsertStmt.run(
+      `, [
         tenderId,
         data.raw_json ? JSON.stringify(data.raw_json) : null,
         data.announcement_text || null,
         data.ai_analyzed ? 1 : 0,
         data.ai_analyzed_at || null
-      );
+      ]);
 
       AILogger.info('Tender analysis saved to database', { tenderId });
     } catch (error: any) {
@@ -132,45 +127,42 @@ export class TenderDatabase {
     fullContent: FullContentData
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const db = getDB();
+      const db = await getDatabase();
 
       // Create tender_full_content table if not exists
-      const createTableStmt = db.prepare(`
+      await db.execute(`
         CREATE TABLE IF NOT EXISTS tender_full_content (
-          tender_id TEXT PRIMARY KEY,
+          tender_id VARCHAR(255) PRIMARY KEY,
           raw_html TEXT,
           plain_text TEXT,
           screenshot TEXT,
           documents TEXT,
           structured_data TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      createTableStmt.run();
 
       // Insert or update full content
-      const upsertStmt = db.prepare(`
+      await db.execute(`
         INSERT INTO tender_full_content (
           tender_id, raw_html, plain_text, screenshot, documents, structured_data, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
         ON CONFLICT(tender_id) DO UPDATE SET
-          raw_html = excluded.raw_html,
-          plain_text = excluded.plain_text,
-          screenshot = excluded.screenshot,
-          documents = excluded.documents,
-          structured_data = excluded.structured_data,
+          raw_html = EXCLUDED.raw_html,
+          plain_text = EXCLUDED.plain_text,
+          screenshot = EXCLUDED.screenshot,
+          documents = EXCLUDED.documents,
+          structured_data = EXCLUDED.structured_data,
           updated_at = CURRENT_TIMESTAMP
-      `);
-
-      upsertStmt.run(
+      `, [
         tenderId,
         fullContent.rawHtml || null,
         fullContent.plainText || null,
         fullContent.screenshot || null,
         fullContent.documents ? JSON.stringify(fullContent.documents) : null,
         fullContent.structuredData ? JSON.stringify(fullContent.structuredData) : null
-      );
+      ]);
 
       // Also update tender_analysis
       await this.updateTenderWithAIAnalysis(tenderId, {
@@ -191,4 +183,3 @@ export class TenderDatabase {
     }
   }
 }
-

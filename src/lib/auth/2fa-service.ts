@@ -5,7 +5,7 @@
 
 import * as speakeasy from "speakeasy";
 import * as QRCode from "qrcode";
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 
 export interface TwoFactorSetup {
   secret: string;
@@ -52,24 +52,27 @@ export class TwoFactorAuthService {
     const backupCodes = this.generateBackupCodes(10);
 
     // Store setup (but don't enable yet)
-    const db = getDB();
-    const existingUser = db
-      .prepare("SELECT * FROM user_2fa WHERE user_id = ?")
-      .get(userId) as User2FA | undefined;
+    const db = await getDatabase();
+    const existingUser = await db.queryOne(
+      "SELECT * FROM user_2fa WHERE user_id = $1",
+      [userId]
+    ) as User2FA | undefined;
 
     if (existingUser) {
       // Update existing record
-      db.prepare(
+      await db.execute(
         `UPDATE user_2fa
-         SET secret = ?, backup_codes = ?, enabled = 0, created_at = CURRENT_TIMESTAMP
-         WHERE user_id = ?`
-      ).run(secret.base32, JSON.stringify(backupCodes), userId);
+         SET secret = $1, backup_codes = $2, enabled = 0, created_at = CURRENT_TIMESTAMP
+         WHERE user_id = $3`,
+        [secret.base32, JSON.stringify(backupCodes), userId]
+      );
     } else {
       // Insert new record
-      db.prepare(
+      await db.execute(
         `INSERT INTO user_2fa (user_id, secret, backup_codes, enabled, created_at)
-         VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP)`
-      ).run(userId, secret.base32, JSON.stringify(backupCodes));
+         VALUES ($1, $2, $3, 0, CURRENT_TIMESTAMP)`,
+        [userId, secret.base32, JSON.stringify(backupCodes)]
+      );
     }
 
     return {
@@ -83,10 +86,11 @@ export class TwoFactorAuthService {
    * Verify a TOTP code and enable 2FA if valid
    */
   async verifyAndEnable(userId: string, token: string): Promise<boolean> {
-    const db = getDB();
-    const user2fa = db
-      .prepare("SELECT * FROM user_2fa WHERE user_id = ?")
-      .get(userId) as User2FA | undefined;
+    const db = await getDatabase();
+    const user2fa = await db.queryOne(
+      "SELECT * FROM user_2fa WHERE user_id = $1",
+      [userId]
+    ) as User2FA | undefined;
 
     if (!user2fa) {
       throw new Error("2FA setup not found");
@@ -102,12 +106,13 @@ export class TwoFactorAuthService {
 
     if (verified) {
       // Enable 2FA
-      db.prepare(
-        "UPDATE user_2fa SET enabled = 1, last_used = CURRENT_TIMESTAMP WHERE user_id = ?"
-      ).run(userId);
+      await db.execute(
+        "UPDATE user_2fa SET enabled = 1, last_used = CURRENT_TIMESTAMP WHERE user_id = $1",
+        [userId]
+      );
 
       // Log the event
-      this.logSecurityEvent(userId, "2fa_enabled", { method: "totp" });
+      await this.logSecurityEvent(userId, "2fa_enabled", { method: "totp" });
 
       return true;
     }
@@ -119,10 +124,11 @@ export class TwoFactorAuthService {
    * Verify a TOTP code for login
    */
   async verifyToken(userId: string, token: string): Promise<boolean> {
-    const db = getDB();
-    const user2fa = db
-      .prepare("SELECT * FROM user_2fa WHERE user_id = ? AND enabled = 1")
-      .get(userId) as User2FA | undefined;
+    const db = await getDatabase();
+    const user2fa = await db.queryOne(
+      "SELECT * FROM user_2fa WHERE user_id = $1 AND enabled = 1",
+      [userId]
+    ) as User2FA | undefined;
 
     if (!user2fa) {
       return false; // 2FA not enabled
@@ -138,11 +144,12 @@ export class TwoFactorAuthService {
 
     if (verified) {
       // Update last used
-      db.prepare(
-        "UPDATE user_2fa SET last_used = CURRENT_TIMESTAMP WHERE user_id = ?"
-      ).run(userId);
+      await db.execute(
+        "UPDATE user_2fa SET last_used = CURRENT_TIMESTAMP WHERE user_id = $1",
+        [userId]
+      );
 
-      this.logSecurityEvent(userId, "2fa_login_success", { method: "totp" });
+      await this.logSecurityEvent(userId, "2fa_login_success", { method: "totp" });
       return true;
     }
 
@@ -153,11 +160,12 @@ export class TwoFactorAuthService {
     if (codeIndex !== -1) {
       // Remove used backup code
       backupCodes.splice(codeIndex, 1);
-      db.prepare(
-        "UPDATE user_2fa SET backup_codes = ?, last_used = CURRENT_TIMESTAMP WHERE user_id = ?"
-      ).run(JSON.stringify(backupCodes), userId);
+      await db.execute(
+        "UPDATE user_2fa SET backup_codes = $1, last_used = CURRENT_TIMESTAMP WHERE user_id = $2",
+        [JSON.stringify(backupCodes), userId]
+      );
 
-      this.logSecurityEvent(userId, "2fa_login_success", {
+      await this.logSecurityEvent(userId, "2fa_login_success", {
         method: "backup_code",
         remaining_codes: backupCodes.length,
       });
@@ -165,7 +173,7 @@ export class TwoFactorAuthService {
       return true;
     }
 
-    this.logSecurityEvent(userId, "2fa_login_failed", { token_length: token.length });
+    await this.logSecurityEvent(userId, "2fa_login_failed", { token_length: token.length });
     return false;
   }
 
@@ -173,20 +181,21 @@ export class TwoFactorAuthService {
    * Disable 2FA for a user
    */
   async disable(userId: string): Promise<void> {
-    const db = getDB();
-    db.prepare("UPDATE user_2fa SET enabled = 0 WHERE user_id = ?").run(userId);
+    const db = await getDatabase();
+    await db.execute("UPDATE user_2fa SET enabled = 0 WHERE user_id = $1", [userId]);
 
-    this.logSecurityEvent(userId, "2fa_disabled", {});
+    await this.logSecurityEvent(userId, "2fa_disabled", {});
   }
 
   /**
    * Check if 2FA is enabled for a user
    */
   async isEnabled(userId: string): Promise<boolean> {
-    const db = getDB();
-    const result = db
-      .prepare("SELECT enabled FROM user_2fa WHERE user_id = ?")
-      .get(userId) as { enabled: number } | undefined;
+    const db = await getDatabase();
+    const result = await db.queryOne(
+      "SELECT enabled FROM user_2fa WHERE user_id = $1",
+      [userId]
+    ) as { enabled: number } | undefined;
 
     return result?.enabled === 1;
   }
@@ -199,10 +208,11 @@ export class TwoFactorAuthService {
     lastUsed?: string;
     backupCodesRemaining?: number;
   }> {
-    const db = getDB();
-    const user2fa = db
-      .prepare("SELECT * FROM user_2fa WHERE user_id = ?")
-      .get(userId) as User2FA | undefined;
+    const db = await getDatabase();
+    const user2fa = await db.queryOne(
+      "SELECT * FROM user_2fa WHERE user_id = $1",
+      [userId]
+    ) as User2FA | undefined;
 
     if (!user2fa) {
       return { enabled: false };
@@ -221,10 +231,11 @@ export class TwoFactorAuthService {
    * Regenerate backup codes
    */
   async regenerateBackupCodes(userId: string): Promise<string[]> {
-    const db = getDB();
-    const user2fa = db
-      .prepare("SELECT * FROM user_2fa WHERE user_id = ? AND enabled = 1")
-      .get(userId) as User2FA | undefined;
+    const db = await getDatabase();
+    const user2fa = await db.queryOne(
+      "SELECT * FROM user_2fa WHERE user_id = $1 AND enabled = 1",
+      [userId]
+    ) as User2FA | undefined;
 
     if (!user2fa) {
       throw new Error("2FA not enabled");
@@ -232,12 +243,12 @@ export class TwoFactorAuthService {
 
     const newCodes = this.generateBackupCodes(10);
 
-    db.prepare("UPDATE user_2fa SET backup_codes = ? WHERE user_id = ?").run(
-      JSON.stringify(newCodes),
-      userId
+    await db.execute(
+      "UPDATE user_2fa SET backup_codes = $1 WHERE user_id = $2",
+      [JSON.stringify(newCodes), userId]
     );
 
-    this.logSecurityEvent(userId, "backup_codes_regenerated", { count: newCodes.length });
+    await this.logSecurityEvent(userId, "backup_codes_regenerated", { count: newCodes.length });
 
     return newCodes;
   }
@@ -261,12 +272,13 @@ export class TwoFactorAuthService {
   /**
    * Log security events
    */
-  private logSecurityEvent(userId: string, action: string, metadata: any): void {
+  private async logSecurityEvent(userId: string, action: string, metadata: any): Promise<void> {
     try {
-      const db = getDB();
-      db.prepare(
-        "INSERT INTO security_audit_logs (user_id, action, metadata, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)"
-      ).run(userId, action, JSON.stringify(metadata));
+      const db = await getDatabase();
+      await db.execute(
+        "INSERT INTO security_audit_logs (user_id, action, metadata, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)",
+        [userId, action, JSON.stringify(metadata)]
+      );
     } catch (error) {
       console.error("Failed to log security event:", error);
     }
