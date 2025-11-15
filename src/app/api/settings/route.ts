@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
@@ -30,13 +30,12 @@ export async function GET(req: Request) {
       );
     }
 
-    const db = getDB();
-    const result = db
-      .prepare(
-        `SELECT settings_json FROM user_settings
-         WHERE user_id = ? AND category = ?`
-      )
-      .get(session.user.email, category) as { settings_json: string } | undefined;
+    const db = await getDatabase();
+    const result = await db.queryOne(
+      `SELECT settings_json FROM user_settings
+       WHERE user_id = $1 AND category = $2`,
+      [session.user.email, category]
+    ) as { settings_json: string } | undefined;
 
     if (!result) {
       // Return default settings for category
@@ -101,17 +100,17 @@ export async function POST(req: Request) {
       );
     }
 
-    const db = getDB();
+    const db = await getDatabase();
     const settingsJson = JSON.stringify(settings);
 
     // Upsert (insert or update)
-    db.prepare(`
+    await db.execute(`
       INSERT INTO user_settings (user_id, category, settings_json, updated_at)
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
       ON CONFLICT(user_id, category) DO UPDATE SET
-        settings_json = excluded.settings_json,
+        settings_json = EXCLUDED.settings_json,
         updated_at = CURRENT_TIMESTAMP
-    `).run(session.user.email, category, settingsJson);
+    `, [session.user.email, category, settingsJson]);
 
     return NextResponse.json({
       success: true,
@@ -157,10 +156,11 @@ export async function DELETE(req: Request) {
       );
     }
 
-    const db = getDB();
-    db.prepare(
-      `DELETE FROM user_settings WHERE user_id = ? AND category = ?`
-    ).run(session.user.email, category);
+    const db = await getDatabase();
+    await db.execute(
+      `DELETE FROM user_settings WHERE user_id = $1 AND category = $2`,
+      [session.user.email, category]
+    );
 
     return NextResponse.json({
       success: true,

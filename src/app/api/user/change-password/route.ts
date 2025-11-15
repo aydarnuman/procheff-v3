@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
@@ -40,10 +40,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const db = getDB();
-    const user = db
-      .prepare("SELECT password_hash FROM users WHERE email = ?")
-      .get(session.user.email) as { password_hash: string } | undefined;
+    const db = await getDatabase();
+    const user = await db.queryOne(
+      "SELECT password_hash FROM users WHERE email = $1",
+      [session.user.email]
+    ) as { password_hash: string } | undefined;
 
     if (!user) {
       return NextResponse.json(
@@ -65,11 +66,11 @@ export async function POST(req: Request) {
     const newPasswordHash = bcrypt.hashSync(newPassword, 10);
 
     // Update password
-    db.prepare(`
+    await db.execute(`
       UPDATE users
-      SET password_hash = ?
-      WHERE email = ?
-    `).run(newPasswordHash, session.user.email);
+      SET password_hash = $1
+      WHERE email = $2
+    `, [newPasswordHash, session.user.email]);
 
     return NextResponse.json({
       success: true,

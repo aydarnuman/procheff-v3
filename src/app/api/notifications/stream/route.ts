@@ -1,27 +1,25 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const encoder = new TextEncoder();
-  
+
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
       // Send initial connection message
       controller.enqueue(
         encoder.encode(`data: ${JSON.stringify({ status: "connected" })}\n\n`)
       );
 
       // Poll database for new notifications every 2 seconds
-      const interval = setInterval(() => {
+      const interval = setInterval(async () => {
         try {
-          const db = getDB();
-          const notifications = db
-            .prepare(
-              "SELECT id, level, message, created_at FROM notifications WHERE is_read = 0 ORDER BY created_at DESC LIMIT 10"
-            )
-            .all();
+          const db = await getDatabase();
+          const notifications = await db.query(
+            "SELECT id, level, message, created_at FROM notifications WHERE is_read = 0 ORDER BY created_at DESC LIMIT 10"
+          );
 
           if (notifications.length > 0) {
             notifications.forEach((notification: any) => {

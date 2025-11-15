@@ -1,4 +1,4 @@
-import { getDB } from "@/lib/db/sqlite-client";
+import { getDatabase } from "@/lib/db/universal-client";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
@@ -18,10 +18,11 @@ export async function GET() {
       );
     }
 
-    const db = getDB();
-    const user = db
-      .prepare("SELECT id, email, name, created_at FROM users WHERE email = ?")
-      .get(session.user.email) as {
+    const db = await getDatabase();
+    const user = await db.queryOne(
+      "SELECT id, email, name, created_at FROM users WHERE email = $1",
+      [session.user.email]
+    ) as {
         id: string;
         email: string;
         name: string | null;
