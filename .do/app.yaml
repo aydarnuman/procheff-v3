@@ -171,3 +171,45 @@ services:
 #     value: 80
 #     window: FIVE_MINUTES
 #     operator: GREATER_THAN
+
+# App-level environment variables (available to all components)
+env:
+  - key: APP_ENV
+    value: "production"
+    scope: RUN_TIME
+  - key: LOG_LEVEL
+    value: "info"
+    scope: RUN_TIME
+
+# Domains configuration
+domains:
+  - domain: procheff.app
+    type: PRIMARY
+    wildcard: false
+  - domain: www.procheff.app
+    type: ALIAS
+
+# Alert policies for monitoring
+alerts:
+  - rule: DEPLOYMENT_FAILED
+    emails:
+      - admin@procheff.app
+  - rule: CPU_UTILIZATION
+    value: 80
+    window: FIVE_MINUTES
+    operator: GREATER_THAN
+    emails:
+      - admin@procheff.app
+  - rule: MEMORY_UTILIZATION
+    value: 85
+    window: FIVE_MINUTES
+    operator: GREATER_THAN
+    emails:
+      - admin@procheff.app
+
+# Log forwarding (optional - uncomment to enable)
+# log_destinations:
+#   - name: datadog
+#     type: DATADOG
+#     api_key: ${DATADOG_API_KEY}
+
