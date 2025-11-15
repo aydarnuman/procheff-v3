@@ -1,4 +1,5 @@
-import { getDB } from './sqlite-client';
+import { getDB } from "@/lib/db/sqlite-client";
+import { getSQLSyntax } from './db-adapter';
 
 /**
  * Initialize tenders table for ihalebul.com integration

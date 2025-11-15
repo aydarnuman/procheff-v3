@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { ihbList } from '@/lib/ihale/client';
-import { initTendersTable, upsertTender, getActiveTenders, archiveExpiredTenders } from '@/lib/db/init-tenders';
 import { AILogger } from '@/lib/ai/logger';
+import { archiveExpiredTenders, getActiveTenders, initTenderDB, upsertTender } from '@/lib/db/init-tenders';
+import { ihbList } from '@/lib/ihale/client';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Cron job endpoint for automatic tender refresh
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     AILogger.info('🔄 Starting automatic tender refresh (cron job)');
 
     // Initialize table if not exists
-    initTendersTable();
+    initTenderDB();
 
     // Login directly using client function
     const { ihbLogin } = await import('@/lib/ihale/client');

@@ -25,6 +25,7 @@ export async function ensureAdminSchema(): Promise<void> {
       created_at ${syntax.timestampDefault},
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+  `).run();
 
   // 2. Activity Logs İndeksleri
   db.prepare(`

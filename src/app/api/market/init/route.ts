@@ -1,9 +1,9 @@
+import { initMarketDB } from '@/lib/db/market-db';
 import { NextResponse } from 'next/server';
-import { initMarketTables } from '@/lib/db/market-db';
 
 export async function POST() {
   try {
-    const success = initMarketTables();
+    const success = initMarketDB();
     
     if (success) {
       return NextResponse.json({

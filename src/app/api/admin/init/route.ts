@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { initAdminSchema } from "@/lib/db/admin-schema";
+import { ensureAdminSchema } from "@/lib/db/admin-schema";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(_req: NextRequest) {
   try {
@@ -17,7 +17,7 @@ export async function POST(_req: NextRequest) {
       );
     }
 
-    initAdminSchema();
+    await ensureAdminSchema();
 
     return NextResponse.json({
       success: true,

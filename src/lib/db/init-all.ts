@@ -1,11 +1,12 @@
+import { ensureAdminSchema } from "./admin-schema";
 import { initAuthSchema } from "./init-auth";
-import { initAdminSchema } from "./admin-schema";
+import { ensureOAuthSchema } from "./oauth-schema";
 
 /**
  * Tüm veritabanı şemalarını başlat
  * Bu fonksiyon uygulama başlangıcında çağrılmalıdır
  */
-export function initAllSchemas() {
+export async function initAllSchemas() {
   console.log("🔄 Initializing all database schemas...");
 
   try {
@@ -13,7 +14,10 @@ export function initAllSchemas() {
     initAuthSchema();
 
     // Yeni admin schema
-    initAdminSchema();
+    await ensureAdminSchema();
+
+    // OAuth schema
+    ensureOAuthSchema();
 
     console.log("✅ All schemas initialized successfully");
   } catch (error) {

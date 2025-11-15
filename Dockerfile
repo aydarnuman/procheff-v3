@@ -31,10 +31,15 @@ RUN npm ci
 COPY . .
 
 # Build Next.js application
+# Set build-time environment variables
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PHASE=phase-production-build
 ENV DATABASE_MODE=sqlite
 ENV DATABASE_PATH="/tmp/build.db"
+ENV NODE_ENV=production
+ENV ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-sk-default}
+ENV GOOGLE_API_KEY=${GOOGLE_API_KEY:-sk-default}
+ENV ANTHROPIC_MODEL=claude-sonnet-4-20250514
 RUN npm run build
 
 # Stage 3: Runner

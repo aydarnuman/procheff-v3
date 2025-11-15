@@ -1,8 +1,8 @@
-import { NextRequest } from 'next/server';
-import { ihbList } from '@/lib/ihale/client';
-import { initTendersTable, upsertTender, getActiveTenders, archiveExpiredTenders } from '@/lib/db/init-tenders';
 import { AILogger } from '@/lib/ai/logger';
+import { archiveExpiredTenders, getActiveTenders, initTenderDB, upsertTender } from '@/lib/db/init-tenders';
+import { ihbList } from '@/lib/ihale/client';
 import { TurkceLogger as Log } from '@/lib/utils/turkce-logger';
+import { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
   const sessionId = req.cookies.get('ihale_session')?.value;
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // Initialize table if not exists
-    initTendersTable();
+    initTenderDB();
 
     // If refresh requested, fetch from worker
     if (refresh && sessionId) {
