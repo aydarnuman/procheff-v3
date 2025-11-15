@@ -22,6 +22,12 @@ let isShuttingDown = false;
 /**
  * PostgreSQL Pool Configuration
  */
+const wantsSSL =
+  process.env.POSTGRES_SSL === 'true' ||
+  process.env.POSTGRES_SSL === 'require' ||
+  process.env.DATABASE_SSL === 'true' ||
+  process.env.DATABASE_URL?.includes('sslmode=require');
+
 const poolConfig = {
   connectionString: process.env.DATABASE_URL,
   // Connection pool settings
@@ -30,13 +36,13 @@ const poolConfig = {
   idleTimeoutMillis: 30000,   // Close idle clients after 30 seconds
   connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection cannot be established
   
-  // SSL configuration - check if connection string requires SSL
-  ssl: process.env.DATABASE_URL?.includes('sslmode=require') ? {
-    rejectUnauthorized: false,
-    require: true
-  } : process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : false
+  // SSL configuration - disabled by default for local/dev containers
+  ssl: wantsSSL
+    ? {
+        rejectUnauthorized: false,
+        require: true
+      }
+    : false
 };
 
 /**
