@@ -57,46 +57,49 @@ class NotificationService {
       throw error;
     }
   }
+    /**
+     * Add a new notification channel
+     */
+    async addChannel(channel: NotificationChannel): Promise<number> {
+      try {
+        const db = await getDatabase();
+        // Generate verification token
+        const verificationToken = this.generateToken();
+        const verificationExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
 
-  /**
-   * Add a new notification channel
-   */
-  async addChannel(channel: NotificationChannel): Promise<number> {
-    try {
-      const db = await getDatabase();
-      // Generate verification token
-      const verificationToken = this.generateToken();
-      const verificationExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
+        const result = await db.queryOne(`
+          INSERT INTO notification_channels (
+            user_id, type, destination, verified,
+            verification_token, verification_expires, settings
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          RETURNING id
+        `, [
+          channel.user_id,
+          channel.type,
+          channel.destination,
+          false, // Not verified initially
+          verificationToken,
+          verificationExpires,
+          JSON.stringify(channel.settings || {})
+        ]);
 
-      const result = await db.queryOne(`
-        INSERT INTO notification_channels (
-          user_id, type, destination, verified,
-          verification_token, verification_expires, settings
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id
-      `, [
-        channel.user_id,
-        channel.type,
-        channel.destination,
-        false, // Not verified initially
-        verificationToken,
-        verificationExpires,
-        JSON.stringify(channel.settings || {})
-      ]);
+        if (!result?.id) {
+          throw new Error("Failed to insert notification channel");
+        }
 
-      const channelId = result.id as number;
+        const channelId = result.id as number;
 
-      // Send verification if email
-      if (channel.type === "email") {
-        await this.sendVerification(channelId);
+        // Send verification if email
+        if (channel.type === "email") {
+          await this.sendVerification(channelId);
+        }
+
+        return channelId;
+      } catch (error) {
+        console.error("Failed to add channel:", error);
+        throw error;
       }
-
-      return channelId;
-    } catch (error) {
-      console.error("Failed to add channel:", error);
-      throw error;
     }
-  }
 
   /**
    * Update a notification channel
