@@ -2,6 +2,11 @@ import type { Role } from "@/lib/db/init-auth";
 import { getDatabase, getSQLSyntax } from "@/lib/db/universal-client";
 import bcrypt from "bcryptjs";
 
+// Build-time guard: prevent DB queries during Next.js build
+const isBuildTime = 
+  process.env.NEXT_PHASE === 'phase-production-build' || 
+  process.env.SKIP_BUILD_DB_INIT === 'true';
+
 export interface RoleDistributionEntry {
   role: string;
   count: number;
@@ -29,6 +34,17 @@ export interface ActivityLogEntry {
 
 // Admin Dashboard Stats
 export async function getAdminStats(): Promise<AdminStats> {
+  // Guard: Return empty stats during build time
+  if (isBuildTime) {
+    return {
+      totalUsers: 0,
+      activeUsers: 0,
+      totalOrgs: 0,
+      recentLogins: 0,
+      roleDistribution: []
+    };
+  }
+
   const db = await getDatabase();
 
   const totalUsers = await db.queryOne("SELECT COUNT(*) as count FROM users") as { count: number };
@@ -76,6 +92,7 @@ export async function getAllUsers(options?: {
   page?: number;
   limit?: number;
 }) {
+  if (isBuildTime) return { users: [], total: 0, page: 1, totalPages: 0 };
   const db = await getDatabase();
   const page = options?.page || 1;
   const limit = options?.limit || 20;
@@ -154,6 +171,7 @@ export async function getAllUsers(options?: {
 }
 
 export async function getUserById(userId: string) {
+  if (isBuildTime) return null;
   const db = await getDatabase();
 
   // Check if status column exists
@@ -181,8 +199,10 @@ export async function getUserById(userId: string) {
 export async function updateUser(userId: string, data: {
   name?: string;
   email?: string;
+  role?: Role;
   status?: string;
 }) {
+  if (isBuildTime) return;
   const db = await getDatabase();
   const fields: string[] = [];
   const values: any[] = [];
@@ -213,12 +233,14 @@ export async function updateUser(userId: string, data: {
 }
 
 export async function deleteUser(userId: string) {
+  if (isBuildTime) return;
   const db = await getDatabase();
   // Soft delete
   await db.execute("UPDATE users SET status = 'deleted' WHERE id = $1", [userId]);
 }
 
 export async function resetUserPassword(userId: string, newPassword: string) {
+  if (isBuildTime) return;
   const db = await getDatabase();
   const hash = bcrypt.hashSync(newPassword, 10);
   await db.execute("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, userId]);
@@ -226,6 +248,7 @@ export async function resetUserPassword(userId: string, newPassword: string) {
 
 // Organization Management
 export async function getAllOrganizations() {
+  if (isBuildTime) return [];
   const db = await getDatabase();
   return await db.query(`
     SELECT
@@ -239,6 +262,7 @@ export async function getAllOrganizations() {
 }
 
 export async function getOrgMembers(orgId: string) {
+  if (isBuildTime) return [];
   const db = await getDatabase();
 
   // Check if status column exists
@@ -264,6 +288,7 @@ export async function getOrgMembers(orgId: string) {
 }
 
 export async function addOrgMember(orgId: string, userId: string, role: Role) {
+  if (isBuildTime) return;
   const db = await getDatabase();
   const membershipId = `${orgId}:${userId}`;
   await db.execute(`
@@ -274,11 +299,13 @@ export async function addOrgMember(orgId: string, userId: string, role: Role) {
 }
 
 export async function removeOrgMember(orgId: string, userId: string) {
+  if (isBuildTime) return;
   const db = await getDatabase();
   await db.execute("DELETE FROM memberships WHERE org_id = $1 AND user_id = $2", [orgId, userId]);
 }
 
 export async function updateMemberRole(orgId: string, userId: string, newRole: Role) {
+  if (isBuildTime) return;
   const db = await getDatabase();
   await db.execute("UPDATE memberships SET role = $1 WHERE org_id = $2 AND user_id = $3",
     [newRole, orgId, userId]);
@@ -291,6 +318,11 @@ export async function getActivityLogs(options?: {
   limit?: number;
   offset?: number;
 }): Promise<ActivityLogEntry[]> {
+  // Guard: Return empty array during build time
+  if (isBuildTime) {
+    return [];
+  }
+
   const db = await getDatabase();
   const limit = options?.limit || 50;
   const offset = options?.offset || 0;
